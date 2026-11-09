@@ -25,3 +25,8 @@ class Unauthorized(AppError):
 class Forbidden(AppError):
     status_code = 403
     code = "forbidden"
+
+
+class TooManyAttempts(AppError):
+    status_code = 429
+    code = "too_many_attempts"
