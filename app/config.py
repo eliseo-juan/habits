@@ -12,6 +12,7 @@ class Settings:
     backup_dir: str
     scheduler_enabled: bool
     cookie_secure: bool
+    web_dir: str | None
 
 
 def _flag(name: str, default: bool) -> bool:
@@ -31,4 +32,5 @@ def get_settings() -> Settings:
         backup_dir=os.environ.get("HABITS_BACKUP_DIR", "./data/backups"),
         scheduler_enabled=_flag("HABITS_SCHEDULER_ENABLED", True),
         cookie_secure=_flag("HABITS_COOKIE_SECURE", True),
+        web_dir=os.environ.get("HABITS_WEB_DIR") or None,
     )

@@ -81,9 +81,11 @@ def test_mark_and_correct_past_days(client, alice):
     put = {"done_count": 0, "skipped": True, "note": "sick"}
     assert client.put(url, json=put, headers=alice.auth()).json()["skipped"] is True
     assert client.put(url, json=put, headers=alice.auth()).json()["skipped"] is True
+    assert client.get(url, headers=alice.auth("read")).json()["note"] == "sick"
 
     assert client.delete(url, headers=alice.auth()).status_code == 204
     assert client.delete(url, headers=alice.auth()).status_code == 404
+    assert client.get(url, headers=alice.auth()).status_code == 404
 
 
 def test_future_day_cannot_be_done(client, alice):
