@@ -17,8 +17,6 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.14"
-  HABITS_SECRET_KEY: ci-only-secret
-  HABITS_COOKIE_SECURE: "false"
 
 jobs:
   lint:
@@ -112,6 +110,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Smoke test /health
+        env:
+          HABITS_SECRET_KEY: ci-only-secret
         run: |
           docker run -d --name habits -p 8000:8000 \
             -e HABITS_SECRET_KEY="$HABITS_SECRET_KEY" habits:ci
