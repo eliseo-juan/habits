@@ -80,6 +80,7 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    user: "568:568"
     environment:
       HABITS_SECRET_KEY: "<long random value>"
       HABITS_PUBLIC_URL: https://habits.lab.eliseo.tech
@@ -87,6 +88,16 @@ services:
       - /mnt/<pool>/apps/habits:/data
 ```
 
-The container runs as UID 1000, so the dataset must be writable by it. Migrations run on every start.
+`568` is TrueNAS's `apps` user; the dataset must be writable by it. Migrations run on every start.
 
 Nginx Proxy Manager: proxy host `habits.lab.eliseo.tech` → `http://<truenas-ip>:8000`, with SSL forced and HTTP/2 on. No custom locations needed.
+
+### Updates
+
+The NAS isn't reachable from GitHub, so it pulls: copy `deploy/truenas-update.sh` to the dataset and add a cron job (System → Advanced Settings → Cron Jobs, user `root`, every 15 minutes):
+
+```sh
+sh /mnt/<pool>/apps/habits/truenas-update.sh habits
+```
+
+It redeploys the app only when `:latest` moved, so a merge to `main` is live within about 15 minutes. If the GHCR package is private, run `docker login ghcr.io` once as root with a token that has `read:packages`.
