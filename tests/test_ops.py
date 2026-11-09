@@ -5,11 +5,14 @@ from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
+from fastapi.testclient import TestClient
 from sqlalchemy import inspect
 
 from app import cli
 from app.backup import KEEP, backup_sqlite
+from app.config import get_settings
 from app.db import Base, make_engine
+from app.main import create_app
 
 
 def test_migrations_build_the_models_schema(tmp_path, monkeypatch):
@@ -50,3 +53,27 @@ def test_cli_creates_user_and_token(db, monkeypatch, capsys, client):
     assert cli.main(["create-user", "carol@example.com", "--password-stdin"]) == 1
     response = client.post("/auth/login", json={"email": "carol@example.com", "password": "a-password"})
     assert response.status_code == 200
+
+
+def test_cli_sets_the_password_of_an_existing_account(db, monkeypatch, client):
+    monkeypatch.setattr("sys.stdin", io.StringIO("\n"))
+    assert cli.main(["create-user", "dave@example.com", "--password-stdin"]) == 0
+    monkeypatch.setattr("sys.stdin", io.StringIO("\n"))
+    assert cli.main(["set-password", "dave@example.com", "--password-stdin"]) == 1
+    monkeypatch.setattr("sys.stdin", io.StringIO("new-password\n"))
+    assert cli.main(["set-password", "nobody@example.com", "--password-stdin"]) == 1
+    monkeypatch.setattr("sys.stdin", io.StringIO("new-password\n"))
+    assert cli.main(["set-password", "Dave@Example.com", "--password-stdin"]) == 0
+    response = client.post("/auth/login", json={"email": "dave@example.com", "password": "new-password"})
+    assert response.status_code == 200
+
+
+def test_serves_the_web_app_without_hiding_the_api(db, clock, tmp_path, monkeypatch):
+    (tmp_path / "index.html").write_text("<title>Hábitos</title>")
+    monkeypatch.setenv("HABITS_WEB_DIR", str(tmp_path))
+    get_settings.cache_clear()
+    with TestClient(create_app()) as client:
+        assert "Hábitos" in client.get("/").text
+        assert client.get("/health").json() == {"status": "ok"}
+        assert client.get("/today").status_code == 401
+        assert client.get("/missing.js").status_code == 404
