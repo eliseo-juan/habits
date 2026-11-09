@@ -5,13 +5,18 @@ from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
+from mcp.server.auth.settings import ClientRegistrationOptions
+from pydantic import AnyHttpUrl
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Route
 from starlette.staticfiles import StaticFiles
 
 from app.api import account, habits, views
+from app.auth import oauth
 from app.auth.deps import Db, Now
+from app.auth.security import LoginThrottle
 from app.backup import backup_sqlite
 from app.clock import utcnow
 from app.config import get_settings
@@ -61,10 +66,28 @@ def create_app() -> FastAPI:
             with suppress(asyncio.CancelledError):
                 await scheduler
 
+    public_url = get_settings().public_url
+    provider = oauth.HabitsOAuthProvider(public_url)
+    registration = ClientRegistrationOptions(
+        enabled=True, valid_scopes=oauth.SCOPES, default_scopes=oauth.SCOPES
+    )
+
     app = FastAPI(title="Habits", version="0.1.0", lifespan=lifespan)
+    app.state.login_throttle = LoginThrottle()
     app.include_router(habits.router)
     app.include_router(views.router)
     app.include_router(account.router)
+    app.include_router(oauth.router)
+    app.router.routes.extend(
+        create_auth_routes(
+            provider, AnyHttpUrl(public_url), client_registration_options=registration
+        )
+    )
+    app.router.routes.extend(
+        create_protected_resource_routes(
+            AnyHttpUrl(f"{public_url}/mcp"), [AnyHttpUrl(public_url)], oauth.SCOPES
+        )
+    )
     app.router.routes.extend(Route(r.path, BearerAuth(r.endpoint)) for r in mcp_app.routes)
 
     @app.exception_handler(AppError)
