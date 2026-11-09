@@ -1,0 +1,27 @@
+name: Owner only
+
+# This is a personal project: PRs and issues from anyone but the owner are closed on sight.
+# Uses pull_request_target so it also works for forks, and never checks out or runs PR code.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  close:
+    if: github.actor != github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          KIND: ${{ github.event_name == 'issues' && 'issue' || 'pr' }}
+        run: |
+          gh "$KIND" close "$NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --comment "This repository doesn't accept outside contributions."
