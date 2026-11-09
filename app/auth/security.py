@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -8,10 +9,31 @@ from argon2.exceptions import InvalidHashError, VerifyMismatchError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.errors import TooManyAttempts, Unauthorized
 from app.models import ApiToken, User, WebSession
 
 SESSION_TTL = timedelta(days=30)
 _hasher = PasswordHasher()
+
+
+class LoginThrottle:
+    """Blocks an email after repeated wrong passwords, so a public login can't be brute-forced."""
+
+    def __init__(self, max_failures: int = 5, window: timedelta = timedelta(minutes=15)):
+        self.max_failures = max_failures
+        self.window = window
+        self._failures: dict[str, list[datetime]] = defaultdict(list)
+
+    def _recent(self, email: str, now: datetime) -> list[datetime]:
+        recent = [t for t in self._failures[email] if now - t < self.window]
+        self._failures[email] = recent
+        return recent
+
+    def blocked(self, email: str, now: datetime) -> bool:
+        return len(self._recent(email.strip().lower(), now)) >= self.max_failures
+
+    def failed(self, email: str, now: datetime) -> None:
+        self._recent(email.strip().lower(), now).append(now)
 
 
 @dataclass(frozen=True)
@@ -24,6 +46,16 @@ class Principal:
 
 def hash_password(password: str) -> str:
     return _hasher.hash(password)
+
+
+def authenticate(db: Session, throttle: LoginThrottle, email: str, password: str, now: datetime) -> User:
+    if throttle.blocked(email, now):
+        raise TooManyAttempts("too many failed logins, try again later")
+    user = db.scalar(select(User).where(User.email == email.strip().lower()))
+    if user is None or user.disabled or not verify_password(user.password_hash, password):
+        throttle.failed(email, now)
+        raise Unauthorized("wrong email or password")
+    return user
 
 
 def verify_password(password_hash: str | None, password: str) -> bool:

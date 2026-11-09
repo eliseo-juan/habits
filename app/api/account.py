@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.auth import security
 from app.auth.deps import SESSION_COOKIE, Db, Now, Reader, SessionWriter, Writer
 from app.config import get_settings
-from app.errors import NotFound, Unauthorized
+from app.errors import NotFound
 from app.models import ApiToken, User
 from app.schemas import (
     ChannelIn,
@@ -41,10 +41,8 @@ def _token_out(token: ApiToken) -> TokenOut:
 
 
 @router.post("/auth/login", response_model=MeOut)
-def login(data: LoginIn, response: Response, db: Db, now: Now):
-    user = users.find_user(db, data.email)
-    if user is None or user.disabled or not security.verify_password(user.password_hash, data.password):
-        raise Unauthorized("wrong email or password")
+def login(data: LoginIn, request: Request, response: Response, db: Db, now: Now):
+    user = security.authenticate(db, request.app.state.login_throttle, data.email, data.password, now)
     session_token = security.create_session(db, user, now)
     db.commit()
     response.set_cookie(
