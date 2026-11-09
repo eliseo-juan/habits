@@ -12,7 +12,9 @@ config = context.config
 if config.config_file_name:
     fileConfig(config.config_file_name)
 
-url = config.get_main_option("sqlalchemy.url") or os.environ.get("HABITS_DATABASE_URL", "sqlite:///./data/habits.db")
+url = config.get_main_option("sqlalchemy.url") or os.environ.get(
+    "HABITS_DATABASE_URL", "sqlite:///./data/habits.db"
+)
 database = make_url(url).database
 if url.startswith("sqlite") and database and database != ":memory:":
     Path(database).parent.mkdir(parents=True, exist_ok=True)

@@ -21,7 +21,9 @@ def _check_weekdays(days: Weekdays) -> Weekdays:
 class ScheduleIn(BaseModel):
     type: Literal["daily", "weekdays", "times_per_period"]
     times_per_day: int = Field(1, ge=1, le=50)
-    weekdays: Weekdays = Field(None, description="0 = Monday … 6 = Sunday; only for type 'weekdays'")
+    weekdays: Weekdays = Field(
+        None, description="0 = Monday … 6 = Sunday; only for type 'weekdays'"
+    )
     period_unit: Literal["week", "month"] | None = None
     period_target: int | None = Field(None, ge=1, le=31)
 
@@ -35,7 +37,9 @@ class ScheduleIn(BaseModel):
             raise ValueError("weekdays only apply to type 'weekdays'")
         is_period = self.type == "times_per_period"
         if is_period != (self.period_unit is not None and self.period_target is not None):
-            raise ValueError("period_unit and period_target are required for, and only for, 'times_per_period'")
+            raise ValueError(
+                "period_unit and period_target are required for, and only for, 'times_per_period'"
+            )
         if self.period_unit == "week" and self.period_target and self.period_target > 7:
             raise ValueError("a week holds at most 7 days")
         return self

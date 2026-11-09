@@ -28,7 +28,10 @@ def test_create_and_read_habit(client, alice):
         "period_target": None,
         "effective_from": "2026-11-01",
     }
-    assert client.get(f"/habits/{habit['id']}", headers=alice.auth("read")).json()["name"] == "Meditate"
+    assert (
+        client.get(f"/habits/{habit['id']}", headers=alice.auth("read")).json()["name"]
+        == "Meditate"
+    )
 
 
 def test_start_date_defaults_to_users_today(client, alice):
@@ -48,14 +51,18 @@ def test_end_date_before_start_is_422(client, alice):
 
 def test_invalid_schedule_is_422(client, alice):
     response = client.post(
-        "/habits", json={"name": "x", "schedule": {"type": "times_per_period", "period_unit": "week"}}, headers=alice.auth()
+        "/habits",
+        json={"name": "x", "schedule": {"type": "times_per_period", "period_unit": "week"}},
+        headers=alice.auth(),
     )
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"
 
 
 def test_read_token_cannot_write(client, alice):
-    response = client.post("/habits", json={"name": "x", "schedule": DAILY}, headers=alice.auth("read"))
+    response = client.post(
+        "/habits", json={"name": "x", "schedule": DAILY}, headers=alice.auth("read")
+    )
     assert response.status_code == 403
 
 
@@ -76,7 +83,10 @@ def test_mark_and_correct_past_days(client, alice):
     first = client.post(f"{url}/done", headers=alice.auth()).json()
     assert first["done_count"] == 1
     assert first["source"] == "test-write"
-    assert client.post(f"{url}/done", json={"count": 1}, headers=alice.auth()).json()["done_count"] == 2
+    assert (
+        client.post(f"{url}/done", json={"count": 1}, headers=alice.auth()).json()["done_count"]
+        == 2
+    )
 
     put = {"done_count": 0, "skipped": True, "note": "sick"}
     assert client.put(url, json=put, headers=alice.auth()).json()["skipped"] is True
@@ -102,14 +112,21 @@ def test_today_uses_user_timezone(client, alice, clock):
 
 
 def test_today_hides_times_per_week_once_target_met(client, alice):
-    habit = create_habit(client, alice, schedule={"type": "times_per_period", "period_unit": "week", "period_target": 2})
+    habit = create_habit(
+        client,
+        alice,
+        schedule={"type": "times_per_period", "period_unit": "week", "period_target": 2},
+    )
     client.post(f"/habits/{habit['id']}/logs/2026-11-09/done", headers=alice.auth())
     item = client.get("/today", headers=alice.auth()).json()["items"][0]
     assert (item["period_done"], item["period_target"], item["status"]) == (1, 2, "done")
 
     client.post(f"/habits/{habit['id']}/logs/2026-11-08/done", headers=alice.auth())
     client.delete(f"/habits/{habit['id']}/logs/2026-11-09", headers=alice.auth())
-    assert client.get("/today?date=2026-11-10", headers=alice.auth()).json()["items"][0]["status"] == "pending"
+    assert (
+        client.get("/today?date=2026-11-10", headers=alice.auth()).json()["items"][0]["status"]
+        == "pending"
+    )
 
 
 def test_schedule_change_from_past_date_keeps_logs(client, alice):
@@ -121,7 +138,10 @@ def test_schedule_change_from_past_date_keeps_logs(client, alice):
         headers=alice.auth(),
     )
     assert response.status_code == 201
-    assert [s["effective_from"] for s in response.json()["schedules"]] == ["2026-11-01", "2026-11-02"]
+    assert [s["effective_from"] for s in response.json()["schedules"]] == [
+        "2026-11-01",
+        "2026-11-02",
+    ]
     month = client.get("/stats/month?month=2026-11", headers=alice.auth()).json()
     days = month["habits"][0]["days"]
     assert days["2026-11-03"] == "done"
@@ -151,16 +171,25 @@ def test_habit_stats_streaks(client, alice):
         client.post(f"/habits/{habit['id']}/logs/2026-11-{day:02d}/done", headers=alice.auth())
     stats = client.get(f"/habits/{habit['id']}/stats", headers=alice.auth()).json()
     assert (stats["current_streak"], stats["best_streak"], stats["failed"]) == (4, 4, 1)
-    ranged = client.get(f"/habits/{habit['id']}/stats?from=2026-11-01&to=2026-11-03", headers=alice.auth()).json()
+    ranged = client.get(
+        f"/habits/{habit['id']}/stats?from=2026-11-01&to=2026-11-03", headers=alice.auth()
+    ).json()
     assert ranged["percentage"] == 100.0
-    assert client.get(f"/habits/{habit['id']}/stats?from=2026-11-05&to=2026-11-01", headers=alice.auth()).status_code == 422
+    assert (
+        client.get(
+            f"/habits/{habit['id']}/stats?from=2026-11-05&to=2026-11-01", headers=alice.auth()
+        ).status_code
+        == 422
+    )
 
 
 def test_stats_start_date_change_keeps_logs(client, alice):
     habit = create_habit(client, alice)
     client.post(f"/habits/{habit['id']}/logs/2026-11-08/done", headers=alice.auth())
     before = client.get(f"/habits/{habit['id']}/stats", headers=alice.auth()).json()
-    client.patch(f"/habits/{habit['id']}", json={"stats_start_date": "2026-11-08"}, headers=alice.auth())
+    client.patch(
+        f"/habits/{habit['id']}", json={"stats_start_date": "2026-11-08"}, headers=alice.auth()
+    )
     after = client.get(f"/habits/{habit['id']}/stats", headers=alice.auth()).json()
     assert before["percentage"] < after["percentage"] == 100.0
     month = client.get("/stats/month?month=2026-11", headers=alice.auth()).json()
@@ -176,32 +205,51 @@ def test_awtrix_summary_with_read_token(client, alice):
     assert (summary["pending"], summary["done"], summary["total"]) == (1, 1, 2)
     assert summary["pending_habits"][0]["name"] == "Read"
     assert summary["top_streaks"] == [{"name": "Meditate", "streak": 2}]
-    response = client.post(f"/habits/{meditate['id']}/logs/2026-11-07/done", headers=alice.auth("read"))
+    response = client.post(
+        f"/habits/{meditate['id']}/logs/2026-11-07/done", headers=alice.auth("read")
+    )
     assert response.status_code == 403
 
 
 def test_reminders_crud(client, alice):
     habit = create_habit(client, alice)
     created = client.post(
-        f"/habits/{habit['id']}/reminders", json={"time_local": "08:30", "weekdays": [0, 1]}, headers=alice.auth()
+        f"/habits/{habit['id']}/reminders",
+        json={"time_local": "08:30", "weekdays": [0, 1]},
+        headers=alice.auth(),
     ).json()
     assert created["time_local"] == "08:30:00"
-    updated = client.patch(f"/reminders/{created['id']}", json={"weekdays": None}, headers=alice.auth()).json()
+    updated = client.patch(
+        f"/reminders/{created['id']}", json={"weekdays": None}, headers=alice.auth()
+    ).json()
     assert updated["weekdays"] is None
     assert len(client.get(f"/habits/{habit['id']}/reminders", headers=alice.auth()).json()) == 1
     assert client.delete(f"/reminders/{created['id']}", headers=alice.auth()).status_code == 204
 
 
 def test_login_session_and_tokens(client, alice):
-    assert client.post("/auth/login", json={"email": alice.email, "password": "nope"}).status_code == 401
-    assert client.post("/tokens", json={"name": "x", "scope": "read"}, headers=alice.auth()).status_code == 403
+    assert (
+        client.post("/auth/login", json={"email": alice.email, "password": "nope"}).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/tokens", json={"name": "x", "scope": "read"}, headers=alice.auth()
+        ).status_code
+        == 403
+    )
 
-    login = client.post("/auth/login", json={"email": "ALICE@example.com", "password": "secret-password"})
+    login = client.post(
+        "/auth/login", json={"email": "ALICE@example.com", "password": "secret-password"}
+    )
     assert login.status_code == 200
     created = client.post("/tokens", json={"name": "mcp", "scope": "write"})
     assert created.status_code == 201
     token = created.json()["token"]
-    assert client.get("/me", headers={"Authorization": f"Bearer {token}"}).json()["email"] == alice.email
+    assert (
+        client.get("/me", headers={"Authorization": f"Bearer {token}"}).json()["email"]
+        == alice.email
+    )
     names = [t["name"] for t in client.get("/tokens").json()]
     assert names == ["test-write", "awtrix", "mcp"]
     assert "token" not in client.get("/tokens").json()[0]
@@ -214,14 +262,18 @@ def test_login_session_and_tokens(client, alice):
 
 
 def test_update_me_timezone(client, alice):
-    assert client.patch("/me", json={"timezone": "Mars/Base"}, headers=alice.auth()).status_code == 422
+    assert (
+        client.patch("/me", json={"timezone": "Mars/Base"}, headers=alice.auth()).status_code == 422
+    )
     me = client.patch("/me", json={"timezone": "America/New_York"}, headers=alice.auth()).json()
     assert me["timezone"] == "America/New_York"
 
 
 def test_channels_hide_access_token(client, alice):
     created = client.post(
-        "/channels", json={"config": {"topic": "alice-habits", "access_token": "tk_secret"}}, headers=alice.auth()
+        "/channels",
+        json={"config": {"topic": "alice-habits", "access_token": "tk_secret"}},
+        headers=alice.auth(),
     ).json()
     assert created["has_access_token"] is True
     assert "tk_secret" not in str(client.get("/channels", headers=alice.auth()).json())
@@ -229,8 +281,12 @@ def test_channels_hide_access_token(client, alice):
 
 def test_other_users_resources_are_not_found(client, alice, bob):
     habit = create_habit(client, alice)
-    reminder = client.post(f"/habits/{habit['id']}/reminders", json={"time_local": "08:00"}, headers=alice.auth()).json()
-    channel = client.post("/channels", json={"config": {"topic": "alice"}}, headers=alice.auth()).json()
+    reminder = client.post(
+        f"/habits/{habit['id']}/reminders", json={"time_local": "08:00"}, headers=alice.auth()
+    ).json()
+    channel = client.post(
+        "/channels", json={"config": {"topic": "alice"}}, headers=alice.auth()
+    ).json()
     h = f"/habits/{habit['id']}"
     attempts = [
         ("get", h, None),

@@ -17,7 +17,12 @@ def today(principal: Reader, db: Db, now: Now, date: date | None = None):
 
 
 @router.get("/stats/month", response_model=MonthOut)
-def month(principal: Reader, db: Db, now: Now, month: Annotated[str, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]):
+def month(
+    principal: Reader,
+    db: Db,
+    now: Now,
+    month: Annotated[str, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")],
+):
     year, number = (int(part) for part in month.split("-"))
     return views.month_view(db, principal.user, year, number, now)
 

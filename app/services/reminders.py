@@ -3,7 +3,14 @@ from sqlalchemy.orm import Session
 
 from app.errors import NotFound
 from app.models import Habit, NotificationChannel, Reminder, User
-from app.schemas import ChannelIn, ChannelOut, ChannelUpdate, ReminderIn, ReminderOut, ReminderUpdate
+from app.schemas import (
+    ChannelIn,
+    ChannelOut,
+    ChannelUpdate,
+    ReminderIn,
+    ReminderOut,
+    ReminderUpdate,
+)
 from app.services.habits import get_habit, mask_to_weekdays, weekdays_to_mask
 
 
@@ -28,7 +35,11 @@ def get_reminder(db: Session, user: User, reminder_id: int) -> Reminder:
 
 def list_reminders(db: Session, user: User, habit_id: int) -> list[Reminder]:
     get_habit(db, user, habit_id)
-    return list(db.scalars(select(Reminder).where(Reminder.habit_id == habit_id).order_by(Reminder.time_local)))
+    return list(
+        db.scalars(
+            select(Reminder).where(Reminder.habit_id == habit_id).order_by(Reminder.time_local)
+        )
+    )
 
 
 def create_reminder(db: Session, user: User, habit_id: int, data: ReminderIn) -> Reminder:
@@ -81,19 +92,26 @@ def get_channel(db: Session, user: User, channel_id: int) -> NotificationChannel
 
 
 def list_channels(db: Session, user: User) -> list[NotificationChannel]:
-    return list(db.scalars(select(NotificationChannel).where(NotificationChannel.user_id == user.id)))
+    return list(
+        db.scalars(select(NotificationChannel).where(NotificationChannel.user_id == user.id))
+    )
 
 
 def create_channel(db: Session, user: User, data: ChannelIn) -> NotificationChannel:
     channel = NotificationChannel(
-        user_id=user.id, type=data.type, config=data.config.model_dump(mode="json"), enabled=data.enabled
+        user_id=user.id,
+        type=data.type,
+        config=data.config.model_dump(mode="json"),
+        enabled=data.enabled,
     )
     db.add(channel)
     db.commit()
     return channel
 
 
-def update_channel(db: Session, user: User, channel_id: int, data: ChannelUpdate) -> NotificationChannel:
+def update_channel(
+    db: Session, user: User, channel_id: int, data: ChannelUpdate
+) -> NotificationChannel:
     channel = get_channel(db, user, channel_id)
     if data.config is not None:
         channel.config = data.config.model_dump(mode="json")

@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 
 from app.services.rules import (
     DayLog,
@@ -23,7 +23,12 @@ def weekdays(*days, effective_from=date(2026, 1, 1)):
 
 
 def per_week(target, effective_from=date(2026, 1, 1)):
-    return Schedule(effective_from=effective_from, type="times_per_period", period_unit="week", period_target=target)
+    return Schedule(
+        effective_from=effective_from,
+        type="times_per_period",
+        period_unit="week",
+        period_target=target,
+    )
 
 
 def timeline(schedules, logs=None, start=date(2026, 1, 1), end=None, stats_start=None):
@@ -112,12 +117,12 @@ def test_new_schedule_from_past_date_keeps_logs():
 
 
 def test_log_after_midnight_belongs_to_new_day():
-    madrid_0030 = datetime(2026, 11, 9, 23, 30, tzinfo=timezone.utc)
+    madrid_0030 = datetime(2026, 11, 9, 23, 30, tzinfo=UTC)
     assert logical_date(madrid_0030, "Europe/Madrid", time(0, 0)) == date(2026, 11, 10)
 
 
 def test_cutoff_after_midnight_keeps_previous_day():
-    madrid_0030 = datetime(2026, 11, 9, 23, 30, tzinfo=timezone.utc)
+    madrid_0030 = datetime(2026, 11, 9, 23, 30, tzinfo=UTC)
     assert logical_date(madrid_0030, "Europe/Madrid", time(3, 0)) == date(2026, 11, 9)
 
 
@@ -140,9 +145,18 @@ def test_failure_breaks_streak_and_best_streak_is_kept():
 
 def test_days_outside_start_and_end_are_not_due():
     h = timeline([daily()], start=MON, end=MON + timedelta(days=1))
-    assert day_status(h, MON - timedelta(days=1), today=MON + timedelta(days=5)) is DayStatus.NOT_DUE
-    assert day_status(h, MON + timedelta(days=2), today=MON + timedelta(days=5)) is DayStatus.NOT_DUE
-    assert summarize(h, MON - timedelta(days=3), MON + timedelta(days=5), today=MON + timedelta(days=5)).failed == 2
+    assert (
+        day_status(h, MON - timedelta(days=1), today=MON + timedelta(days=5)) is DayStatus.NOT_DUE
+    )
+    assert (
+        day_status(h, MON + timedelta(days=2), today=MON + timedelta(days=5)) is DayStatus.NOT_DUE
+    )
+    assert (
+        summarize(
+            h, MON - timedelta(days=3), MON + timedelta(days=5), today=MON + timedelta(days=5)
+        ).failed
+        == 2
+    )
 
 
 def test_week_periods_start_on_monday_and_count_streaks():

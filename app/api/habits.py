@@ -35,7 +35,9 @@ def create_habit(data: HabitCreate, principal: Writer, db: Db, now: Now):
 
 @router.get("/habits/{habit_id}", response_model=HabitOut)
 def get_habit(habit_id: int, principal: Reader, db: Db, now: Now):
-    return habit_out(habits.get_habit(db, principal.user, habit_id), user_today(principal.user, now))
+    return habit_out(
+        habits.get_habit(db, principal.user, habit_id), user_today(principal.user, now)
+    )
 
 
 @router.patch("/habits/{habit_id}", response_model=HabitOut)
@@ -44,12 +46,16 @@ def update_habit(habit_id: int, data: HabitUpdate, principal: Writer, db: Db, no
     return habit_out(habit, user_today(principal.user, now))
 
 
-@router.delete("/habits/{habit_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Archive a habit")
+@router.delete(
+    "/habits/{habit_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Archive a habit"
+)
 def archive_habit(habit_id: int, principal: Writer, db: Db):
     habits.archive_habit(db, principal.user, habit_id)
 
 
-@router.post("/habits/{habit_id}/schedules", response_model=HabitOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/habits/{habit_id}/schedules", response_model=HabitOut, status_code=status.HTTP_201_CREATED
+)
 def set_schedule(habit_id: int, data: ScheduleCreate, principal: Writer, db: Db, now: Now):
     habit = habits.set_schedule(db, principal.user, habit_id, data)
     return habit_out(habit, user_today(principal.user, now))
@@ -61,7 +67,9 @@ def put_log(habit_id: int, day: date, data: LogPut, principal: Writer, db: Db, n
 
 
 @router.post("/habits/{habit_id}/logs/{day}/done", response_model=LogOut)
-def add_done(habit_id: int, day: date, principal: Writer, db: Db, now: Now, data: LogDone | None = None):
+def add_done(
+    habit_id: int, day: date, principal: Writer, db: Db, now: Now, data: LogDone | None = None
+):
     return logs.add_done(db, principal, habit_id, day, (data or LogDone()).count, now)
 
 
@@ -72,10 +80,14 @@ def delete_log(habit_id: int, day: date, principal: Writer, db: Db):
 
 @router.get("/habits/{habit_id}/reminders", response_model=list[ReminderOut])
 def list_reminders(habit_id: int, principal: Reader, db: Db):
-    return [reminders.reminder_out(r) for r in reminders.list_reminders(db, principal.user, habit_id)]
+    return [
+        reminders.reminder_out(r) for r in reminders.list_reminders(db, principal.user, habit_id)
+    ]
 
 
-@router.post("/habits/{habit_id}/reminders", response_model=ReminderOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/habits/{habit_id}/reminders", response_model=ReminderOut, status_code=status.HTTP_201_CREATED
+)
 def create_reminder(habit_id: int, data: ReminderIn, principal: Writer, db: Db):
     return reminders.reminder_out(reminders.create_reminder(db, principal.user, habit_id, data))
 

@@ -14,7 +14,9 @@ from app.services.users import create_user, find_user
 
 
 def _create_user(args: argparse.Namespace) -> None:
-    password = sys.stdin.readline().rstrip("\n") if args.password_stdin else getpass.getpass("Password: ")
+    password = (
+        sys.stdin.readline().rstrip("\n") if args.password_stdin else getpass.getpass("Password: ")
+    )
     with get_sessionmaker()() as db:
         user = create_user(
             db,
@@ -56,9 +58,13 @@ def main(argv: list[str] | None = None) -> int:
     user.add_argument("--password-stdin", action="store_true", help="read the password from stdin")
     user.set_defaults(run=_create_user)
 
-    token = commands.add_parser("create-token", help="create a personal API token and print it once")
+    token = commands.add_parser(
+        "create-token", help="create a personal API token and print it once"
+    )
     token.add_argument("email")
-    token.add_argument("--name", required=True, help="also used as the source of the marks it makes, e.g. awtrix")
+    token.add_argument(
+        "--name", required=True, help="also used as the source of the marks it makes, e.g. awtrix"
+    )
     token.add_argument("--scope", choices=["read", "write"], required=True)
     token.set_defaults(run=_create_token)
 

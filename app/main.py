@@ -45,12 +45,14 @@ def create_app() -> FastAPI:
         streamable_http_path="/mcp",
         stateless_http=True,
         json_response=True,
-        host="0.0.0.0",
+        host="0.0.0.0",  # noqa: S104  (runs in a container behind a proxy)
     )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
-        scheduler = asyncio.create_task(_scheduler_loop()) if get_settings().scheduler_enabled else None
+        scheduler = (
+            asyncio.create_task(_scheduler_loop()) if get_settings().scheduler_enabled else None
+        )
         async with mcp.session_manager.run():
             yield
         if scheduler is not None:
@@ -66,17 +68,23 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(AppError)
     async def app_error(_request: Request, error: AppError):
-        return JSONResponse({"code": error.code, "message": error.message}, status_code=error.status_code)
+        return JSONResponse(
+            {"code": error.code, "message": error.message}, status_code=error.status_code
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_request: Request, error: RequestValidationError):
-        message = "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in error.errors())
+        message = "; ".join(
+            f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in error.errors()
+        )
         return JSONResponse({"code": "validation_error", "message": message}, status_code=422)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_request: Request, error: StarletteHTTPException):
         code = {404: "not_found", 405: "method_not_allowed"}.get(error.status_code, "http_error")
-        return JSONResponse({"code": code, "message": str(error.detail)}, status_code=error.status_code)
+        return JSONResponse(
+            {"code": code, "message": str(error.detail)}, status_code=error.status_code
+        )
 
     @app.get("/health", tags=["ops"])
     def health(db: Db):

@@ -60,7 +60,9 @@ def list_habits(include_archived: bool = False) -> list[dict[str, Any]]:
     """List the user's habits with their current schedule."""
     with _session() as (db, principal):
         today = user_today(principal.user, utcnow())
-        return [_habit_line(h, today) for h in habits.list_habits(db, principal.user, include_archived)]
+        return [
+            _habit_line(h, today) for h in habits.list_habits(db, principal.user, include_archived)
+        ]
 
 
 @mcp.tool()
@@ -84,14 +86,21 @@ def today(day: str | None = None) -> dict[str, Any]:
 
 
 def _log_result(log) -> dict[str, Any]:
-    return {"habit_id": log.habit_id, "date": log.date.isoformat(), "done_count": log.done_count, "skipped": log.skipped}
+    return {
+        "habit_id": log.habit_id,
+        "date": log.date.isoformat(),
+        "done_count": log.done_count,
+        "skipped": log.skipped,
+    }
 
 
 @mcp.tool()
 def mark_done(habit_id: int, day: str | None = None, count: int = 1) -> dict[str, Any]:
     """Add `count` completions to a habit on a day (default today); works for past days."""
     with _session(write=True) as (db, principal):
-        return _log_result(logs.add_done(db, principal, habit_id, _day(principal, day), count, utcnow()))
+        return _log_result(
+            logs.add_done(db, principal, habit_id, _day(principal, day), count, utcnow())
+        )
 
 
 @mcp.tool()
@@ -99,7 +108,9 @@ def set_day(habit_id: int, day: str, done_count: int, note: str | None = None) -
     """Set the exact number of completions of a habit on a day, to correct the past."""
     with _session(write=True) as (db, principal):
         data = LogPut(done_count=done_count, note=note)
-        return _log_result(logs.set_log(db, principal, habit_id, date.fromisoformat(day), data, utcnow()))
+        return _log_result(
+            logs.set_log(db, principal, habit_id, date.fromisoformat(day), data, utcnow())
+        )
 
 
 @mcp.tool()
@@ -107,7 +118,9 @@ def skip(habit_id: int, day: str | None = None) -> dict[str, Any]:
     """Mark a habit as skipped on a day (default today); skipped days don't count."""
     with _session(write=True) as (db, principal):
         data = LogPut(done_count=0, skipped=True)
-        return _log_result(logs.set_log(db, principal, habit_id, _day(principal, day), data, utcnow()))
+        return _log_result(
+            logs.set_log(db, principal, habit_id, _day(principal, day), data, utcnow())
+        )
 
 
 @mcp.tool()
@@ -213,7 +226,12 @@ def month_stats(month: str) -> dict[str, Any]:
         return {
             "month": view.month,
             "habits": [
-                {"id": h.habit_id, "name": h.name, "percentage": h.percentage, "days": "".join(_SHORT[s] for s in h.days.values())}
+                {
+                    "id": h.habit_id,
+                    "name": h.name,
+                    "percentage": h.percentage,
+                    "days": "".join(_SHORT[s] for s in h.days.values()),
+                }
                 for h in view.habits
             ],
         }
@@ -231,7 +249,9 @@ def year_stats(year: int) -> dict[str, Any]:
                     "id": h.habit_id,
                     "name": h.name,
                     "percentage": h.percentage,
-                    "months": {m.month[-2:]: m.percentage for m in h.months if m.percentage is not None},
+                    "months": {
+                        m.month[-2:]: m.percentage for m in h.months if m.percentage is not None
+                    },
                 }
                 for h in view.habits
             ],
@@ -239,7 +259,9 @@ def year_stats(year: int) -> dict[str, Any]:
 
 
 @mcp.tool()
-def habit_stats(habit_id: int, from_date: str | None = None, to_date: str | None = None) -> dict[str, Any]:
+def habit_stats(
+    habit_id: int, from_date: str | None = None, to_date: str | None = None
+) -> dict[str, Any]:
     """Percentage, streaks and counts for one habit over a date range (default: all of it up to today)."""
     with _session() as (db, principal):
         stats = views.habit_stats(
@@ -271,7 +293,9 @@ class BearerAuth:
             with (self.sessions or get_sessionmaker())() as db:
                 principal = principal_from_token(db, token.strip(), utcnow())
         if principal is None:
-            response = JSONResponse({"code": "unauthorized", "message": "missing or invalid token"}, status_code=401)
+            response = JSONResponse(
+                {"code": "unauthorized", "message": "missing or invalid token"}, status_code=401
+            )
             await response(scope, receive, send)
             return
         reset = _principal.set(principal)

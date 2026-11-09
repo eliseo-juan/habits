@@ -32,15 +32,26 @@ def test_mcp_lists_tools(client, alice):
 
 def test_mcp_habit_flow(client, alice):
     habit = call(client, alice, "create_habit", name="Stretch", start_date="2026-11-01")
-    assert habit["schedule"] == {"type": "daily", "times_per_day": 1, "effective_from": "2026-11-01"}
+    assert habit["schedule"] == {
+        "type": "daily",
+        "times_per_day": 1,
+        "effective_from": "2026-11-01",
+    }
 
     done = call(client, alice, "mark_done", habit_id=habit["id"], day="2026-11-08")
-    assert done == {"habit_id": habit["id"], "date": "2026-11-08", "done_count": 1, "skipped": False}
+    assert done == {
+        "habit_id": habit["id"],
+        "date": "2026-11-08",
+        "done_count": 1,
+        "skipped": False,
+    }
     call(client, alice, "skip", habit_id=habit["id"], day="2026-11-07")
 
     today = call(client, alice, "today", scope="read")
     assert today["date"] == "2026-11-09"
-    assert today["items"] == [{"id": habit["id"], "name": "Stretch", "status": "pending", "done": "0/1"}]
+    assert today["items"] == [
+        {"id": habit["id"], "name": "Stretch", "status": "pending", "done": "0/1"}
+    ]
 
     month = call(client, alice, "month_stats", scope="read", month="2026-11")["habits"][0]
     assert month["days"][:9] == "------sx."
@@ -55,7 +66,9 @@ def test_mcp_habit_flow(client, alice):
 def test_mcp_source_and_isolation(client, alice, bob):
     habit = call(client, alice, "create_habit", name="Stretch", start_date="2026-11-01")
     call(client, alice, "mark_done", habit_id=habit["id"])
-    log = client.put(f"/habits/{habit['id']}/logs/2026-11-09", json={"done_count": 1}, headers=alice.auth())
+    log = client.put(
+        f"/habits/{habit['id']}/logs/2026-11-09", json={"done_count": 1}, headers=alice.auth()
+    )
     assert log.json()["source"] == "test-write"
 
     assert "not found" in call(client, bob, "mark_done", habit_id=habit["id"])["error"]
@@ -71,9 +84,14 @@ def test_mcp_change_schedule_keeps_logs(client, alice):
     habit = call(client, alice, "create_habit", name="Gym", start_date="2026-11-01")
     call(client, alice, "mark_done", habit_id=habit["id"], day="2026-11-03")
     changed = call(
-        client, alice, "change_schedule",
-        habit_id=habit["id"], effective_from="2026-11-02", schedule_type="times_per_period",
-        period_unit="week", period_target=3,
+        client,
+        alice,
+        "change_schedule",
+        habit_id=habit["id"],
+        effective_from="2026-11-02",
+        schedule_type="times_per_period",
+        period_unit="week",
+        period_target=3,
     )
     assert changed["schedule"]["type"] == "times_per_period"
     month = call(client, alice, "month_stats", month="2026-11")["habits"][0]

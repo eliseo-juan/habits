@@ -71,7 +71,8 @@ def send_due_reminders(
         channels = list(
             db.scalars(
                 select(NotificationChannel).where(
-                    NotificationChannel.user_id == item.user.id, NotificationChannel.enabled.is_(True)
+                    NotificationChannel.user_id == item.user.id,
+                    NotificationChannel.enabled.is_(True),
                 )
             )
         )
