@@ -1,0 +1,12 @@
+services:
+  habits:
+    image: ghcr.io/eliseo-juan/habits:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      HABITS_SECRET_KEY: ${HABITS_SECRET_KEY:?set a long random value}
+      HABITS_PUBLIC_URL: https://habits.lab.eliseo.tech
+      HABITS_DEFAULT_TIMEZONE: Europe/Madrid
+    volumes:
+      - ./data:/data
