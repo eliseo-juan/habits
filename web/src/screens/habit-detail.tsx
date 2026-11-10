@@ -13,6 +13,7 @@ const CELL: Record<Status, string> = {
   failed: "text-rose-300 ring-1 ring-rose-500/40",
   skipped: "bg-white/5 text-muted-foreground line-through",
   pending: "ring-1 ring-primary/60",
+  slipped: "text-amber-300 ring-1 ring-amber-400/40",
   not_due: "text-muted-foreground/40",
 }
 
@@ -58,7 +59,7 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
         <div className="min-w-0">
           <h1 className="truncate text-xl font-semibold">{habit.name}</h1>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
-            {scheduleLabel(habit.schedule)}
+            {scheduleLabel(habit)}
             {reminders.length > 0 && (
               <>
                 · <Bell className="size-3" /> {reminders.join(", ")}
@@ -76,7 +77,7 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
         <StatCard icon={<Flame className="size-4 text-orange-400" />} label="Racha actual" value={overall ? streakLabel(habit.schedule, overall.current_streak) : "–"} />
         <StatCard icon={<Trophy className="size-4 text-amber-300" />} label="Mejor racha" value={overall ? streakLabel(habit.schedule, overall.best_streak) : "–"} />
         <StatCard label="Cumplimiento" value={overall?.percentage == null ? "Sin datos" : `${percent(overall.percentage)}%`} accent={color} percentage={overall?.percentage ?? 0} />
-        <StatCard label="Hechos · fallados" value={overall ? `${overall.done} · ${overall.failed}` : "–"} />
+        <StatCard label={habit.kind === "limit" ? "Cumplidos · fallados" : "Hechos · fallados"} value={overall ? `${overall.done} · ${overall.failed}` : "–"} />
       </div>
 
       <section className="rounded-3xl border border-white/5 bg-card/60 p-4">
@@ -116,7 +117,7 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
             )
           })}
         </div>
-        <p className="mt-3 text-center text-[11px] text-muted-foreground">Toca un día pasado: hecho → saltado → vacío</p>
+        <p className="mt-3 text-center text-[11px] text-muted-foreground">Toca un día pasado: {habit.kind === "limit" ? "lo hice" : "hecho"} → saltado → vacío</p>
       </section>
 
       <section className="rounded-3xl border border-white/5 bg-card/60 p-4">

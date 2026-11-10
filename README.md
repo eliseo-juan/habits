@@ -62,6 +62,7 @@ Tokens are shown once and stored hashed. The token name is recorded as the `sour
 - Schedules are versioned by `effective_from`, so changing frequency never rewrites the past.
 - Failures are computed, never stored. Skipped days count neither for nor against. Today is `pending` until it ends.
 - `times_per_period` counts days completed in the week or month; a period is credited to the stats range holding its last day.
+- A habit's `kind` is `build` (success is doing it) or `limit` (success is not doing it), fixed at creation. On a limit habit a logged day is a slip: `daily` means never, `weekdays` never on those days, and `times_per_period` at most `period_target` slip days per week or month. A period fails as soon as it goes over; slips within the allowance show as `slipped`. Limit habits are never reminded and never count as to-do in Awtrix or Home Assistant.
 - Another user's resources answer 404.
 
 ## MCP
@@ -88,6 +89,34 @@ claude mcp add --transport http --scope user --client-id <id> --callback-port 31
 Redirect URIs must be https or a loopback address, and `/authorize` only accepts the exact ones registered.
 
 Five wrong passwords for the same email block logins for that email for 15 minutes.
+
+## Home Assistant
+
+`custom_components/habits` is a Home Assistant integration that reads `GET /today` and exposes:
+
+- `todo.<name>_today`: the habits due today. Checking one completes it (all of its remaining `times_per_day`); unchecking clears the day. Skipped habits show as completed.
+- `sensor.<name>_pending_today`, `_done_today`, `_due_today`.
+
+Install it from the Marketplace (HACS): ⋮ → Custom repositories → `eliseo-juan/habits`, type Integration, then download it and restart. Settings → Devices & services → Add integration → Habits, with the LAN URL (`https://habits.lab.eliseo.tech`) and a write token:
+
+```sh
+docker exec habits ./docker-entrypoint.sh create-token me@example.com --name home-assistant --scope write
+```
+
+Marks made from Home Assistant are recorded with source `home-assistant`. A rejected token opens a re-authentication prompt.
+
+On setup it subscribes a local-only Home Assistant webhook to [webhooks](#webhooks), so changes made anywhere (web app, MCP, notification) show up at once; it also polls every 15 minutes, which covers the day rollover and any missed ping. The webhook URL is built from Home Assistant's local network URL (Settings → System → Network) and must be reachable from the Habits server. Without one the integration still works, on the polling interval only. Removing the integration unsubscribes it.
+
+Tests run against Home Assistant's own test harness in a separate environment:
+
+```sh
+python3.14 -m venv .venv-ha && .venv-ha/bin/pip install pytest-homeassistant-custom-component==0.13.375
+cd tests_ha && ../.venv-ha/bin/pytest -q
+```
+
+## Webhooks
+
+`POST /webhooks` with `{"url": "..."}` and a write token subscribes a URL; posting the same URL again returns the existing subscription. Whenever the account's habits or logs change, every subscribed URL gets an empty `POST`, sent in the background with a 5-second timeout and no retries, so subscribers should also poll. The request carries no data: subscribers fetch what they need with their own token. `GET /webhooks` lists them, `DELETE /webhooks/{id}` removes one; ten per account at most.
 
 ## AWTRIX
 

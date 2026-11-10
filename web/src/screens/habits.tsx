@@ -12,6 +12,7 @@ const DOT: Record<string, string> = {
   failed: "text-rose-300 ring-1 ring-rose-500/40",
   skipped: "bg-white/5 text-muted-foreground",
   pending: "bg-white/5 ring-1 ring-white/20",
+  slipped: "text-amber-300 ring-1 ring-amber-400/40",
   not_due: "bg-transparent text-muted-foreground/40",
 }
 
@@ -58,7 +59,7 @@ function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOp
         <HabitIcon habit={habit} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{habit.name}</p>
-          <p className="text-xs text-muted-foreground">{scheduleLabel(habit.schedule)}</p>
+          <p className="text-xs text-muted-foreground">{scheduleLabel(habit)}</p>
         </div>
         <ChevronRight className="size-5 text-muted-foreground" />
       </div>

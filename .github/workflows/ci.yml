@@ -76,6 +76,19 @@ jobs:
           path: coverage.xml
           if-no-files-found: ignore
 
+  home-assistant:
+    name: Home Assistant integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pytest-homeassistant-custom-component==0.13.375
+      - run: pytest -q
+        working-directory: tests_ha
+
   migrations:
     name: Migrations
     runs-on: ubuntu-latest
@@ -142,7 +155,7 @@ jobs:
   ci-ok:
     name: CI ok
     if: always()
-    needs: [lint, test, web, migrations, audit, docker]
+    needs: [lint, test, home-assistant, web, migrations, audit, docker]
     runs-on: ubuntu-latest
     steps:
       - run: |

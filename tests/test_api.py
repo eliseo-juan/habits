@@ -323,3 +323,43 @@ def test_tokens_of_other_users_cannot_be_revoked(client, alice, bob):
     client.post("/auth/login", json={"email": bob.email, "password": "secret-password"})
     assert client.delete(f"/tokens/{alice_token_id}").status_code == 404
     assert client.get("/me", headers=alice.auth()).status_code == 200
+
+
+LIMIT_TWICE_A_WEEK = {"type": "times_per_period", "period_unit": "week", "period_target": 2}
+
+
+def test_limit_habit_cannot_count_times_per_day(client, alice):
+    response = client.post(
+        "/habits",
+        json={"name": "x", "kind": "limit", "schedule": {"type": "daily", "times_per_day": 2}},
+        headers=alice.auth(),
+    )
+    assert response.status_code == 422
+
+    habit = create_habit(client, alice, kind="limit")
+    response = client.post(
+        f"/habits/{habit['id']}/schedules",
+        json={"effective_from": "2026-11-05", "type": "daily", "times_per_day": 3},
+        headers=alice.auth(),
+    )
+    assert response.status_code == 422
+
+
+def test_limit_habit_today_and_stats(client, alice):
+    habit = create_habit(client, alice, name="Junk food", kind="limit", schedule=LIMIT_TWICE_A_WEEK)
+    assert habit["kind"] == "limit"
+    for day in ("2026-11-02", "2026-11-04", "2026-11-09"):
+        client.post(f"/habits/{habit['id']}/logs/{day}/done", headers=alice.auth())
+
+    item = client.get("/today", headers=alice.auth()).json()["items"][0]
+    assert (item["kind"], item["status"]) == ("limit", "slipped")
+    assert (item["period_done"], item["period_target"]) == (1, 2)
+
+    stats = client.get(f"/habits/{habit['id']}/stats", headers=alice.auth()).json()
+    assert (stats["done"], stats["failed"], stats["percentage"]) == (2, 0, 100.0)
+
+
+def test_awtrix_does_not_count_limit_habits_as_to_do(client, alice):
+    create_habit(client, alice, name="Sugar", kind="limit")
+    summary = client.get("/awtrix/today", headers=alice.auth("read")).json()
+    assert (summary["pending"], summary["done"], summary["total"]) == (0, 0, 0)

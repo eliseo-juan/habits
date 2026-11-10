@@ -27,7 +27,9 @@ mcp = MCPServer(
     name="habits",
     instructions=(
         "Habit tracker. Dates are ISO (YYYY-MM-DD) in the user's timezone; omit a date to mean today. "
-        "Past dates can be marked or corrected. Skipped days do not count for or against stats."
+        "Past dates can be marked or corrected. Skipped days do not count for or against stats. "
+        "A habit's kind is 'build' (success is doing it) or 'limit' (success is not doing it): "
+        "marking a limit habit done records that the user did the thing they are limiting."
     ),
 )
 
@@ -53,7 +55,12 @@ def _day(principal: Principal, value: str | None) -> date:
 
 def _habit_line(habit, today: date) -> dict[str, Any]:
     out = habits.habit_out(habit, today)
-    return {"id": out.id, "name": out.name, "schedule": out.schedule.model_dump(exclude_none=True)}
+    return {
+        "id": out.id,
+        "name": out.name,
+        "kind": out.kind,
+        "schedule": out.schedule.model_dump(exclude_none=True),
+    }
 
 
 @mcp.tool()
@@ -77,6 +84,7 @@ def today(day: str | None = None) -> dict[str, Any]:
                 {
                     "id": i.habit_id,
                     "name": i.name,
+                    "kind": i.kind,
                     "status": i.status.value,
                     "done": f"{i.done_count}/{i.times_per_day}",
                     **({"period": f"{i.period_done}/{i.period_target}"} if i.period_target else {}),
@@ -97,7 +105,7 @@ def _log_result(log) -> dict[str, Any]:
 
 @mcp.tool()
 def mark_done(habit_id: int, day: str | None = None, count: int = 1) -> dict[str, Any]:
-    """Add `count` completions to a habit on a day (default today); works for past days."""
+    """Add `count` completions to a habit on a day (default today); works for past days. On a limit habit this records a slip."""
     with _session(write=True) as (db, principal):
         return _log_result(
             logs.add_done(db, principal, habit_id, _day(principal, day), count, utcnow())
@@ -138,6 +146,7 @@ ScheduleType = Literal["daily", "weekdays", "times_per_period"]
 @mcp.tool()
 def create_habit(
     name: str,
+    kind: Literal["build", "limit"] = "build",
     schedule_type: ScheduleType = "daily",
     times_per_day: int = 1,
     weekdays: list[int] | None = None,
@@ -147,10 +156,15 @@ def create_habit(
     icon: str | None = None,
     color: str | None = None,
 ) -> dict[str, Any]:
-    """Create a habit. weekdays: 0 = Monday … 6 = Sunday. times_per_period needs period_unit and period_target."""
+    """Create a habit. weekdays: 0 = Monday … 6 = Sunday. times_per_period needs period_unit and period_target.
+
+    kind 'limit' is for things to avoid: daily = never, weekdays = never on those days,
+    times_per_period = at most period_target days per week or month. Kind cannot change later.
+    """
     with _session(write=True) as (db, principal):
         data = HabitCreate(
             name=name,
+            kind=kind,
             icon=icon,
             color=color,
             start_date=date.fromisoformat(start_date) if start_date else None,
@@ -215,12 +229,19 @@ def change_schedule(
         return _habit_line(habit, user_today(principal.user, utcnow()))
 
 
-_SHORT = {"done": "x", "failed": "-", "skipped": "s", "pending": ".", "not_due": " "}
+_SHORT = {
+    "done": "x",
+    "failed": "-",
+    "skipped": "s",
+    "pending": ".",
+    "slipped": "o",
+    "not_due": " ",
+}
 
 
 @mcp.tool()
 def month_stats(month: str) -> dict[str, Any]:
-    """Monthly view (month = YYYY-MM). days is one character per day: x done, - failed, s skipped, . pending, space not due."""
+    """Monthly view (month = YYYY-MM). days is one character per day: x done, - failed, s skipped, . pending, o slipped within a limit habit's allowance, space not due."""
     year, number = (int(part) for part in month.split("-"))
     with _session() as (db, principal):
         view = views.month_view(db, principal.user, year, number, utcnow())

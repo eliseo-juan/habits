@@ -19,6 +19,7 @@ const field = "w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 te
 
 export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClose: () => void; onArchived?: () => void }) {
   const { today } = useSession()
+  const [kind, setKind] = useState<Habit["kind"]>(habit?.kind ?? "build")
   const [name, setName] = useState(habit?.name ?? "")
   const [icon, setIcon] = useState(habit?.icon ?? "")
   const [color, setColor] = useState(habit ? colorOf(habit) : COLORS[0])
@@ -58,7 +59,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
 
   const scheduleBody = {
     type: schedule.type,
-    times_per_day: schedule.times_per_day,
+    times_per_day: kind === "limit" ? 1 : schedule.times_per_day,
     weekdays: schedule.type === "weekdays" ? schedule.weekdays : null,
     period_unit: schedule.type === "times_per_period" ? schedule.period_unit : null,
     period_target: schedule.type === "times_per_period" ? schedule.period_target : null,
@@ -68,7 +69,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
     run(async () => {
       const look = { name: name.trim(), icon: icon.trim() || null, color }
       if (!habit) {
-        await api("/habits", { method: "POST", body: { ...look, schedule: scheduleBody } })
+        await api("/habits", { method: "POST", body: { ...look, kind, schedule: scheduleBody } })
         return
       }
       await api(`/habits/${habit.id}`, { method: "PATCH", body: look })
@@ -85,6 +86,16 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
           <SheetTitle className="text-lg">{habit ? "Editar hábito" : "Nuevo hábito"}</SheetTitle>
           <SheetDescription>{habit ? "Los cambios de frecuencia se aplican desde hoy." : "Define qué quieres cumplir y con qué frecuencia."}</SheetDescription>
         </SheetHeader>
+
+        {!habit && (
+          <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white/5 p-1">
+            {([["build", "Hacer"], ["limit", "Evitar"]] as const).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setKind(id)} className={cn("rounded-xl px-2 py-1.5 text-xs", kind === id ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex gap-2">
           <input className={cn(field, "w-16 text-center text-lg")} placeholder="🙂" value={icon} maxLength={8} onChange={(e) => setIcon(e.target.value)} aria-label="Emoji" />
@@ -125,7 +136,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
         {schedule.type === "times_per_period" && (
           <div className="flex items-center gap-2 text-sm">
             <input type="number" min={1} max={schedule.period_unit === "week" ? 7 : 31} className={cn(field, "w-20")} value={schedule.period_target ?? ""} onChange={(e) => patch({ period_target: Number(e.target.value) || null })} />
-            <span className="text-muted-foreground">días</span>
+            <span className="text-muted-foreground">{kind === "limit" ? "días máx." : "días"}</span>
             <select className={field} value={schedule.period_unit ?? "week"} onChange={(e) => patch({ period_unit: e.target.value as "week" | "month", period_target: Math.min(schedule.period_target ?? 1, e.target.value === "week" ? 7 : 31) })}>
               <option value="week">por semana</option>
               <option value="month">al mes</option>
@@ -133,10 +144,12 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
           </div>
         )}
 
+        {kind === "build" && (
         <label className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Veces al día</span>
           <input type="number" min={1} max={50} className={cn(field, "w-20")} value={schedule.times_per_day} onChange={(e) => patch({ times_per_day: Math.max(1, Number(e.target.value) || 1) })} />
         </label>
+        )}
 
         <Button size="lg" className="w-full" disabled={!valid || busy} onClick={save}>
           {habit ? "Guardar" : "Crear hábito"}

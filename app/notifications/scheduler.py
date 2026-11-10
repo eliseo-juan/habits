@@ -46,6 +46,8 @@ def due_reminders(db: Session, now: datetime) -> list[DueReminder]:
             continue
         if db.get(NotificationLog, (reminder.id, day)) is not None:
             continue
+        if habit.kind == "limit":
+            continue
         entry = rules.today_entry(timelines(db, [habit])[habit.id], day)
         if entry.due and entry.status is rules.DayStatus.PENDING:
             due.append(DueReminder(reminder, habit, user, day))

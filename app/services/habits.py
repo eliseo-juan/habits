@@ -8,6 +8,7 @@ from app.errors import Invalid, NotFound
 from app.models import Habit, HabitSchedule, Log, User
 from app.schemas import HabitCreate, HabitOut, HabitUpdate, ScheduleCreate, ScheduleIn, ScheduleOut
 from app.services import rules
+from app.services.webhooks import notify_changed
 
 
 def weekdays_to_mask(days: list[int] | None) -> int | None:
@@ -58,6 +59,7 @@ def create_habit(db: Session, user: User, data: HabitCreate, now: datetime) -> H
     habit = Habit(
         user_id=user.id,
         name=data.name,
+        kind=data.kind,
         color=data.color,
         icon=data.icon,
         priority=data.priority,
@@ -71,6 +73,7 @@ def create_habit(db: Session, user: User, data: HabitCreate, now: datetime) -> H
     habit.schedules.append(_schedule_row(data.schedule, start))
     db.add(habit)
     db.commit()
+    notify_changed(db, user.id)
     return habit
 
 
@@ -84,6 +87,7 @@ def update_habit(db: Session, user: User, habit_id: int, data: HabitUpdate) -> H
         setattr(habit, field, value)
     _check_dates(habit.start_date, habit.end_date)
     db.commit()
+    notify_changed(db, user.id)
     return habit
 
 
@@ -91,17 +95,21 @@ def archive_habit(db: Session, user: User, habit_id: int) -> None:
     habit = get_habit(db, user, habit_id)
     habit.archived = True
     db.commit()
+    notify_changed(db, user.id)
 
 
 def set_schedule(db: Session, user: User, habit_id: int, data: ScheduleCreate) -> Habit:
     """Adds a schedule version; a version on the same effective_from is replaced. Logs are never touched."""
     habit = get_habit(db, user, habit_id)
+    if habit.kind == "limit" and data.times_per_day != 1:
+        raise Invalid("limit habits count days, so times_per_day must be 1")
     for existing in list(habit.schedules):
         if existing.effective_from == data.effective_from:
             habit.schedules.remove(existing)
     db.flush()
     habit.schedules.append(_schedule_row(data, data.effective_from))
     db.commit()
+    notify_changed(db, user.id)
     db.refresh(habit)
     return habit
 
@@ -123,6 +131,7 @@ def habit_out(habit: Habit, today: date) -> HabitOut:
     return HabitOut(
         id=habit.id,
         name=habit.name,
+        kind=habit.kind,
         color=habit.color,
         icon=habit.icon,
         priority=habit.priority,
@@ -156,6 +165,7 @@ def timeline(habit: Habit, logs: Iterable[Log]) -> rules.HabitTimeline:
         logs={
             log.date: rules.DayLog(done_count=log.done_count, skipped=log.skipped) for log in logs
         },
+        kind=habit.kind,  # type: ignore[arg-type]
     )
 
 

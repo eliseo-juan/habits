@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 ScheduleType = Literal["daily", "weekdays", "times_per_period"]
 PeriodUnit = Literal["week", "month"]
+HabitKind = Literal["build", "limit"]
 
 
 class DayStatus(StrEnum):
@@ -19,6 +20,7 @@ class DayStatus(StrEnum):
     FAILED = "failed"
     SKIPPED = "skipped"
     PENDING = "pending"
+    SLIPPED = "slipped"
     NOT_DUE = "not_due"
 
 
@@ -45,6 +47,7 @@ class HabitTimeline:
     stats_start_date: date | None
     schedules: tuple[Schedule, ...]
     logs: Mapping[date, DayLog] = field(default_factory=dict)
+    kind: HabitKind = "build"
 
 
 @dataclass(frozen=True)
@@ -145,6 +148,26 @@ def _period_done(
     return sum(1 for d in _days(start, end) if d != exclude and _is_done(habit, d, schedule))
 
 
+def _days_done(habit: HabitTimeline, first: date, last: date, schedule: Schedule) -> int:
+    return sum(1 for d in _days(first, last) if _is_done(habit, d, schedule))
+
+
+def _limit_day_status(
+    habit: HabitTimeline, day: date, today: date, schedule: Schedule
+) -> DayStatus:
+    """A limit habit's day: doing it is a slip, a failure once it goes over the allowance."""
+    if schedule.type != "times_per_period" and not _scheduled_weekday(schedule, day):
+        return DayStatus.NOT_DUE
+    if not _is_done(habit, day, schedule):
+        return DayStatus.DONE if day < today else DayStatus.PENDING
+    if schedule.type != "times_per_period":
+        return DayStatus.FAILED
+    assert schedule.period_target is not None
+    start, _ = _period_days(habit, schedule, day)
+    over = _days_done(habit, start, day, schedule) > schedule.period_target
+    return DayStatus.FAILED if over else DayStatus.SLIPPED
+
+
 def day_status(habit: HabitTimeline, day: date, today: date) -> DayStatus:
     schedule = schedule_on(habit.schedules, day)
     if schedule is None or not _in_range(habit, day):
@@ -152,6 +175,8 @@ def day_status(habit: HabitTimeline, day: date, today: date) -> DayStatus:
     log = _log(habit, day)
     if log.skipped:
         return DayStatus.SKIPPED
+    if habit.kind == "limit":
+        return _limit_day_status(habit, day, today, schedule)
     if _is_done(habit, day, schedule):
         return DayStatus.DONE
     if schedule.type == "times_per_period":
@@ -172,6 +197,15 @@ def today_entry(habit: HabitTimeline, today: date) -> TodayEntry:
     status = day_status(habit, today, today)
     if schedule.type == "times_per_period":
         assert schedule.period_target is not None
+        if habit.kind == "limit":
+            return TodayEntry(
+                due=True,
+                status=status,
+                done_count=log.done_count,
+                times_per_day=schedule.times_per_day,
+                period_done=_period_done(habit, schedule, today),
+                period_target=schedule.period_target,
+            )
         due = _period_done(habit, schedule, today, exclude=today) < schedule.period_target
         return TodayEntry(
             due=due,
@@ -209,10 +243,10 @@ def _units(habit: HabitTimeline, last: date, today: date) -> list[Unit]:
         if period in seen_periods:
             continue
         seen_periods.add(period)
-        counted = sum(
-            1 for d in _days(max(period[0], first), period[1]) if _is_done(habit, d, schedule)
-        )
-        if counted >= schedule.period_target:
+        counted = _days_done(habit, max(period[0], first), period[1], schedule)
+        if habit.kind == "limit":
+            outcome = _limit_period_outcome(counted, schedule.period_target, period[1], today)
+        elif counted >= schedule.period_target:
             outcome = DayStatus.DONE
         elif period[1] < today:
             outcome = DayStatus.FAILED
@@ -220,6 +254,12 @@ def _units(habit: HabitTimeline, last: date, today: date) -> list[Unit]:
             outcome = DayStatus.PENDING
         units.append(Unit(period[0], period[1], outcome))
     return units
+
+
+def _limit_period_outcome(slips: int, allowance: int, last_day: date, today: date) -> DayStatus:
+    if slips > allowance:
+        return DayStatus.FAILED
+    return DayStatus.DONE if last_day < today else DayStatus.PENDING
 
 
 def _streaks(units: list[Unit], today: date) -> tuple[int, int]:

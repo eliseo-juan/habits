@@ -36,6 +36,7 @@ class Habit(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(8), default="build", server_default="build")
     color: Mapped[str | None] = mapped_column(String(16))
     icon: Mapped[str | None] = mapped_column(String(64))
     priority: Mapped[int] = mapped_column(Integer, default=0)
@@ -106,6 +107,16 @@ class NotificationChannel(Base):
     type: Mapped[str] = mapped_column(String(32))
     config: Mapped[dict] = mapped_column(JSON)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Webhook(Base):
+    __tablename__ = "webhooks"
+    __table_args__ = (UniqueConstraint("user_id", "url"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    url: Mapped[str] = mapped_column(String(2048))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
 
 
 class ApiToken(Base):

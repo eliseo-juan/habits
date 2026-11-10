@@ -1,4 +1,5 @@
-export type Status = "done" | "failed" | "skipped" | "pending" | "not_due"
+export type Status = "done" | "failed" | "skipped" | "pending" | "slipped" | "not_due"
+export type Kind = "build" | "limit"
 
 export type Schedule = {
   type: "daily" | "weekdays" | "times_per_period"
@@ -8,7 +9,7 @@ export type Schedule = {
   period_target: number | null
 }
 
-export type Habit = { id: number; name: string; color: string | null; icon: string | null; start_date: string; schedule: Schedule }
+export type Habit = { id: number; name: string; kind: Kind; color: string | null; icon: string | null; start_date: string; schedule: Schedule }
 export type Look = Pick<Habit, "name" | "color" | "icon">
 
 export type DayEntry = {
@@ -37,11 +38,18 @@ export const addDays = (day: string, n: number) => {
 export const weekday = (day: string) => (parse(day).getUTCDay() + 6) % 7
 export const dayOfMonth = (day: string) => parse(day).getUTCDate()
 
-export function scheduleLabel(schedule: Schedule): string {
+export function scheduleLabel({ schedule, kind }: Pick<Habit, "schedule" | "kind">): string {
+  if (kind === "limit") return limitLabel(schedule)
   const times = schedule.times_per_day > 1 ? ` · ${schedule.times_per_day} veces` : ""
   if (schedule.type === "daily") return `Todos los días${times}`
   if (schedule.type === "weekdays") return (schedule.weekdays ?? []).map((i) => WEEKDAYS[i]).join(" ") + times
   return `${schedule.period_target} días ${schedule.period_unit === "week" ? "por semana" : "al mes"}`
+}
+
+function limitLabel(schedule: Schedule): string {
+  if (schedule.type === "daily") return "Nunca"
+  if (schedule.type === "weekdays") return `Nunca: ${(schedule.weekdays ?? []).map((i) => WEEKDAYS[i]).join(" ")}`
+  return `Máx. ${schedule.period_target} ${schedule.period_target === 1 ? "día" : "días"} ${schedule.period_unit === "week" ? "por semana" : "al mes"}`
 }
 
 export const percent = (value: number | null | undefined) => (value === null || value === undefined ? "–" : String(Math.round(value)))
