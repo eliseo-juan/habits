@@ -9,7 +9,7 @@ export type Schedule = {
   period_target: number | null
 }
 
-export type Habit = { id: number; name: string; kind: Kind; color: string | null; icon: string | null; start_date: string; schedule: Schedule }
+export type Habit = { id: number; name: string; kind: Kind; color: string | null; icon: string | null; start_date: string; end_date: string | null; stats_start_date: string | null; schedule: Schedule }
 export type Look = Pick<Habit, "name" | "color" | "icon">
 
 export type DayEntry = {
