@@ -69,7 +69,7 @@ def create_app() -> FastAPI:
     public_url = get_settings().public_url
     provider = oauth.HabitsOAuthProvider(public_url)
     registration = ClientRegistrationOptions(
-        enabled=True, valid_scopes=oauth.SCOPES, default_scopes=oauth.SCOPES
+        enabled=False, valid_scopes=oauth.SCOPES, default_scopes=oauth.SCOPES
     )
 
     app = FastAPI(title="Habits", version="0.1.0", lifespan=lifespan)

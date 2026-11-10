@@ -5,7 +5,7 @@ import secrets
 import time
 from datetime import timedelta
 from html import escape
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -37,14 +37,6 @@ class HabitsOAuthProvider:
         with get_sessionmaker()() as db:
             row = db.get(OAuthClient, client_id)
             return OAuthClientInformationFull.model_validate(row.info) if row else None
-
-    async def register_client(self, client_info: OAuthClientInformationFull) -> None:
-        with get_sessionmaker()() as db:
-            info = client_info.model_dump(mode="json", exclude_none=True)
-            db.add(
-                OAuthClient(client_id=client_info.client_id, info=info, created_at=clock.utcnow())
-            )
-            db.commit()
 
     async def authorize(
         self, client: OAuthClientInformationFull, params: AuthorizationParams
@@ -114,6 +106,35 @@ class HabitsOAuthProvider:
 
     async def revoke_token(self, token) -> None:
         return None
+
+
+LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def create_client(db: Session, name: str, redirect_uris: list[str], now) -> str:
+    for uri in redirect_uris:
+        parsed = urlparse(uri)
+        loopback = parsed.scheme == "http" and parsed.hostname in LOOPBACK_HOSTS
+        if not (parsed.scheme == "https" and parsed.netloc) and not loopback:
+            raise AppError(f"redirect URI must be https or a loopback address: {uri}")
+    client = OAuthClientInformationFull(
+        client_id=secrets.token_urlsafe(24),
+        client_name=name,
+        redirect_uris=redirect_uris,
+        token_endpoint_auth_method="none",  # noqa: S106 public PKCE client, not a password
+        grant_types=["authorization_code"],
+        response_types=["code"],
+        scope=" ".join(SCOPES),
+    )
+    db.add(
+        OAuthClient(
+            client_id=client.client_id,
+            info=client.model_dump(mode="json", exclude_none=True),
+            created_at=now,
+        )
+    )
+    db.commit()
+    return client.client_id
 
 
 def _grant_for_code(db: Session, code: str) -> OAuthGrant | None:

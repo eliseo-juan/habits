@@ -3,6 +3,7 @@ import hashlib
 import secrets
 from urllib.parse import parse_qs, urlparse
 
+from app import cli
 from tests.test_mcp import MCP_HEADERS
 
 REDIRECT = "https://claude.ai/api/mcp/auth_callback"
@@ -16,17 +17,9 @@ def pkce() -> tuple[str, str]:
     return verifier, challenge
 
 
-def register(client) -> dict:
-    response = client.post(
-        "/register",
-        json={
-            "redirect_uris": [REDIRECT],
-            "client_name": "Claude",
-            "token_endpoint_auth_method": "none",
-        },
-    )
-    assert response.status_code == 201, response.text
-    return response.json()
+def register(capsys) -> dict:
+    assert cli.main(["create-oauth-client", "Claude", "--redirect-uri", REDIRECT]) == 0
+    return {"client_id": capsys.readouterr().out.strip().splitlines()[-1]}
 
 
 def authorize(client, client_id: str, challenge: str, scope: str | None = None) -> str:
@@ -97,12 +90,12 @@ def test_unauthenticated_mcp_points_to_resource_metadata(client):
     assert resource["authorization_servers"] == ["http://localhost:8000/"]
 
     server = client.get("/.well-known/oauth-authorization-server").json()
-    assert server["registration_endpoint"] == "http://localhost:8000/register"
+    assert "registration_endpoint" not in server
     assert server["code_challenge_methods_supported"] == ["S256"]
 
 
-def test_oauth_flow_gives_a_working_mcp_token(client, alice):
-    registered = register(client)
+def test_oauth_flow_gives_a_working_mcp_token(client, alice, capsys):
+    registered = register(capsys)
     verifier, challenge = pkce()
     request_id = authorize(client, registered["client_id"], challenge)
 
@@ -124,8 +117,8 @@ def test_oauth_flow_gives_a_working_mcp_token(client, alice):
     assert again.status_code == 400
 
 
-def test_read_scope_gives_a_read_only_token(client, alice):
-    registered = register(client)
+def test_read_scope_gives_a_read_only_token(client, alice, capsys):
+    registered = register(capsys)
     verifier, challenge = pkce()
     request_id = authorize(client, registered["client_id"], challenge, scope="read")
     code = code_from(login(client, request_id, alice.email, "secret-password"))
@@ -137,8 +130,8 @@ def test_read_scope_gives_a_read_only_token(client, alice):
     assert created.status_code == 403
 
 
-def test_wrong_password_shows_the_form_again(client, alice):
-    registered = register(client)
+def test_wrong_password_shows_the_form_again(client, alice, capsys):
+    registered = register(capsys)
     _, challenge = pkce()
     request_id = authorize(client, registered["client_id"], challenge)
 
@@ -147,8 +140,8 @@ def test_wrong_password_shows_the_form_again(client, alice):
     assert "Email o contraseña incorrectos" in response.text
 
 
-def test_wrong_verifier_is_rejected(client, alice):
-    registered = register(client)
+def test_wrong_verifier_is_rejected(client, alice, capsys):
+    registered = register(capsys)
     _, challenge = pkce()
     request_id = authorize(client, registered["client_id"], challenge)
     code = code_from(login(client, request_id, alice.email, "secret-password"))
@@ -156,10 +149,10 @@ def test_wrong_verifier_is_rejected(client, alice):
     assert exchange(client, registered["client_id"], code, "not-the-verifier").status_code == 400
 
 
-def test_login_request_expires(client, clock, alice):
+def test_login_request_expires(client, clock, alice, capsys):
     from datetime import timedelta
 
-    registered = register(client)
+    registered = register(capsys)
     _, challenge = pkce()
     request_id = authorize(client, registered["client_id"], challenge)
     clock.now += timedelta(minutes=11)
@@ -168,8 +161,8 @@ def test_login_request_expires(client, clock, alice):
     assert client.get("/oauth/login", params={"request": "unknown"}).status_code == 400
 
 
-def test_repeated_failed_logins_are_throttled(client, alice):
-    registered = register(client)
+def test_repeated_failed_logins_are_throttled(client, alice, capsys):
+    registered = register(capsys)
     _, challenge = pkce()
     request_id = authorize(client, registered["client_id"], challenge)
     for _ in range(5):
@@ -178,3 +171,46 @@ def test_repeated_failed_logins_are_throttled(client, alice):
     assert login(client, request_id, alice.email, "secret-password").status_code == 429
     api = client.post("/auth/login", json={"email": alice.email, "password": "secret-password"})
     assert api.status_code == 429
+
+
+def test_clients_can_only_be_registered_from_the_terminal(client):
+    response = client.post(
+        "/register",
+        json={"redirect_uris": ["https://evil.example/callback"], "client_name": "Claude"},
+    )
+    assert response.status_code == 404
+
+
+def test_unknown_redirect_uri_is_rejected(client, alice, capsys):
+    registered = register(capsys)
+    _, challenge = pkce()
+    response = client.get(
+        "/authorize",
+        params={
+            "response_type": "code",
+            "client_id": registered["client_id"],
+            "redirect_uri": "https://evil.example/callback",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+
+
+def test_cli_rejects_redirect_uris_that_are_not_https_or_loopback(client):
+    rejected = [
+        "http://evil.example/callback",
+        "http://localhost.evil.example/callback",
+        "ftp://claude.ai/x",
+        "claude.ai/callback",
+    ]
+    for uri in rejected:
+        assert cli.main(["create-oauth-client", "X", "--redirect-uri", uri]) == 1
+    accepted = [
+        "http://localhost:3118/callback",
+        "http://127.0.0.1:3118/callback",
+        "http://[::1]:3118/callback",
+    ]
+    for uri in accepted:
+        assert cli.main(["create-oauth-client", "Claude Code", "--redirect-uri", uri]) == 0

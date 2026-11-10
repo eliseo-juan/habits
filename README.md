@@ -68,14 +68,24 @@ Tokens are shown once and stored hashed. The token name is recorded as the `sour
 
 Streamable HTTP at `<HABITS_PUBLIC_URL>/mcp`, stateless, JSON responses (no SSE, so nothing to tune for proxy buffering). A read token can only use the read tools.
 
-**claude.ai, Claude Desktop and the mobile apps.** Settings → Connectors → Add custom connector, URL `https://mcp.habits.lab.eliseo.tech/mcp`, no client ID or secret. Claude registers itself (OAuth dynamic client registration), opens the app's login page, and gets an ordinary API token named after the client, listed and revocable under `/tokens`. Connectors added on claude.ai show up in the mobile apps too. The server must be reachable from the internet, see [Public access](#public-access-caddy).
-
-**Claude Code**, with the same OAuth flow, or with a token on the LAN:
+**claude.ai, Claude Desktop and the mobile apps.** OAuth clients are registered from the terminal only; the public `/register` endpoint is off, so nobody else can create a client that sends codes to their own site. Register Claude once:
 
 ```sh
-claude mcp add --transport http --scope user habits https://mcp.habits.lab.eliseo.tech/mcp
-claude mcp add --transport http habits https://habits.lab.eliseo.tech/mcp --header "Authorization: Bearer hab_..."
+habits create-oauth-client Claude --redirect-uri https://claude.ai/api/mcp/auth_callback --redirect-uri https://claude.com/api/mcp/auth_callback
 ```
+
+It prints a client ID. Settings → Connectors → Add custom connector, URL `https://mcp.habits.lab.eliseo.tech/mcp`, Advanced settings → OAuth Client ID = that ID, no secret (PKCE). Claude opens the app's login page and gets an ordinary API token named after the client, listed and revocable under `/tokens`. Connectors added on claude.ai show up in the mobile apps too. The server must be reachable from the internet, see [Public access](#public-access-caddy).
+
+**Claude Code**, with a token on the LAN, or with OAuth through a client registered for a fixed loopback port:
+
+```sh
+claude mcp add --transport http habits https://habits.lab.eliseo.tech/mcp --header "Authorization: Bearer hab_..."
+
+habits create-oauth-client "Claude Code" --redirect-uri http://localhost:3118/callback
+claude mcp add --transport http --scope user --client-id <id> --callback-port 3118 habits https://mcp.habits.lab.eliseo.tech/mcp
+```
+
+Redirect URIs must be https or a loopback address, and `/authorize` only accepts the exact ones registered.
 
 Five wrong passwords for the same email block logins for that email for 15 minutes.
 
@@ -121,7 +131,7 @@ claude.ai connects from Anthropic's servers, so the LAN-only `habits.lab.eliseo.
 
    ```caddyfile
    mcp.habits.lab.eliseo.tech {
-       @allowed path /mcp /authorize /token /register /oauth/* /.well-known/oauth-* /notifications/actions/*
+       @allowed path /mcp /authorize /token /oauth/* /.well-known/oauth-* /notifications/actions/*
        handle @allowed {
            reverse_proxy <truenas-ip>:8000
        }
