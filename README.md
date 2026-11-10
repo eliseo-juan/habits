@@ -1,6 +1,6 @@
 # Habits
 
-Personal habit tracker backend: REST API, remote MCP server, a summary endpoint for an AWTRIX clock, and ntfy reminders. FastAPI + SQLite (SQLAlchemy and Alembic keep it portable to Postgres).
+Personal habit tracker: REST API, installable PWA, remote MCP server, a summary endpoint for an AWTRIX clock, and ntfy reminders. FastAPI + SQLite (SQLAlchemy and Alembic keep it portable to Postgres).
 
 ## Run locally
 
@@ -28,7 +28,19 @@ OpenAPI docs are served at `/docs`.
 | `HABITS_BACKUP_DIR` | `./data/backups` (`/data/backups` in the image) | Daily SQLite copy, 14 kept. |
 | `HABITS_SCHEDULER_ENABLED` | `true` | Reminders and backups loop. Run a single replica. |
 | `HABITS_COOKIE_SECURE` | `true` | Set `false` only for plain-HTTP local dev. |
+| `HABITS_WEB_DIR` | unset (`/app/web` in the image) | Built PWA served at `/`. API routes take precedence. |
 | `HABITS_FORWARDED_ALLOW_IPS` | `*` | Proxies trusted for `X-Forwarded-*` (image only). |
+
+## Web app
+
+`web/` is a React PWA (Vite, Tailwind, shadcn) for marking today's habits, correcting past days and browsing stats. Creating and editing habits stays in the MCP. It signs in with the account's email and password and uses the same-origin session cookie.
+
+```sh
+cd web && npm ci && npm run dev   # proxies the API to the backend on :8000
+npm run build                     # dist/, what HABITS_WEB_DIR points at
+```
+
+The image builds it and serves it from the same origin. On Android, open the site in Chrome and use "Install app".
 
 ## Accounts and tokens
 
@@ -36,6 +48,7 @@ There is no sign-up. Accounts and the first tokens are made with the CLI, which 
 
 ```sh
 docker exec -it habits ./docker-entrypoint.sh create-user me@example.com --admin
+docker exec -it habits ./docker-entrypoint.sh set-password me@example.com   # needed to sign in to the web app
 docker exec habits ./docker-entrypoint.sh create-token me@example.com --name awtrix --scope read
 docker exec habits ./docker-entrypoint.sh create-token me@example.com --name claude --scope write
 ```

@@ -6,3 +6,5 @@
 *.egg-info
 data
 tests
+web/node_modules
+web/dist

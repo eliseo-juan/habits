@@ -1,10 +1,18 @@
+FROM node:24-slim AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web ./
+RUN npm run build
+
 FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     HABITS_DATABASE_URL=sqlite:////data/habits.db \
-    HABITS_BACKUP_DIR=/data/backups
+    HABITS_BACKUP_DIR=/data/backups \
+    HABITS_WEB_DIR=/app/web
 
 WORKDIR /app
 COPY pyproject.toml ./
@@ -13,6 +21,7 @@ RUN pip install .
 
 COPY alembic.ini docker-entrypoint.sh ./
 COPY migrations ./migrations
+COPY --from=web /web/dist ./web
 
 RUN useradd --uid 1000 --create-home habits && mkdir /data && chown habits /data
 USER habits

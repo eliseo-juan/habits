@@ -4,7 +4,7 @@ import argparse
 import getpass
 import sys
 
-from app.auth.security import create_api_token
+from app.auth.security import create_api_token, hash_password
 from app.backup import backup_sqlite
 from app.clock import utcnow
 from app.config import get_settings
@@ -14,9 +14,7 @@ from app.services.users import create_user, find_user
 
 
 def _create_user(args: argparse.Namespace) -> None:
-    password = (
-        sys.stdin.readline().rstrip("\n") if args.password_stdin else getpass.getpass("Password: ")
-    )
+    password = _read_password(args)
     with get_sessionmaker()() as db:
         user = create_user(
             db,
@@ -28,6 +26,25 @@ def _create_user(args: argparse.Namespace) -> None:
             now=utcnow(),
         )
         print(f"created user {user.id} <{user.email}>")
+
+
+def _read_password(args: argparse.Namespace) -> str:
+    return (
+        sys.stdin.readline().rstrip("\n") if args.password_stdin else getpass.getpass("Password: ")
+    )
+
+
+def _set_password(args: argparse.Namespace) -> None:
+    password = _read_password(args)
+    if not password:
+        raise AppError("empty password")
+    with get_sessionmaker()() as db:
+        user = find_user(db, args.email)
+        if user is None:
+            raise AppError(f"no user {args.email}")
+        user.password_hash = hash_password(password)
+        db.commit()
+        print(f"password set for <{user.email}>")
 
 
 def _create_token(args: argparse.Namespace) -> None:
@@ -57,6 +74,13 @@ def main(argv: list[str] | None = None) -> int:
     user.add_argument("--admin", action="store_true")
     user.add_argument("--password-stdin", action="store_true", help="read the password from stdin")
     user.set_defaults(run=_create_user)
+
+    password = commands.add_parser("set-password", help="set or replace an account's password")
+    password.add_argument("email")
+    password.add_argument(
+        "--password-stdin", action="store_true", help="read the password from stdin"
+    )
+    password.set_defaults(run=_set_password)
 
     token = commands.add_parser(
         "create-token", help="create a personal API token and print it once"

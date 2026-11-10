@@ -45,6 +45,14 @@ def add_done(
     return log
 
 
+def get_log(db: Session, principal: Principal, habit_id: int, day: date) -> Log:
+    get_habit(db, principal.user, habit_id)
+    log = db.get(Log, (habit_id, day))
+    if log is None:
+        raise NotFound(f"no log for habit {habit_id} on {day}")
+    return log
+
+
 def delete_log(db: Session, principal: Principal, habit_id: int, day: date) -> None:
     get_habit(db, principal.user, habit_id)
     log = db.get(Log, (habit_id, day))

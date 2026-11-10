@@ -34,6 +34,22 @@ jobs:
       - run: ruff check . --output-format github
       - run: ruff format --check .
 
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -126,7 +142,7 @@ jobs:
   ci-ok:
     name: CI ok
     if: always()
-    needs: [lint, test, migrations, audit, docker]
+    needs: [lint, test, web, migrations, audit, docker]
     runs-on: ubuntu-latest
     steps:
       - run: |

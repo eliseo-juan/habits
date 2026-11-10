@@ -61,6 +61,11 @@ def set_schedule(habit_id: int, data: ScheduleCreate, principal: Writer, db: Db,
     return habit_out(habit, user_today(principal.user, now))
 
 
+@router.get("/habits/{habit_id}/logs/{day}", response_model=LogOut)
+def get_log(habit_id: int, day: date, principal: Reader, db: Db):
+    return logs.get_log(db, principal, habit_id, day)
+
+
 @router.put("/habits/{habit_id}/logs/{day}", response_model=LogOut)
 def put_log(habit_id: int, day: date, data: LogPut, principal: Writer, db: Db, now: Now):
     return logs.set_log(db, principal, habit_id, day, data, now)
