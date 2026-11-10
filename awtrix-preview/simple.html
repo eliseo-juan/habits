@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alarma simple 52x16</title>
+<style>
+  :root{
+    --bg:#0b0c0f; --panel:#14161b; --line:#262a33; --text:#e8eaf0; --muted:#8b92a3; --accent:#ffb020;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:rgba(11,12,15,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px}
+  h1{font-size:18px;margin:0 0 8px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center}
+  .controls label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+  .controls output{display:inline-block;min-width:2ch;color:var(--text);font-variant-numeric:tabular-nums;font-weight:600}
+  input[type=range]{accent-color:var(--accent);width:130px}
+  .presets button, details summary, #applyJson, #resetJson{
+    background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer}
+  .presets button:hover{border-color:var(--accent)}
+  details{margin-top:8px;font-size:13px;color:var(--muted)}
+  details summary{display:inline-block}
+  textarea{width:100%;height:110px;margin-top:8px;background:#0d0f13;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px ui-monospace,Menlo,monospace}
+  main{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .card canvas{width:100%;aspect-ratio:52/16;border-radius:8px;display:block;background:#050505}
+  .card h2{font-size:15px;margin:2px 0 0;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .card h2 small{font-weight:500;color:var(--accent);font-size:12px;white-space:nowrap}
+  .card p{margin:0;color:var(--muted);font-size:13px}
+  .card .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+  .tag.good{color:#7bdc65;border-color:#2c5a2a}.tag.bad{color:#ff8a80;border-color:#5a2c2a}
+  .star{color:var(--accent)}
+  footer{padding:8px 16px 40px;text-align:center;color:var(--muted);font-size:12px}
+  @media (max-width:420px){main{grid-template-columns:1fr;padding:12px}}
+  .pbtn{background:var(--accent);color:#1a1200;border:0;border-radius:8px;padding:6px 12px;font-weight:600;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <h1>Alarma creciente, versión tranquila</h1>
+  <div class="controls">
+    <label>Pendientes <input id="n" type="range" min="2" max="30" value="9"><output id="nO">9</output></label>
+    <label>Hechos <input id="d" type="range" min="0" max="20" value="6"><output id="dO">6</output></label>
+    <label>Hora <input id="h" type="range" min="7" max="24" step="0.05" value="20"><output id="hO">20:00</output></label>
+    <button id="play" class="pbtn">▶ Reproducir el día</button>
+    <span class="presets"><button data-h="9">9:00</button><button data-h="15">15:00</button><button data-h="19">19:00</button><button data-h="22">22:00</button><button data-h="23.6">23:36</button></span>
+  </div>
+</header>
+<main id="grid"></main>
+<footer>Misma matriz 52×16. Los hechos se quedan en verde tranquilo; los pendientes se ponen peor según avanza el día (07:00 → 24:00).</footer>
+
+<script>
+const W = 52, H = 16, P = 16;
+
+/* ---------- datos de ejemplo ---------- */
+const PALETTE = ['#ff5a5f','#ffa23a','#ffd23f','#7bdc65','#2ec4b6','#3a9bff','#8f6bff','#ff6bd6'];
+const NAMES = ['Meditar','Leer','Beber agua','Gimnasio','Dormir 23h','Vitaminas','Caminar','Estirar','Diario','Inglés',
+ 'Fruta','Sin azúcar','Sin móvil','Ducha fría','Planificar','Dientes','Cocinar','Llamar a mamá','Código','Guitarra',
+ 'Yoga','Omega 3','Plantas','Ordenar','Gratitud','Respirar','Podcast','Cardio','Crema','Hilo dental'];
+const SAMPLE = NAMES.map((name,i)=>({name, color:PALETTE[(i*3)%PALETTE.length], icon:i%8, streak:2+((i*7+3)%14)}));
+let HABITS = SAMPLE, USING_REAL = false;
+
+/* ---------- fuente 3x5 ---------- */
+const F = {A:[2,5,7,5,5],B:[6,5,6,5,6],C:[3,4,4,4,3],D:[6,5,5,5,6],E:[7,4,6,4,7],F:[7,4,6,4,4],G:[3,4,5,5,3],H:[5,5,7,5,5],
+I:[7,2,2,2,7],J:[1,1,1,5,2],K:[5,5,6,5,5],L:[4,4,4,4,7],M:[5,7,7,5,5],N:[6,5,5,5,5],O:[2,5,5,5,2],P:[6,5,6,4,4],Q:[2,5,5,7,3],
+R:[6,5,6,5,5],S:[3,4,2,1,6],T:[7,2,2,2,2],U:[5,5,5,5,7],V:[5,5,5,5,2],W:[5,5,7,7,5],X:[5,5,2,5,5],Y:[5,5,2,2,2],Z:[7,1,2,4,7],
+0:[7,5,5,5,7],1:[2,6,2,2,7],2:[6,1,2,4,7],3:[6,1,2,1,6],4:[5,5,7,1,1],5:[7,4,6,1,6],6:[3,4,7,5,7],7:[7,1,2,2,2],8:[7,5,7,5,7],9:[7,5,7,1,6],
+'/':[1,1,2,4,4],':':[0,2,0,2,0],'.':[0,0,0,0,2],'-':[0,0,7,0,0],'!':[2,2,2,0,2],'+':[0,2,7,2,0],' ':[0,0,0,0,0]};
+/* iconos 8x8 */
+const ICONS = [
+ [0x00,0x00,0x42,0xFF,0xFF,0x42,0x00,0x00], // pesa
+ [0x00,0x66,0xBD,0xBD,0xBD,0xBD,0x7E,0x00], // libro
+ [0x08,0x08,0x1C,0x1C,0x3E,0x3E,0x3E,0x1C], // gota
+ [0x1C,0x38,0x70,0x70,0x70,0x70,0x38,0x1C], // luna
+ [0x00,0x66,0xFF,0xFF,0xFF,0x7E,0x3C,0x18], // corazón
+ [0x18,0x18,0x7E,0xFF,0x7E,0x3C,0x66,0x42], // estrella
+ [0x06,0x1E,0x3E,0x7E,0x7C,0x78,0x60,0x00], // hoja
+ [0x00,0x01,0x03,0x86,0xCC,0x78,0x30,0x00]  // check
+];
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+
+/* ---------- color ---------- */
+const rgb = h => { h=h.replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join(''); const n=parseInt(h,16); return [n>>16&255,n>>8&255,n&255]; };
+const mul = (c,k) => [c[0]*k,c[1]*k,c[2]*k];
+const hsl = (h,s,l) => { h/=360; const f=n=>{const k=(n+h*12)%12,a=s*Math.min(l,1-l);return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))))}; return [f(0),f(8),f(4)]; };
+const WHITE=[235,235,235], DIM=[60,60,66], BLACK=[0,0,0], AMBER=[255,176,32];
+const hc = h => rgb(h.color || PALETTE[0]);
+
+/* ---------- buffer ---------- */
+class Buf{
+  constructor(){this.d=new Float32Array(W*H*3);this.cx0=0;this.cx1=W}
+  clear(){this.d.fill(0);this.cx0=0;this.cx1=W}
+  set(x,y,c,a=1){x=Math.floor(x);y=Math.floor(y);if(x<this.cx0||x>=this.cx1||y<0||y>=H)return;const i=(y*W+x)*3,d=this.d;
+    if(a>=1){d[i]=c[0];d[i+1]=c[1];d[i+2]=c[2]}else{d[i]+=(c[0]-d[i])*a;d[i+1]+=(c[1]-d[i+1])*a;d[i+2]+=(c[2]-d[i+2])*a}}
+  rect(x,y,w,h,c,a=1){for(let j=0;j<h;j++)for(let i=0;i<w;i++)this.set(x+i,y+j,c,a)}
+  text(s,x,y,c,sc=1){s=norm(s);for(const ch of s){const g=F[ch]||F[' '];
+    for(let r=0;r<5;r++)for(let k=0;k<3;k++)if(g[r]&(4>>k))this.rect(x+k*sc,y+r*sc,sc,sc,c);x+=4*sc}return x}
+  icon(bits,x,y,c,sc=1){for(let r=0;r<8;r++)for(let k=0;k<8;k++)if(bits[r]&(0x80>>k))this.rect(x+k*sc,y+r*sc,sc,sc,c)}
+  clip(x0,x1){this.cx0=Math.max(0,x0);this.cx1=Math.min(W,x1)}
+  unclip(){this.cx0=0;this.cx1=W}
+}
+const textW = (s,sc=1) => String(s).length*4*sc-sc;
+
+/* ---------- utilidades de layout ---------- */
+function layoutCells(n,x0=0,y0=0,w=W,h=H,maxS=8){
+  let s=maxS;for(;s>1;s--){if(Math.floor(w/s)*Math.floor(h/s)>=n)break}
+  const colsMax=Math.floor(w/s);const cols=Math.min(n,colsMax),rows=Math.ceil(n/cols);
+  return {s,cols,rows,ox:x0+Math.floor((w-cols*s)/2),oy:y0+Math.floor((h-rows*s)/2),inner:s>=3?s-1:1};
+}
+const cellPos=(L,i)=>({x:L.ox+(i%L.cols)*L.s,y:L.oy+Math.floor(i/L.cols)*L.s});
+function marquee(b,segs,x0,x1,y,sc,t,spd,fit=true){
+  const tw=segs.reduce((a,g)=>a+g.s.length*4*sc,0);
+  b.clip(x0,x1);
+  if(fit&&tw-sc<=x1-x0){let x=x0;segs.forEach(g=>{x=b.text(g.s,x,y,g.c,sc)});}
+  else{const off=(t/1000*spd*8)%tw;for(const base of [x0-off,x0-off+tw]){let x=base;segs.forEach(g=>{x=b.text(g.s,x,y,g.c,sc)})}}
+  b.unclip();
+}
+const urgency = h => Math.max(0,Math.min(1,(h-8)/14));
+const urgColor = h => hsl(120*(1-urgency(h)),1,.5);
+
+/* ================= ESTILOS (simple) ================= */
+const RED=[255,32,20];
+const mixc=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];
+const dayFrac=h=>Math.max(0,Math.min(1,(h-7)/17));
+const U=h=>Math.pow(dayFrac(h),1.8);
+const DONE_BG=[22,120,56], TICK=[235,255,240];
+const TICKS={
+ 3:['..#','#.#','.#.'],
+ 4:['...#','#.#.','.#..'],
+ 5:['...##','#.##.','###..','.#...'],
+ 6:['.....#','#...##','##.##.','.###..','..#...'],
+ 7:['......#','#....##','##..##.','.####..','..##...']};
+function drawTick(b,x,y,inner){
+  const p=TICKS[Math.min(7,inner)];if(!p)return;
+  const w=p[0].length,h=p.length,ox=x+Math.floor((inner-w)/2),oy=y+Math.floor((inner-h)/2);
+  p.forEach((row,r)=>[...row].forEach((ch,k)=>{if(ch==='#')b.set(ox+k,oy+r,TICK)}))}
+/* mapa estático: hechos = verde con tick, pendientes = color del hábito que vira a rojo con la hora */
+function drawMap(b,S,reg,mode){
+  const u=U(S.h),tot=S.n+S.d,L=layoutCells(tot,reg.x,reg.y,reg.w,reg.h,8);
+  for(let i=0;i<tot;i++){const{x,y}=cellPos(L,i);
+    if(i<S.d){b.rect(x,y,L.inner,L.inner,DONE_BG);drawTick(b,x,y,L.inner)}
+    else{const h=S.p[i-S.d];const base=mode==='mono'?AMBER:hc(h);b.rect(x,y,L.inner,L.inner,mixc(base,RED,Math.min(1,u*.95)))}}
+  return L;
+}
+const TRACK=[48,12,10];
+const STYLES = [
+{ id:'bottom', title:'Check + barra inferior', star:1,
+  desc:'Hechos en verde con un ✓. Pendientes con su color, que vira a rojo según avanza el día. Una línea roja inferior se va rellenando de izquierda a derecha. Todo estático.',
+  pros:['Limpio y sin animación','La barra no tapa nada'], cons:['El ✓ solo cabe si el bloque es ≥3 px (con ~30 hábitos sí)'],
+  render(b,S){drawMap(b,S,{x:0,y:0,w:W,h:13},'habit');
+    const w=Math.round(W*dayFrac(S.h));for(let x=0;x<W;x++)b.rect(x,14,1,2,x<w?RED:TRACK)}},
+
+{ id:'top', title:'Check + barra superior fina',
+  desc:'Igual, pero la línea roja va arriba y es de 1 px, para dejar más sitio a los hábitos.',
+  pros:['Más espacio para los bloques','Mínima'], cons:['Una línea de 1 px se lee peor de lejos'],
+  render(b,S){const w=Math.round(W*dayFrac(S.h));for(let x=0;x<W;x++)b.set(x,0,x<w?RED:TRACK);
+    drawMap(b,S,{x:0,y:2,w:W,h:14},'habit')}},
+
+{ id:'side', title:'Check + barra lateral',
+  desc:'La línea roja es vertical, a la derecha, y se llena de abajo arriba como un termómetro del día.',
+  pros:['Aprovecha el alto sin quitar filas','Efecto termómetro'], cons:['Quita 4 columnas de ancho'],
+  render(b,S){drawMap(b,S,{x:0,y:0,w:W-4,h:H},'habit');
+    const hgt=Math.round(H*dayFrac(S.h));for(let y=0;y<H;y++)b.rect(W-2,y,2,1,y>=H-hgt?RED:TRACK)}},
+
+{ id:'mono', title:'Check + pendientes en un solo color',
+  desc:'Sin colores por hábito: pendientes ámbar que se vuelven rojo con la hora, hechos verdes con ✓. Lo más legible a primera vista; barra inferior.',
+  pros:['Lectura inmediata verde/ámbar/rojo','No depende de los colores de cada hábito'], cons:['No distingues hábitos concretos'],
+  render(b,S){drawMap(b,S,{x:0,y:0,w:W,h:13},'mono');
+    const w=Math.round(W*dayFrac(S.h));for(let x=0;x<W;x++)b.rect(x,14,1,2,x<w?RED:TRACK)}},
+
+{ id:'ticks', title:'Check + barra con marcas de hora',
+  desc:'Barra inferior de 1 px con una marca cada 3 horas, para saber de un vistazo cuánto falta sin números.',
+  pros:['Da escala al tiempo','Sigue siendo estática'], cons:['Detalle muy fino'],
+  render(b,S){drawMap(b,S,{x:0,y:0,w:W,h:13},'habit');
+    const w=Math.round(W*dayFrac(S.h));for(let x=0;x<W;x++)b.set(x,15,x<w?RED:TRACK);
+    for(let hr=9;hr<24;hr+=3){const x=Math.round(W*(hr-7)/17);b.set(x,14,x<=w?[255,150,140]:[110,60,55])}}}
+];
+
+/* ================= UI ================= */
+const grid=document.getElementById('grid');
+const S={n:9,d:6,h:20,sp:1,p:[],t:0};
+S.p=SAMPLE.slice(0,S.n);
+const cards=STYLES.map(st=>{
+  const el=document.createElement('section');el.className='card';
+  el.innerHTML=`<canvas width="${W*P}" height="${H*P}"></canvas>
+    <h2><span>${st.star?'<span class="star">★</span> ':''}${st.title}</span></h2>
+    <p>${st.desc}</p>
+    <div class="tags">${st.pros.map(x=>`<span class="tag good">+ ${x}</span>`).join('')}${st.cons.map(x=>`<span class="tag bad">− ${x}</span>`).join('')}</div>`;
+  grid.appendChild(el);
+  const cv=el.querySelector('canvas');
+  return {st,cv,ctx:cv.getContext('2d'),buf:new Buf(),state:{},vis:true};
+});
+const io=new IntersectionObserver(es=>es.forEach(e=>{const c=cards.find(c=>c.cv===e.target.querySelector('canvas'));if(c)c.vis=e.isIntersecting}));
+document.querySelectorAll('.card').forEach(c=>io.observe(c));
+function paint(c){
+  const{ctx,buf}=c;ctx.fillStyle='#050505';ctx.fillRect(0,0,W*P,H*P);const d=buf.d;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=(y*W+x)*3,r=Math.min(255,d[i]),g=Math.min(255,d[i+1]),bl=Math.min(255,d[i+2]),cx=x*P+P/2,cy=y*P+P/2;
+    if(r+g+bl<18){ctx.fillStyle='#111214';ctx.beginPath();ctx.arc(cx,cy,P*.36,0,6.283);ctx.fill();continue}
+    const col=`${r|0},${g|0},${bl|0}`;
+    ctx.fillStyle=`rgba(${col},.18)`;ctx.beginPath();ctx.arc(cx,cy,P*.52,0,6.283);ctx.fill();
+    ctx.fillStyle=`rgb(${col})`;ctx.beginPath();ctx.arc(cx,cy,P*.38,0,6.283);ctx.fill();}
+}
+let last=0;
+function frame(ts){requestAnimationFrame(frame);if(ts-last<33)return;last=ts;
+  if(playing){S.h=Math.min(24,S.h+0.012*S.sp*(33/33));if(S.h>=24)S.h=7;sync()}
+  for(const c of cards){if(!c.vis)continue;c.buf.clear();c.st.render(c.buf,S,ts,c.state);paint(c)}}
+requestAnimationFrame(frame);
+const $=id=>document.getElementById(id);
+const hh=h=>{const m=Math.round(h*60);return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
+function sync(){$('h').value=S.h;$('hO').textContent=hh(S.h)}
+let playing=false;
+$('n').oninput=e=>{S.n=+e.target.value;S.p=SAMPLE.slice(0,S.n);$('nO').textContent=S.n};
+$('d').oninput=e=>{S.d=+e.target.value;$('dO').textContent=S.d};
+$('h').oninput=e=>{playing=false;$('play').textContent='▶ Reproducir el día';S.h=+e.target.value;$('hO').textContent=hh(S.h)};
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'⏸ Pausar':'▶ Reproducir el día';if(playing&&S.h>=23.9)S.h=7};
+document.querySelectorAll('.presets button').forEach(b=>b.onclick=()=>{playing=false;$('play').textContent='▶ Reproducir el día';S.h=+b.dataset.h;sync()});
+</script>
+</body>
+</html>
