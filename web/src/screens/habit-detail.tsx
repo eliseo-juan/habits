@@ -1,10 +1,11 @@
 import { useState } from "react"
-import { ArrowLeft, Bell, ChevronLeft, ChevronRight, Flame, Trophy } from "lucide-react"
+import { ArrowLeft, Bell, Pencil, ChevronLeft, ChevronRight, Flame, Trophy } from "lucide-react"
 import { motion } from "motion/react"
 import { HabitIcon } from "@/components/habit-row"
+import { HabitForm } from "@/components/habit-form"
 import { Button } from "@/components/ui/button"
 import { useHabitStats, useLogWriter, useReminders, useSession, useStatuses, useYear } from "@/lib/data"
-import { addDays, colorOf, iso, percent, MONTHS, scheduleLabel, shiftMonth, weekday, WEEKDAYS, type Habit, type Status } from "@/lib/rules"
+import { addDays, colorOf, iso, percent, MONTHS, scheduleLabel, streakLabel, shiftMonth, weekday, WEEKDAYS, type Habit, type Status } from "@/lib/rules"
 import { cn } from "@/lib/utils"
 
 const CELL: Record<Status, string> = {
@@ -32,6 +33,7 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
   const monthView = useYear(year).data?.habits.find((h) => h.habit_id === habit.id)
   const monthly = monthView?.months.find((m) => m.month === month)
   const reminders = (useReminders(habit.id).data ?? []).filter((r) => r.enabled).map((r) => r.time_local.slice(0, 5))
+  const [editing, setEditing] = useState(false)
   const color = colorOf(habit)
 
   async function cycle(day: string) {
@@ -64,12 +66,16 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
             )}
           </p>
         </div>
+        <Button variant="ghost" size="icon" className="ml-auto rounded-full" onClick={() => setEditing(true)} aria-label="Editar hábito">
+          <Pencil />
+        </Button>
       </header>
+      {editing && <HabitForm habit={habit} onClose={() => setEditing(false)} onArchived={onBack} />}
 
       <div className="grid grid-cols-2 gap-2">
-        <StatCard icon={<Flame className="size-4 text-orange-400" />} label="Racha actual" value={overall?.current_streak ?? "–"} />
-        <StatCard icon={<Trophy className="size-4 text-amber-300" />} label="Mejor racha" value={overall?.best_streak ?? "–"} />
-        <StatCard label="Cumplimiento" value={`${percent(overall?.percentage)}%`} accent={color} percentage={overall?.percentage ?? 0} />
+        <StatCard icon={<Flame className="size-4 text-orange-400" />} label="Racha actual" value={overall ? streakLabel(habit.schedule, overall.current_streak) : "–"} />
+        <StatCard icon={<Trophy className="size-4 text-amber-300" />} label="Mejor racha" value={overall ? streakLabel(habit.schedule, overall.best_streak) : "–"} />
+        <StatCard label="Cumplimiento" value={overall?.percentage == null ? "Sin datos" : `${percent(overall.percentage)}%`} accent={color} percentage={overall?.percentage ?? 0} />
         <StatCard label="Hechos · fallados" value={overall ? `${overall.done} · ${overall.failed}` : "–"} />
       </div>
 

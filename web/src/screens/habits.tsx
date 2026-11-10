@@ -1,8 +1,11 @@
-import { ChevronRight, Flame, MessageSquareText, Target } from "lucide-react"
+import { useState } from "react"
+import { ChevronRight, Flame, Plus, Target } from "lucide-react"
 import { motion } from "motion/react"
 import { Chip, HabitIcon } from "@/components/habit-row"
 import { useHabitStats, useSession, useStatuses } from "@/lib/data"
-import { addDays, colorOf, percent, scheduleLabel, weekday, WEEKDAYS, type Habit } from "@/lib/rules"
+import { HabitForm } from "@/components/habit-form"
+import { Button } from "@/components/ui/button"
+import { addDays, colorOf, percent, scheduleLabel, streakLabel, weekday, WEEKDAYS, type Habit } from "@/lib/rules"
 import { cn } from "@/lib/utils"
 
 const DOT: Record<string, string> = {
@@ -14,18 +17,20 @@ const DOT: Record<string, string> = {
 
 export function HabitsScreen({ onOpen }: { onOpen: (habit: Habit) => void }) {
   const { habits } = useSession()
+  const [creating, setCreating] = useState(false)
 
   return (
     <div className="space-y-5">
-      <header className="pt-2">
-        <p className="text-sm text-muted-foreground">{habits.length} activos</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Hábitos</h1>
+      <header className="flex items-end justify-between pt-2">
+        <div>
+          <p className="text-sm text-muted-foreground">{habits.length} activos</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Hábitos</h1>
+        </div>
+        <Button size="sm" className="rounded-full" onClick={() => setCreating(true)}>
+          <Plus /> Nuevo
+        </Button>
       </header>
-
-      <div className="flex items-center gap-3 rounded-2xl border border-dashed border-white/10 p-3 text-sm text-muted-foreground">
-        <MessageSquareText className="size-5 shrink-0 text-primary" />
-        Para crear o cambiar hábitos, pídeselo a Claude por MCP.
-      </div>
+      {creating && <HabitForm onClose={() => setCreating(false)} />}
 
       {habits.map((habit, index) => (
         <HabitCard key={habit.id} habit={habit} index={index} onOpen={() => onOpen(habit)} />
@@ -75,10 +80,10 @@ function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOp
       </div>
       <div className="mt-3 flex gap-1.5">
         <Chip className="bg-orange-500/10 text-orange-300 ring-orange-500/20">
-          <Flame className="size-3" /> {stats?.current_streak ?? "–"} racha
+          <Flame className="size-3" /> Racha {stats ? streakLabel(habit.schedule, stats.current_streak) : "–"}
         </Chip>
         <Chip>
-          <Target className="size-3" /> {percent(stats?.percentage)}%
+          <Target className="size-3" /> {stats?.percentage == null ? "Sin datos" : `${percent(stats.percentage)}%`}
         </Chip>
       </div>
     </motion.button>

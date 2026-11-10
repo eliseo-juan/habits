@@ -24,6 +24,7 @@ export type DayLog = { done_count: number; skipped: boolean; note: string | null
 export const EMPTY_LOG: DayLog = { done_count: 0, skipped: false, note: null }
 
 export const WEEKDAYS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+export const WEEKDAYS_LONG = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 export const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 
 export const parse = (day: string) => new Date(`${day}T00:00:00Z`)
@@ -44,6 +45,11 @@ export function scheduleLabel(schedule: Schedule): string {
 }
 
 export const percent = (value: number | null | undefined) => (value === null || value === undefined ? "–" : String(Math.round(value)))
+
+export function streakLabel(schedule: Schedule, streak: number): string {
+  const unit = schedule.type !== "times_per_period" ? ["día", "días"] : schedule.period_unit === "week" ? ["semana", "semanas"] : ["mes", "meses"]
+  return `${streak} ${streak === 1 ? unit[0] : unit[1]}`
+}
 
 export const colorOf = (look: Look) => look.color ?? "#10b981"
 
@@ -66,5 +72,5 @@ export function dayTitle(day: string, today: string): string {
   if (day === today) return "Hoy"
   if (day === addDays(today, -1)) return "Ayer"
   if (day === addDays(today, 1)) return "Mañana"
-  return `${WEEKDAYS[weekday(day)]} ${dayOfMonth(day)} ${MONTHS[parse(day).getUTCMonth()]}`
+  return WEEKDAYS_LONG[weekday(day)]
 }
