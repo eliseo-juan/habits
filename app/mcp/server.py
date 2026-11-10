@@ -14,6 +14,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.auth.security import Principal, principal_from_token
 from app.clock import utcnow
+from app.config import get_settings
 from app.db import get_sessionmaker
 from app.errors import AppError
 from app.schemas import HabitCreate, HabitUpdate, LogPut, ScheduleCreate, ScheduleIn
@@ -293,8 +294,11 @@ class BearerAuth:
             with (self.sessions or get_sessionmaker())() as db:
                 principal = principal_from_token(db, token.strip(), utcnow())
         if principal is None:
+            metadata = f"{get_settings().public_url}/.well-known/oauth-protected-resource/mcp"
             response = JSONResponse(
-                {"code": "unauthorized", "message": "missing or invalid token"}, status_code=401
+                {"code": "unauthorized", "message": "missing or invalid token"},
+                status_code=401,
+                headers={"WWW-Authenticate": f'Bearer resource_metadata="{metadata}"'},
             )
             await response(scope, receive, send)
             return

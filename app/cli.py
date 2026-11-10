@@ -4,6 +4,7 @@ import argparse
 import getpass
 import sys
 
+from app.auth.oauth import create_client
 from app.auth.security import create_api_token, hash_password
 from app.backup import backup_sqlite
 from app.clock import utcnow
@@ -57,6 +58,11 @@ def _create_token(args: argparse.Namespace) -> None:
         print(plaintext)
 
 
+def _create_oauth_client(args: argparse.Namespace) -> None:
+    with get_sessionmaker()() as db:
+        print(create_client(db, args.name, args.redirect_uri, utcnow()))
+
+
 def _backup(_args: argparse.Namespace) -> None:
     settings = get_settings()
     target = backup_sqlite(settings.database_url, settings.backup_dir, utcnow())
@@ -91,6 +97,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     token.add_argument("--scope", choices=["read", "write"], required=True)
     token.set_defaults(run=_create_token)
+
+    oauth_client = commands.add_parser(
+        "create-oauth-client",
+        help="register an OAuth client (claude.ai, Claude Code) and print its client ID",
+    )
+    oauth_client.add_argument("name", help="shown on the login page and as the token's name")
+    oauth_client.add_argument("--redirect-uri", action="append", required=True)
+    oauth_client.set_defaults(run=_create_oauth_client)
 
     backup = commands.add_parser("backup", help="consistent copy of the SQLite database")
     backup.set_defaults(run=_backup)
