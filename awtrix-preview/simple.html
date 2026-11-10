@@ -49,7 +49,7 @@
   </div>
 </header>
 <main id="grid"></main>
-<footer>Misma matriz 52×16 (14 filas de hábitos, 1 de separación, 1 de barra). Los hechos se quedan en verde tranquilo; los pendientes se ponen peor según avanza el día (07:00 → 24:00).</footer>
+<footer>Misma matriz 52×16 (cuadrados de 6 px; barra de 1 px en la última fila). Los hechos se quedan en verde tranquilo; los pendientes se ponen peor según avanza el día (07:00 → 24:00).</footer>
 
 <script>
 const W = 52, H = 16, P = 16;
@@ -136,9 +136,16 @@ function drawTick(b,x,y,inner){
   const p=TICKS[Math.min(7,inner)];if(!p)return;
   const w=p[0].length,h=p.length,ox=x+Math.floor((inner-w)/2),oy=y+Math.floor((inner-h)/2);
   p.forEach((row,r)=>[...row].forEach((ch,k)=>{if(ch==='#')b.set(ox+k,oy+r,TICK)}))}
+/* cuadrados SIEMPRE de 6 px (paso 7 con 1 px de separación), hasta 14 hábitos (2 filas de 7).
+   Altura útil 15 filas (0..14), la 15 es la barra: 1 fila -> y=4 ; 2 filas (13 px) -> y=1 (1 arriba, 1 abajo) */
+function layout6(n,reg){
+  if(n>14)return layoutCells(n,reg.x,reg.y,reg.w,reg.h,8);
+  const rows=n<=7?1:2,cols=Math.ceil(n/rows),s=7,wTot=cols*s-1,hTot=rows*s-1;
+  return {s,cols,rows,inner:6,ox:reg.x+Math.floor((reg.w-wTot)/2),oy:reg.y+Math.floor((15-hTot)/2)};
+}
 /* mapa estático: hechos = verde con tick, pendientes = color del hábito que vira a rojo con la hora */
 function drawMap(b,S,reg,mode){
-  const u=U(S.h),tot=S.n+S.d,L=layoutCells(tot,reg.x,reg.y,reg.w,reg.h,8);
+  const u=U(S.h),tot=S.n+S.d,L=layout6(tot,reg);
   for(let i=0;i<tot;i++){const{x,y}=cellPos(L,i);
     if(i<S.d){b.rect(x,y,L.inner,L.inner,DONE_BG);drawTick(b,x,y,L.inner)}
     else{const h=S.p[i-S.d];const base=mode==='mono'?AMBER:hc(h);b.rect(x,y,L.inner,L.inner,mixc(base,RED,Math.min(1,u*.95)))}}
@@ -147,7 +154,7 @@ function drawMap(b,S,reg,mode){
 const TRACK=[48,12,10];
 /* diseño final: mapa 14 filas (centrado) + 1 fila de gap + barra de 1 px con el punto actual parpadeando */
 function renderFinal(b,S,t){
-  drawMap(b,S,{x:0,y:0,w:W,h:14},'habit');
+  drawMap(b,S,{x:0,y:0,w:W,h:15},'habit');
   const pos=dayFrac(S.h)*W,w=Math.min(W-1,Math.floor(pos));
   for(let x=0;x<W;x++)b.set(x,15,x<w?RED:TRACK);
   const on=Math.floor(t/600)%2===0;                       // latido lento: 0,6 s encendido / 0,6 s apagado
@@ -161,7 +168,9 @@ const STYLES = [
  EX('18:00 · 6 pendientes, 4 hechos','Caso típico de media tarde.',6,4,18),
  EX('21:00 · 8 pendientes, 2 hechos','Tarde y mal: casi todo rojo.',8,2,21),
  EX('23:30 · 2 pendientes, 8 hechos','Casi a punto de acabar el día, pero casi todo hecho.',2,8,23.5),
- EX('20:00 · 14 hábitos en total','Más de 10 es raro; aun así se degrada bien (bloques más pequeños).',8,6,20)
+ EX('20:00 · 14 hábitos (máximo con 6 px)','Dos filas de 7 cuadrados.',8,6,20),
+ EX('20:00 · 20 hábitos (degradado)','Raro: más de 14 cae a bloques más pequeños.',12,8,20),
+ EX('16:00 · 1 pendiente, 1 hecho','Una fila: cuadrados juntos y centrados.',1,1,16)
 ];
 
 /* ================= UI ================= */
