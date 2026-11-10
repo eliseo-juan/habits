@@ -1,6 +1,6 @@
 # Habits
 
-Personal habit tracker: REST API, installable PWA, remote MCP server, a summary endpoint for an AWTRIX clock, and ntfy reminders. FastAPI + SQLite (SQLAlchemy and Alembic keep it portable to Postgres).
+Self-hosted habit tracker: REST API, installable PWA, remote MCP server, a summary endpoint for an AWTRIX clock, and ntfy reminders. FastAPI + SQLite (SQLAlchemy and Alembic keep it portable to Postgres).
 
 ## Run locally
 
@@ -74,15 +74,15 @@ Streamable HTTP at `<HABITS_PUBLIC_URL>/mcp`, stateless, JSON responses (no SSE,
 habits create-oauth-client Claude --redirect-uri https://claude.ai/api/mcp/auth_callback --redirect-uri https://claude.com/api/mcp/auth_callback
 ```
 
-It prints a client ID. Settings → Connectors → Add custom connector, URL `https://mcp.habits.lab.eliseo.tech/mcp`, Advanced settings → OAuth Client ID = that ID, no secret (PKCE). Claude opens the app's login page and gets an ordinary API token named after the client, listed and revocable under `/tokens`. Connectors added on claude.ai show up in the mobile apps too. The server must be reachable from the internet, see [Public access](#public-access-caddy).
+It prints a client ID. Settings → Connectors → Add custom connector, URL `<HABITS_PUBLIC_URL>/mcp`, Advanced settings → OAuth Client ID = that ID, no secret (PKCE). Claude opens the app's login page and gets an ordinary API token named after the client, listed and revocable under `/tokens`. Connectors added on claude.ai show up in the mobile apps too. claude.ai connects from Anthropic's servers, so the server must be reachable from the internet, see [Exposing it](#exposing-it).
 
-**Claude Code**, with a token on the LAN, or with OAuth through a client registered for a fixed loopback port:
+**Claude Code**, with a personal token, or with OAuth through a client registered for a fixed loopback port:
 
 ```sh
-claude mcp add --transport http habits https://habits.lab.eliseo.tech/mcp --header "Authorization: Bearer hab_..."
+claude mcp add --transport http habits https://habits.example.com/mcp --header "Authorization: Bearer hab_..."
 
 habits create-oauth-client "Claude Code" --redirect-uri http://localhost:3118/callback
-claude mcp add --transport http --scope user --client-id <id> --callback-port 3118 habits https://mcp.habits.lab.eliseo.tech/mcp
+claude mcp add --transport http --scope user --client-id <id> --callback-port 3118 habits https://habits.example.com/mcp
 ```
 
 Redirect URIs must be https or a loopback address, and `/authorize` only accepts the exact ones registered.
@@ -97,59 +97,31 @@ Five wrong passwords for the same email block logins for that email for 15 minut
 
 Add an ntfy channel (`POST /channels` with `{"config": {"topic": "...", "server": "https://ntfy.sh", "access_token": null}}`) and reminders per habit (`POST /habits/{id}/reminders` with `{"time_local": "08:30", "weekdays": [0, 2, 4]}`). Within ten minutes of the local time, a habit still pending that day gets one notification with a "Hecho" button. The button calls a signed, single-use link, so the notification never carries a personal token. If every channel fails, the next minute retries.
 
-## Deploy: TrueNAS + Nginx Proxy Manager
+## Deploy
 
-Every push to `main` runs the tests and publishes `ghcr.io/eliseo-juan/habits:latest` plus a `sha-…` tag (and `X.Y.Z` for `v*` tags). The package is private by default: either make it public in GitHub, or log TrueNAS in to GHCR with a token that has `read:packages`.
-
-TrueNAS 25.10, Apps → Discover → Custom App → Install via YAML:
-
-```yaml
-services:
-  habits:
-    image: ghcr.io/eliseo-juan/habits:latest
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    user: "568:568"
-    environment:
-      HABITS_SECRET_KEY: "<long random value>"
-      HABITS_PUBLIC_URL: https://mcp.habits.lab.eliseo.tech
-    volumes:
-      - /mnt/<pool>/apps/habits:/data
-```
-
-`568` is TrueNAS's `apps` user; the dataset must be writable by it. Migrations run on every start.
-
-Nginx Proxy Manager: proxy host `habits.lab.eliseo.tech` → `http://<truenas-ip>:8000`, with SSL forced and HTTP/2 on. No custom locations needed.
-
-### Public access (Caddy)
-
-claude.ai connects from Anthropic's servers, so the LAN-only `habits.lab.eliseo.tech` is not enough. A second hostname, `mcp.habits.lab.eliseo.tech`, goes through the Caddy reverse proxy in the DMZ and only lets the MCP, OAuth and reminder-action paths through; the web app and the REST API stay on the LAN.
-
-1. Cloudflare DNS: an A record `mcp.habits.lab.eliseo.tech` → the public IP, DNS only (no proxy), kept current by DDNS.
-2. Caddy:
-
-   ```caddyfile
-   mcp.habits.lab.eliseo.tech {
-       @allowed path /mcp /authorize /token /oauth/* /.well-known/oauth-* /notifications/actions/*
-       handle @allowed {
-           reverse_proxy <truenas-ip>:8000
-       }
-       respond 404
-   }
-   ```
-
-3. Firewall: allow the Caddy host in the DMZ to reach `<truenas-ip>:8000`.
-4. Set `HABITS_PUBLIC_URL: https://mcp.habits.lab.eliseo.tech` in the app and redeploy. It is the OAuth issuer and the base of the reminders' "Hecho" links; the web app on `habits.lab.eliseo.tech` doesn't depend on it.
-
-The login page is public, so the account needs a strong password. Cloudflare Access can't sit in front of `/mcp`: claude.ai can't pass its login.
-
-### Updates
-
-The NAS isn't reachable from GitHub, so it pulls: copy `deploy/truenas-update.sh` to the dataset and add a cron job (System → Advanced Settings → Cron Jobs, user `root`, every 15 minutes):
+Every push to `main` runs the tests and publishes `ghcr.io/eliseo-juan/habits:latest` plus a `sha-…` tag (and `X.Y.Z` for `v*` tags). `docker-compose.yml` runs it with the database in `./data`:
 
 ```sh
-sh /mnt/<pool>/apps/habits/truenas-update.sh habits
+export HABITS_SECRET_KEY="$(openssl rand -hex 32)" HABITS_PUBLIC_URL=https://habits.example.com
+docker compose up -d
 ```
 
-It redeploys the app only when `:latest` moved, so a merge to `main` is live within about 15 minutes. If the GHCR package is private, run `docker login ghcr.io` once as root with a token that has `read:packages`.
+Migrations run on every start. Put it behind a reverse proxy that terminates HTTPS. To update, pull `:latest` and recreate the container.
+
+### Exposing it
+
+The web app and the REST API can stay on a private network. Only claude.ai (OAuth and MCP) and the reminders' "Hecho" button need to reach the server from the internet, so a public hostname should let only these paths through. With Caddy:
+
+```caddyfile
+habits.example.com {
+    @allowed path /mcp /authorize /token /oauth/* /.well-known/oauth-* /notifications/actions/*
+    handle @allowed {
+        reverse_proxy <app-host>:8000
+    }
+    respond 404
+}
+```
+
+`HABITS_PUBLIC_URL` must be that public address: it is the OAuth issuer and the base of the "Hecho" links. The web app works on any hostname that reaches the container, since its session cookie is host-only.
+
+The login page is public, so the account needs a strong password. An access proxy with its own login (Cloudflare Access and similar) can't sit in front of `/mcp`: claude.ai can't pass it.
