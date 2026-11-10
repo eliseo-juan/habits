@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BarChart3, CalendarCheck, LayoutGrid, Loader2, Settings } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Toaster } from "@/components/ui/sonner"
 import { HttpError } from "@/lib/api"
 import { habitsQuery, meQuery, queryClient, SessionContext, todayQuery, useSession } from "@/lib/data"
-import type { Habit } from "@/lib/rules"
+import { switchTab, useRoute } from "@/lib/router"
 import { cn } from "@/lib/utils"
 import { HabitDetail } from "@/screens/habit-detail"
 import { HabitsScreen } from "@/screens/habits"
@@ -16,20 +15,18 @@ import { SettingsScreen } from "@/screens/settings"
 import { TodayScreen } from "@/screens/today"
 
 const TABS = [
-  { id: "today", label: "Hoy", icon: CalendarCheck },
-  { id: "habits", label: "Hábitos", icon: LayoutGrid },
-  { id: "progress", label: "Progreso", icon: BarChart3 },
-  { id: "settings", label: "Ajustes", icon: Settings },
+  { path: "/", label: "Hoy", icon: CalendarCheck },
+  { path: "/habits", label: "Hábitos", icon: LayoutGrid },
+  { path: "/progress", label: "Progreso", icon: BarChart3 },
+  { path: "/settings", label: "Ajustes", icon: Settings },
 ] as const
-
-type Tab = (typeof TABS)[number]["id"]
 
 function Shell() {
   const { habits } = useSession()
-  const [tab, setTab] = useState<Tab>("today")
-  const [detailId, setDetailId] = useState<number | null>(null)
-  const detail = habits.find((h) => h.id === detailId)
-  const openDetail = (habit: Habit) => setDetailId(habit.id)
+  const { path } = useRoute()
+  const [, section, id, action] = path.split("/")
+  const tab = `/${section}`
+  const detail = section === "habits" ? habits.find((h) => String(h.id) === id) : undefined
 
   return (
     <div className="relative mx-auto min-h-dvh max-w-md">
@@ -38,34 +35,31 @@ function Shell() {
         <AnimatePresence mode="wait">
           <motion.div key={detail ? `detail-${detail.id}` : tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             {detail ? (
-              <HabitDetail habit={detail} onBack={() => setDetailId(null)} />
-            ) : tab === "today" ? (
-              <TodayScreen onStats={openDetail} />
-            ) : tab === "habits" ? (
-              <HabitsScreen onOpen={openDetail} />
-            ) : tab === "progress" ? (
+              <HabitDetail habit={detail} editing={action === "edit"} />
+            ) : tab === "/habits" ? (
+              <HabitsScreen creating={id === "new"} />
+            ) : tab === "/progress" ? (
               <ProgressScreen />
-            ) : (
+            ) : tab === "/settings" ? (
               <SettingsScreen />
+            ) : (
+              <TodayScreen />
             )}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-        <div className="flex rounded-3xl border border-white/10 bg-card/80 p-1.5 shadow-2xl backdrop-blur-xl">
-          {TABS.map(({ id, label, icon: Icon }) => {
-            const active = tab === id && !detail
+      <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+        <div className="pointer-events-auto flex rounded-3xl border border-white/10 bg-card/90 p-1.5 shadow-2xl backdrop-blur-xl">
+          {TABS.map(({ path: target, label, icon: Icon }) => {
+            const active = tab === target
             return (
               <button
-                key={id}
-                onClick={() => {
-                  setTab(id)
-                  setDetailId(null)
-                }}
+                key={target}
+                onClick={() => switchTab(target)}
                 className={cn("relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-2 text-[11px] transition-colors", active ? "text-primary" : "text-muted-foreground")}
               >
-                {active && <motion.span layoutId="tab-pill" className="absolute inset-0 rounded-2xl bg-primary/10" transition={{ type: "spring", stiffness: 400, damping: 32 }} />}
+                {active && <motion.span layoutId="tab-pill" className="absolute inset-0 rounded-2xl bg-primary/15" transition={{ type: "spring", stiffness: 400, damping: 32 }} />}
                 <Icon className="relative size-5" />
                 <span className="relative">{label}</span>
               </button>

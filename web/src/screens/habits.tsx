@@ -1,41 +1,47 @@
-import { useState } from "react"
 import { ChevronRight, Flame, Plus, Target } from "lucide-react"
 import { motion } from "motion/react"
 import { Chip, HabitIcon } from "@/components/habit-row"
 import { useHabitStats, useSession, useStatuses } from "@/lib/data"
 import { HabitForm } from "@/components/habit-form"
-import { Button } from "@/components/ui/button"
+import { goBack, navigate } from "@/lib/router"
 import { addDays, colorOf, percent, scheduleLabel, streakLabel, weekday, WEEKDAYS, type Habit } from "@/lib/rules"
 import { cn } from "@/lib/utils"
 
 const DOT: Record<string, string> = {
   failed: "text-rose-300 ring-1 ring-rose-500/40",
-  skipped: "bg-white/5 text-muted-foreground",
-  pending: "bg-white/5 ring-1 ring-white/20",
+  skipped: "bg-white/10 text-muted-foreground",
+  pending: "bg-white/10 ring-1 ring-white/20",
   slipped: "text-amber-300 ring-1 ring-amber-400/40",
-  not_due: "bg-transparent text-muted-foreground/40",
+  not_due: "bg-transparent text-muted-foreground/60",
 }
 
-export function HabitsScreen({ onOpen }: { onOpen: (habit: Habit) => void }) {
+export function HabitsScreen({ creating }: { creating: boolean }) {
   const { habits } = useSession()
-  const [creating, setCreating] = useState(false)
 
   return (
-    <div className="space-y-5">
-      <header className="flex items-end justify-between pt-2">
-        <div>
-          <p className="text-sm text-muted-foreground">{habits.length} activos</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Hábitos</h1>
-        </div>
-        <Button size="sm" className="rounded-full" onClick={() => setCreating(true)}>
-          <Plus /> Nuevo
-        </Button>
+    <div className="space-y-5 pb-20">
+      <header className="pt-2">
+        <p className="text-sm text-muted-foreground">{habits.length} activos</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Hábitos</h1>
       </header>
-      {creating && <HabitForm onClose={() => setCreating(false)} />}
+      {creating && <HabitForm onClose={() => goBack("/habits")} />}
 
       {habits.map((habit, index) => (
-        <HabitCard key={habit.id} habit={habit} index={index} onOpen={() => onOpen(habit)} />
+        <HabitCard key={habit.id} habit={habit} index={index} onOpen={() => navigate(`/habits/${habit.id}`)} />
       ))}
+
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom),0.75rem)+5.5rem)] z-30 mx-auto flex max-w-md justify-end px-5">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          onClick={() => navigate("/habits/new")}
+          className="pointer-events-auto grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_-6px] shadow-primary/60"
+          aria-label="Nuevo hábito"
+        >
+          <Plus className="size-7" strokeWidth={2.5} />
+        </motion.button>
+      </div>
     </div>
   )
 }
@@ -53,7 +59,7 @@ function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOp
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
       onClick={onOpen}
-      className="block w-full rounded-3xl border border-white/5 bg-card/60 p-4 text-left active:bg-card"
+      className="block w-full rounded-3xl border border-white/10 bg-card p-4 text-left active:bg-card"
     >
       <div className="flex items-center gap-3">
         <HabitIcon habit={habit} />
