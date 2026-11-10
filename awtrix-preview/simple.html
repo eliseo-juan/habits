@@ -39,7 +39,7 @@
 </head>
 <body>
 <header>
-  <h1>Alarma creciente, versión tranquila</h1>
+  <h1>Alarma creciente, versión final</h1>
   <div class="controls">
     <label>Pendientes <input id="n" type="range" min="2" max="30" value="9"><output id="nO">9</output></label>
     <label>Hechos <input id="d" type="range" min="0" max="20" value="6"><output id="dO">6</output></label>
@@ -49,7 +49,7 @@
   </div>
 </header>
 <main id="grid"></main>
-<footer>Misma matriz 52×16. Los hechos se quedan en verde tranquilo; los pendientes se ponen peor según avanza el día (07:00 → 24:00).</footer>
+<footer>Misma matriz 52×16 (14 filas de hábitos, 1 de separación, 1 de barra). Los hechos se quedan en verde tranquilo; los pendientes se ponen peor según avanza el día (07:00 → 24:00).</footer>
 
 <script>
 const W = 52, H = 16, P = 16;
@@ -106,7 +106,7 @@ const textW = (s,sc=1) => String(s).length*4*sc-sc;
 /* ---------- utilidades de layout ---------- */
 function layoutCells(n,x0=0,y0=0,w=W,h=H,maxS=8){
   let s=maxS;for(;s>1;s--){if(Math.floor(w/s)*Math.floor(h/s)>=n)break}
-  const colsMax=Math.floor(w/s);const cols=Math.min(n,colsMax),rows=Math.ceil(n/cols);
+  const colsMax=Math.floor(w/s);const rows=Math.ceil(n/colsMax),cols=Math.ceil(n/rows);
   return {s,cols,rows,ox:x0+Math.floor((w-cols*s)/2),oy:y0+Math.floor((h-rows*s)/2),inner:s>=3?s-1:1};
 }
 const cellPos=(L,i)=>({x:L.ox+(i%L.cols)*L.s,y:L.oy+Math.floor(i/L.cols)*L.s});
@@ -145,37 +145,23 @@ function drawMap(b,S,reg,mode){
   return L;
 }
 const TRACK=[48,12,10];
+/* diseño final: mapa 14 filas (centrado) + 1 fila de gap + barra de 1 px con el punto actual parpadeando */
+function renderFinal(b,S,t){
+  drawMap(b,S,{x:0,y:0,w:W,h:14},'habit');
+  const pos=dayFrac(S.h)*W,w=Math.min(W-1,Math.floor(pos));
+  for(let x=0;x<W;x++)b.set(x,15,x<w?RED:TRACK);
+  const on=Math.floor(t/600)%2===0;                       // latido lento: 0,6 s encendido / 0,6 s apagado
+  b.set(w,15,on?[255,200,190]:mixc(TRACK,RED,.35));
+}
+const EX=(title,desc,n,d,h)=>({title,desc,fixed:{n,d,h},pros:[],cons:[],render:renderFinal});
 const STYLES = [
-{ id:'bottom', title:'Check + barra inferior', star:1,
-  desc:'Hechos en verde con un ✓. Pendientes con su color, que vira a rojo según avanza el día. Una línea roja inferior se va rellenando de izquierda a derecha. Todo estático.',
-  pros:['Limpio y sin animación','La barra no tapa nada'], cons:['El ✓ solo cabe si el bloque es ≥3 px (con ~30 hábitos sí)'],
-  render(b,S){drawMap(b,S,{x:0,y:0,w:W,h:13},'habit');
-    const w=Math.round(W*dayFrac(S.h));for(let x=0;x<W;x++)b.rect(x,14,1,2,x<w?RED:TRACK)}},
-
-{ id:'top', title:'Check + barra superior fina',
-  desc:'Igual, pero la línea roja va arriba y es de 1 px, para dejar más sitio a los hábitos.',
-  pros:['Más espacio para los bloques','Mínima'], cons:['Una línea de 1 px se lee peor de lejos'],
-  render(b,S){const w=Math.round(W*dayFrac(S.h));for(let x=0;x<W;x++)b.set(x,0,x<w?RED:TRACK);
-    drawMap(b,S,{x:0,y:2,w:W,h:14},'habit')}},
-
-{ id:'side', title:'Check + barra lateral',
-  desc:'La línea roja es vertical, a la derecha, y se llena de abajo arriba como un termómetro del día.',
-  pros:['Aprovecha el alto sin quitar filas','Efecto termómetro'], cons:['Quita 4 columnas de ancho'],
-  render(b,S){drawMap(b,S,{x:0,y:0,w:W-4,h:H},'habit');
-    const hgt=Math.round(H*dayFrac(S.h));for(let y=0;y<H;y++)b.rect(W-2,y,2,1,y>=H-hgt?RED:TRACK)}},
-
-{ id:'mono', title:'Check + pendientes en un solo color',
-  desc:'Sin colores por hábito: pendientes ámbar que se vuelven rojo con la hora, hechos verdes con ✓. Lo más legible a primera vista; barra inferior.',
-  pros:['Lectura inmediata verde/ámbar/rojo','No depende de los colores de cada hábito'], cons:['No distingues hábitos concretos'],
-  render(b,S){drawMap(b,S,{x:0,y:0,w:W,h:13},'mono');
-    const w=Math.round(W*dayFrac(S.h));for(let x=0;x<W;x++)b.rect(x,14,1,2,x<w?RED:TRACK)}},
-
-{ id:'ticks', title:'Check + barra con marcas de hora',
-  desc:'Barra inferior de 1 px con una marca cada 3 horas, para saber de un vistazo cuánto falta sin números.',
-  pros:['Da escala al tiempo','Sigue siendo estática'], cons:['Detalle muy fino'],
-  render(b,S){drawMap(b,S,{x:0,y:0,w:W,h:13},'habit');
-    const w=Math.round(W*dayFrac(S.h));for(let x=0;x<W;x++)b.set(x,15,x<w?RED:TRACK);
-    for(let hr=9;hr<24;hr+=3){const x=Math.round(W*(hr-7)/17);b.set(x,14,x<=w?[255,150,140]:[110,60,55])}}}
+ {title:'En vivo (usa los sliders)',star:1,desc:'Mapa de hábitos + barra de 1 px. El píxel actual parpadea despacio; es la única animación.',pros:['Estático salvo el píxel de «ahora»'],cons:[],render:renderFinal},
+ EX('09:00 · 3 pendientes, 2 hechos','Mañana: casi todo está por hacer y los colores son los de cada hábito.',3,2,9),
+ EX('13:30 · 5 pendientes, 3 hechos','A mitad del día los pendientes ya empiezan a virar.',5,3,13.5),
+ EX('18:00 · 6 pendientes, 4 hechos','Caso típico de media tarde.',6,4,18),
+ EX('21:00 · 8 pendientes, 2 hechos','Tarde y mal: casi todo rojo.',8,2,21),
+ EX('23:30 · 2 pendientes, 8 hechos','Casi a punto de acabar el día, pero casi todo hecho.',2,8,23.5),
+ EX('20:00 · 14 hábitos en total','Más de 10 es raro; aun así se degrada bien (bloques más pequeños).',8,6,20)
 ];
 
 /* ================= UI ================= */
@@ -206,7 +192,7 @@ function paint(c){
 let last=0;
 function frame(ts){requestAnimationFrame(frame);if(ts-last<33)return;last=ts;
   if(playing){S.h=Math.min(24,S.h+0.012*S.sp*(33/33));if(S.h>=24)S.h=7;sync()}
-  for(const c of cards){if(!c.vis)continue;c.buf.clear();c.st.render(c.buf,S,ts,c.state);paint(c)}}
+  for(const c of cards){if(!c.vis)continue;c.buf.clear();c.st.render(c.buf,c.st.fixed?{...S,...c.st.fixed,p:SAMPLE.slice(0,c.st.fixed.n)}:S,ts,c.state);paint(c)}}
 requestAnimationFrame(frame);
 const $=id=>document.getElementById(id);
 const hh=h=>{const m=Math.round(h*60);return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
