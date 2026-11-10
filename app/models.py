@@ -36,6 +36,7 @@ class Habit(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(8), default="build", server_default="build")
     color: Mapped[str | None] = mapped_column(String(16))
     icon: Mapped[str | None] = mapped_column(String(64))
     priority: Mapped[int] = mapped_column(Integer, default=0)

@@ -22,19 +22,19 @@ SENSORS = (
         key="pending",
         translation_key="pending",
         state_class=SensorStateClass.MEASUREMENT,
-        value=lambda today: sum(item.status == "pending" for item in today.items),
+        value=lambda today: sum(item.to_do and item.status == "pending" for item in today.items),
     ),
     HabitsSensorDescription(
         key="done",
         translation_key="done",
         state_class=SensorStateClass.MEASUREMENT,
-        value=lambda today: sum(item.status == "done" for item in today.items),
+        value=lambda today: sum(item.to_do and item.status == "done" for item in today.items),
     ),
     HabitsSensorDescription(
         key="due",
         translation_key="due",
         state_class=SensorStateClass.MEASUREMENT,
-        value=lambda today: len(today.items),
+        value=lambda today: sum(item.to_do for item in today.items),
     ),
 )
 

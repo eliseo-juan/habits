@@ -17,7 +17,7 @@ export function DaySheet({ habit, entry, day, onClose, onStats }: Props) {
   const [note, setNote] = useState<string | null>(null)
   const target = entry.times_per_day
   const isFuture = day > today
-  const status = log.skipped ? "skipped" : log.done_count >= target ? "done" : entry.status
+  const status = log.skipped ? "skipped" : habit.kind === "build" && log.done_count >= target ? "done" : entry.status
   const current = { ...log, note: note === null ? log.note : note || null }
   const save = (patch: Partial<DayLog>) => writer.write(habit.id, day, { ...current, skipped: false, ...patch })
   const dismiss = () => {
@@ -34,7 +34,7 @@ export function DaySheet({ habit, entry, day, onClose, onStats }: Props) {
           <div className="text-left">
             <SheetTitle className="text-lg">{habit.name}</SheetTitle>
             <SheetDescription>
-              {dayTitle(day, today)} · {scheduleLabel(habit.schedule)}
+              {dayTitle(day, today)} · {scheduleLabel(habit)}
             </SheetDescription>
           </div>
         </SheetHeader>
@@ -55,7 +55,7 @@ export function DaySheet({ habit, entry, day, onClose, onStats }: Props) {
 
         <div className="grid grid-cols-3 gap-2">
           <Button size="lg" disabled={isFuture} onClick={() => close(save({ done_count: target }))}>
-            <Check /> Hecho
+            <Check /> {habit.kind === "limit" ? "Lo hice" : "Hecho"}
           </Button>
           <Button size="lg" variant="secondary" disabled={isFuture} onClick={() => close(save({ done_count: 0, skipped: true }))}>
             <SkipForward /> Saltar

@@ -176,3 +176,73 @@ def test_future_days_are_pending_not_failed():
     h = timeline([daily()], start=MON)
     assert day_status(h, MON + timedelta(days=3), today=MON) is DayStatus.PENDING
     assert summarize(h, MON, MON + timedelta(days=6), today=MON).percentage is None
+
+
+def limit(schedules, logs=None, start=date(2026, 1, 1)):
+    return HabitTimeline(
+        start_date=start,
+        end_date=None,
+        stats_start_date=None,
+        schedules=tuple(schedules),
+        logs=logs or {},
+        kind="limit",
+    )
+
+
+def test_limit_daily_clean_day_succeeds_and_doing_it_fails():
+    tuesday = MON + timedelta(days=1)
+    h = limit([daily()], {MON: done()}, start=MON)
+    assert day_status(h, MON, today=tuesday) is DayStatus.FAILED
+    assert day_status(h, tuesday, today=tuesday + timedelta(days=1)) is DayStatus.DONE
+    assert day_status(h, tuesday, today=tuesday) is DayStatus.PENDING
+
+
+def test_limit_daily_streak_counts_clean_days():
+    thursday = MON + timedelta(days=3)
+    h = limit([daily()], {MON: done()}, start=MON)
+    stats = summarize(h, MON, thursday, today=thursday)
+    assert stats.done == 2
+    assert stats.failed == 1
+    assert stats.current_streak == 2
+
+
+def test_limit_per_week_allows_slips_up_to_the_allowance():
+    logs = {MON: done(), MON + timedelta(days=3): done()}
+    h = limit([per_week(2)], logs, start=MON)
+    next_monday = MON + timedelta(days=7)
+    assert day_status(h, MON, today=next_monday) is DayStatus.SLIPPED
+    assert day_status(h, MON + timedelta(days=1), today=next_monday) is DayStatus.DONE
+    stats = summarize(h, MON, MON + timedelta(days=6), today=next_monday)
+    assert stats.done == 1
+    assert stats.failed == 0
+
+
+def test_limit_per_week_fails_as_soon_as_it_goes_over():
+    wednesday = MON + timedelta(days=2)
+    logs = {MON: done(), MON + timedelta(days=1): done(), wednesday: done()}
+    h = limit([per_week(2)], logs, start=MON)
+    assert day_status(h, MON + timedelta(days=1), today=wednesday) is DayStatus.SLIPPED
+    assert day_status(h, wednesday, today=wednesday) is DayStatus.FAILED
+    stats = summarize(h, MON, MON + timedelta(days=6), today=wednesday)
+    assert stats.failed == 1
+
+
+def test_limit_per_week_open_week_within_allowance_is_pending():
+    wednesday = MON + timedelta(days=2)
+    h = limit([per_week(1)], {MON: done()}, start=MON)
+    stats = summarize(h, MON, MON + timedelta(days=6), today=wednesday)
+    assert stats.percentage is None
+    entry = today_entry(h, wednesday)
+    assert entry.due
+    assert entry.status is DayStatus.PENDING
+    assert (entry.period_done, entry.period_target) == (1, 1)
+
+
+def test_limit_per_week_stays_due_after_the_allowance_is_used():
+    h = limit([per_week(1)], {MON: done()}, start=MON)
+    assert today_entry(h, MON + timedelta(days=1)).due
+
+
+def test_limit_skipped_day_does_not_count():
+    h = limit([daily()], {MON: SKIP}, start=MON)
+    assert day_status(h, MON, today=MON + timedelta(days=1)) is DayStatus.SKIPPED

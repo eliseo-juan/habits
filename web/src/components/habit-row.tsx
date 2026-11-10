@@ -48,7 +48,7 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: { habit: Habit; 
     const count = previous.done_count >= target ? 0 : previous.done_count + 1
     if (!(await writer.write(habit.id, day, { ...previous, done_count: count, skipped: false }))) return
     navigator.vibrate?.(10)
-    toast(count >= target ? `${emojiOf(habit)} ${habit.name} hecho` : count ? `${count}/${target}` : "Desmarcado", {
+    toast(count >= target ? `${emojiOf(habit)} ${habit.name} ${habit.kind === "limit" ? "registrado" : "hecho"}` : count ? `${count}/${target}` : "Desmarcado", {
       action: { label: "Deshacer", onClick: () => writer.write(habit.id, day, previous) },
     })
   }
@@ -68,7 +68,7 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: { habit: Habit; 
             {habit.name}
           </span>
           <span className="mt-1 flex flex-wrap gap-1">
-            <Chip>{habit.schedule.type === "times_per_period" ? periodLabel(habit, entry) : scheduleLabel(habit.schedule)}</Chip>
+            <Chip>{habit.schedule.type === "times_per_period" ? periodLabel(habit, entry) : scheduleLabel(habit)}</Chip>
             {reminders.length > 0 && (
               <Chip>
                 <Bell className="size-3" />

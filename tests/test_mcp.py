@@ -50,7 +50,7 @@ def test_mcp_habit_flow(client, alice):
     today = call(client, alice, "today", scope="read")
     assert today["date"] == "2026-11-09"
     assert today["items"] == [
-        {"id": habit["id"], "name": "Stretch", "status": "pending", "done": "0/1"}
+        {"id": habit["id"], "name": "Stretch", "kind": "build", "status": "pending", "done": "0/1"}
     ]
 
     month = call(client, alice, "month_stats", scope="read", month="2026-11")["habits"][0]
@@ -96,3 +96,30 @@ def test_mcp_change_schedule_keeps_logs(client, alice):
     assert changed["schedule"]["type"] == "times_per_period"
     month = call(client, alice, "month_stats", month="2026-11")["habits"][0]
     assert month["days"][2] == "x"
+
+
+def test_mcp_limit_habit_counts_slips_against_the_allowance(client, alice):
+    habit = call(
+        client,
+        alice,
+        "create_habit",
+        name="Sugar",
+        kind="limit",
+        schedule_type="times_per_period",
+        period_unit="week",
+        period_target=1,
+        start_date="2026-11-02",
+    )
+    assert habit["kind"] == "limit"
+    call(client, alice, "mark_done", habit_id=habit["id"], day="2026-11-03")
+
+    month = call(client, alice, "month_stats", month="2026-11")["habits"][0]
+    assert month["days"][1:8] == "xoxxxxx"
+
+    call(client, alice, "mark_done", habit_id=habit["id"], day="2026-11-05")
+    month = call(client, alice, "month_stats", month="2026-11")["habits"][0]
+    assert month["days"][1:8] == "xox-xxx"
+    assert month["percentage"] == 0.0
+
+    today = call(client, alice, "today", scope="read")["items"][0]
+    assert (today["kind"], today["status"], today["period"]) == ("limit", "pending", "0/1")

@@ -68,6 +68,19 @@ def test_skips_habits_already_done_or_skipped(client, alice, reminder):
     assert run(at(7, 31, day=11), outbox) == 1
 
 
+def test_limit_habits_are_never_reminded(client, alice):
+    habit = client.post(
+        "/habits",
+        json={"name": "Sugar", "kind": "limit", "schedule": {"type": "daily"}},
+        headers=alice.auth(),
+    ).json()
+    client.post("/channels", json={"config": {"topic": "alice-habits"}}, headers=alice.auth())
+    client.post(
+        f"/habits/{habit['id']}/reminders", json={"time_local": "08:30"}, headers=alice.auth()
+    )
+    assert run(at(7, 31), Outbox()) == 0
+
+
 def test_respects_reminder_weekdays(client, alice, reminder):
     client.patch(
         f"/reminders/{reminder['reminder']['id']}", json={"weekdays": [1]}, headers=alice.auth()
