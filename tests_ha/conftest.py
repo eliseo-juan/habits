@@ -24,7 +24,14 @@ def today_body(*items):
 
 
 def item(
-    habit_id, name, status="pending", done_count=0, times_per_day=1, kind="build", color=None, icon=None
+    habit_id,
+    name,
+    status="pending",
+    done_count=0,
+    times_per_day=1,
+    kind="build",
+    color=None,
+    icon=None,
 ):
     return {
         "habit_id": habit_id,
