@@ -9,3 +9,4 @@ data/
 coverage.xml
 .ruff_cache/
 node_modules/
+.venv-ha/

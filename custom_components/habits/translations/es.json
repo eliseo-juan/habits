@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Conecta con tu servidor de Habits usando un token de escritura.",
+        "data": {
+          "url": "URL del servidor",
+          "token": "Token de la API"
+        },
+        "data_description": {
+          "url": "Dirección base de la API de Habits, p. ej. https://habits.lab.eliseo.tech",
+          "token": "Créalo con: habits create-token <email> --name home-assistant --scope write"
+        }
+      },
+      "reauth_confirm": {
+        "description": "El token ha sido rechazado. Introduce uno nuevo.",
+        "data": {
+          "token": "Token de la API"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se puede conectar con el servidor.",
+      "invalid_auth": "El token ha sido rechazado."
+    },
+    "abort": {
+      "already_configured": "Esta cuenta ya está configurada.",
+      "reauth_successful": "Token actualizado.",
+      "wrong_account": "Ese token pertenece a otra cuenta."
+    }
+  },
+  "entity": {
+    "todo": {
+      "today": { "name": "Hoy" }
+    },
+    "sensor": {
+      "pending": { "name": "Pendientes hoy" },
+      "done": { "name": "Hechos hoy" },
+      "due": { "name": "Toca hoy" }
+    }
+  }
+}

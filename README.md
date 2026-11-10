@@ -89,6 +89,28 @@ Redirect URIs must be https or a loopback address, and `/authorize` only accepts
 
 Five wrong passwords for the same email block logins for that email for 15 minutes.
 
+## Home Assistant
+
+`custom_components/habits` is a Home Assistant integration that polls `GET /today` every two minutes and exposes:
+
+- `todo.<name>_today`: the habits due today. Checking one completes it (all of its remaining `times_per_day`); unchecking clears the day. Skipped habits show as completed.
+- `sensor.<name>_pending_today`, `_done_today`, `_due_today`.
+
+Install it from the Marketplace (HACS): ⋮ → Custom repositories → `eliseo-juan/habits`, type Integration, then download it and restart. Settings → Devices & services → Add integration → Habits, with the LAN URL (`https://habits.lab.eliseo.tech`) and a write token:
+
+```sh
+docker exec habits ./docker-entrypoint.sh create-token me@example.com --name home-assistant --scope write
+```
+
+Marks made from Home Assistant are recorded with source `home-assistant`. A rejected token opens a re-authentication prompt.
+
+Tests run against Home Assistant's own test harness in a separate environment:
+
+```sh
+python3.14 -m venv .venv-ha && .venv-ha/bin/pip install pytest-homeassistant-custom-component==0.13.375
+cd tests_ha && ../.venv-ha/bin/pytest -q
+```
+
 ## AWTRIX
 
 `GET /awtrix/today` with a read token returns a neutral summary (pending, done, total, pending habits, top streaks) for a script on the clock to render.
