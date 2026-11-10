@@ -23,6 +23,7 @@ async def test_creates_entry_named_after_the_account(hass, aioclient_mock):
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Eliseo"
     assert result["result"].unique_id == "7"
+    assert result["data"]["webhook_id"]
     assert aioclient_mock.mock_calls[0][3]["Authorization"] == f"Bearer {TOKEN}"
 
 
@@ -66,12 +67,13 @@ async def test_reauth_replaces_the_token(hass, aioclient_mock, entry):
     entry.add_to_hass(hass)
     aioclient_mock.get(f"{URL}/me", json=ME)
     aioclient_mock.get(f"{URL}/today", json={"date": "2026-11-10", "items": []})
+    aioclient_mock.post(f"{URL}/webhooks", json={})
     flow = await entry.start_reauth_flow(hass)
 
     result = await hass.config_entries.flow.async_configure(flow["flow_id"], {"token": "hab_new"})
 
     assert result["reason"] == "reauth_successful"
-    assert entry.data == {"url": URL, "token": "hab_new"}
+    assert entry.data["token"] == "hab_new"
 
 
 async def test_reauth_with_another_accounts_token_aborts(hass, aioclient_mock, entry):

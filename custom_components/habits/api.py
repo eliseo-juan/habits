@@ -65,6 +65,14 @@ class HabitsClient:
     async def clear_day(self, habit_id: int, day: date) -> None:
         await self._request("DELETE", f"/habits/{habit_id}/logs/{day.isoformat()}")
 
+    async def subscribe(self, url: str) -> None:
+        await self._request("POST", "/webhooks", json={"url": url})
+
+    async def unsubscribe(self, url: str) -> None:
+        for webhook in await self._request("GET", "/webhooks"):
+            if webhook["url"] == url:
+                await self._request("DELETE", f"/webhooks/{webhook['id']}")
+
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         try:
             async with self._session.request(

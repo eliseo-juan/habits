@@ -1,10 +1,14 @@
 import pytest
+from homeassistant.core_config import async_process_ha_core_config
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.habits.const import DOMAIN
 
 URL = "https://habits.test"
 TOKEN = "hab_secret"
+WEBHOOK_ID = "hook123"
+HA_URL = "http://ha.lan:8123"
+WEBHOOK_URL = f"{HA_URL}/api/webhook/{WEBHOOK_ID}"
 ME = {
     "id": 7,
     "email": "me@example.com",
@@ -42,5 +46,13 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 @pytest.fixture
 def entry():
     return MockConfigEntry(
-        domain=DOMAIN, title="Eliseo", unique_id="7", data={"url": URL, "token": TOKEN}
+        domain=DOMAIN,
+        title="Eliseo",
+        unique_id="7",
+        data={"url": URL, "token": TOKEN, "webhook_id": WEBHOOK_ID},
     )
+
+
+@pytest.fixture
+async def internal_url(hass):
+    await async_process_ha_core_config(hass, {"internal_url": HA_URL})

@@ -10,6 +10,7 @@ TODO = "todo.eliseo_today"
 
 async def setup(hass, entry, aioclient_mock, *items):
     aioclient_mock.get(f"{URL}/today", json=today_body(*items))
+    aioclient_mock.post(f"{URL}/webhooks", json={})
     entry.add_to_hass(hass)
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -67,7 +68,7 @@ async def test_checking_a_habit_completes_its_remaining_count(hass, aioclient_mo
         blocking=True,
     )
 
-    post = next(call for call in aioclient_mock.mock_calls if call[0] == "POST")
+    post = next(call for call in aioclient_mock.mock_calls if str(call[1]).endswith("/done"))
     assert post[2] == {"count": 2}
 
 

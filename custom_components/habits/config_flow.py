@@ -2,8 +2,9 @@ from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
+from homeassistant.components import webhook
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_TOKEN, CONF_URL
+from homeassistant.const import CONF_TOKEN, CONF_URL, CONF_WEBHOOK_ID
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import HabitsAuthError, HabitsClient, HabitsError
@@ -23,7 +24,10 @@ class HabitsConfigFlow(ConfigFlow, domain=DOMAIN):
             if me is not None:
                 await self.async_set_unique_id(str(me["id"]))
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=me["display_name"], data=user_input)
+                return self.async_create_entry(
+                    title=me["display_name"],
+                    data={**user_input, CONF_WEBHOOK_ID: webhook.async_generate_id()},
+                )
         return self.async_show_form(
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(USER_SCHEMA, user_input),
