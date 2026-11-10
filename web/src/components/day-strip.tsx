@@ -15,6 +15,7 @@ export function DayStrip({ selected, onSelect }: { selected: string; onSelect: (
   }, [selected])
 
   return (
+    <div className="flow-root">
     <div ref={ref} className="no-scrollbar -mx-4 -my-4 flex snap-x gap-2 overflow-x-auto px-4 py-4">
       {days.map((day) => {
         const statuses = habits.map((h) => statusOf(h.id, day)).filter((s) => s !== "not_due")
@@ -54,6 +55,7 @@ export function DayStrip({ selected, onSelect }: { selected: string; onSelect: (
           </button>
         )
       })}
+    </div>
     </div>
   )
 }
