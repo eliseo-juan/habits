@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
-from app.services.rules import DayStatus
+from app.services.rules import DayStatus, HabitKind
 
 Weekday = int
 Weekdays = list[Weekday] | None
@@ -55,6 +55,11 @@ class ScheduleOut(ScheduleIn):
 
 class HabitCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    kind: HabitKind = Field(
+        "build",
+        description="'build': success is doing it. 'limit': success is not doing it; "
+        "times_per_period then means at most period_target days per period",
+    )
     color: str | None = Field(None, max_length=16)
     icon: str | None = Field(None, max_length=64)
     priority: int = Field(0, ge=0, le=2)
@@ -63,6 +68,12 @@ class HabitCreate(BaseModel):
     stats_start_date: date | None = None
     sort_order: int = 0
     schedule: ScheduleIn
+
+    @model_validator(mode="after")
+    def _limit_counts_days(self) -> Self:
+        if self.kind == "limit" and self.schedule.times_per_day != 1:
+            raise ValueError("limit habits count days, so times_per_day must be 1")
+        return self
 
 
 class HabitUpdate(BaseModel):
@@ -80,6 +91,7 @@ class HabitUpdate(BaseModel):
 class HabitOut(BaseModel):
     id: int
     name: str
+    kind: HabitKind
     color: str | None
     icon: str | None
     priority: int
@@ -225,6 +237,7 @@ class MeUpdate(BaseModel):
 class TodayItem(BaseModel):
     habit_id: int
     name: str
+    kind: HabitKind
     color: str | None
     icon: str | None
     priority: int

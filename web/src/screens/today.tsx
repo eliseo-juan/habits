@@ -21,16 +21,18 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
     const habit = habits.find((h) => h.id === entry.habit_id)
     return habit ? [{ habit, entry }] : []
   })
+  const toDo = due.filter((r) => r.habit.kind === "build")
+  const avoid = due.filter((r) => r.habit.kind === "limit")
   const metThisPeriod: Row[] = habits
-    .filter((h) => h.schedule.type === "times_per_period" && day >= h.start_date && items && !items.some((i) => i.habit_id === h.id))
+    .filter((h) => h.kind === "build" && h.schedule.type === "times_per_period" && day >= h.start_date && items && !items.some((i) => i.habit_id === h.id))
     .map((habit) => {
       const status = statusOf(habit.id, day)
       const target = habit.schedule.times_per_day
       return { habit, entry: { habit_id: habit.id, status, done_count: status === "done" ? target : 0, times_per_day: target, period_done: null, period_target: null } }
     })
   const open = [...due, ...metThisPeriod].find((r) => r.habit.id === openId)
-  const done = due.filter((r) => r.entry.status === "done").length
-  const percentage = due.length ? Math.round((100 * done) / due.length) : 0
+  const done = toDo.filter((r) => r.entry.status === "done").length
+  const percentage = toDo.length ? Math.round((100 * done) / toDo.length) : 0
   const date = parse(day)
 
   return (
@@ -57,11 +59,11 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
             <p className="text-sm text-muted-foreground">{day > today ? "Día futuro, solo consulta" : "Progreso del día"}</p>
             <p className="text-2xl font-semibold tabular-nums">
               {done}
-              <span className="text-muted-foreground"> / {due.length}</span>
+              <span className="text-muted-foreground"> / {toDo.length}</span>
             </p>
           </div>
           <AnimatePresence>
-            {due.length > 0 && done === due.length && (
+            {toDo.length > 0 && done === toDo.length && (
               <motion.span initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }} className="text-primary">
                 <Sparkles className="size-8" />
               </motion.span>
@@ -74,11 +76,20 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
       </div>
 
       <div className="space-y-2">
-        {items && due.length === 0 && <p className="py-10 text-center text-muted-foreground">Nada que hacer este día ✨</p>}
-        {due.map(({ habit, entry }) => (
+        {items && toDo.length === 0 && <p className="py-10 text-center text-muted-foreground">Nada que hacer este día ✨</p>}
+        {toDo.map(({ habit, entry }) => (
           <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => setOpenId(habit.id)} />
         ))}
       </div>
+
+      {avoid.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="px-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">A evitar</h2>
+          {avoid.map(({ habit, entry }) => (
+            <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => setOpenId(habit.id)} />
+          ))}
+        </section>
+      )}
 
       {metThisPeriod.length > 0 && (
         <section className="space-y-2">

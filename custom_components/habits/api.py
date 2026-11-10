@@ -20,10 +20,15 @@ class TodayItem:
     status: str
     done_count: int
     times_per_day: int
+    kind: str = "build"
 
     @property
     def settled(self) -> bool:
         return self.status in ("done", "skipped")
+
+    @property
+    def to_do(self) -> bool:
+        return self.kind == "build"
 
 
 @dataclass(frozen=True)
@@ -52,6 +57,7 @@ class HabitsClient:
                     status=item["status"],
                     done_count=item["done_count"],
                     times_per_day=item["times_per_day"],
+                    kind=item.get("kind", "build"),
                 )
                 for item in body["items"]
             ],

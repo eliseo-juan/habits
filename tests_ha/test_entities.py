@@ -32,6 +32,7 @@ async def test_sensors_count_todays_habits(hass, aioclient_mock, entry):
         item(2, "Leer", status="done", done_count=1),
         item(3, "Correr", status="skipped"),
         item(4, "Agua", done_count=1, times_per_day=3),
+        item(5, "Azúcar", kind="limit"),
     )
 
     assert hass.states.get("sensor.eliseo_pending_today").state == "2"
@@ -48,6 +49,7 @@ async def test_todo_lists_habits_with_progress(hass, aioclient_mock, entry):
         item(1, "Meditar"),
         item(3, "Correr", status="skipped"),
         item(4, "Agua", done_count=1, times_per_day=3),
+        item(5, "Azúcar", kind="limit"),
     )
 
     assert await todo_items(hass) == [

@@ -59,6 +59,7 @@ def create_habit(db: Session, user: User, data: HabitCreate, now: datetime) -> H
     habit = Habit(
         user_id=user.id,
         name=data.name,
+        kind=data.kind,
         color=data.color,
         icon=data.icon,
         priority=data.priority,
@@ -100,6 +101,8 @@ def archive_habit(db: Session, user: User, habit_id: int) -> None:
 def set_schedule(db: Session, user: User, habit_id: int, data: ScheduleCreate) -> Habit:
     """Adds a schedule version; a version on the same effective_from is replaced. Logs are never touched."""
     habit = get_habit(db, user, habit_id)
+    if habit.kind == "limit" and data.times_per_day != 1:
+        raise Invalid("limit habits count days, so times_per_day must be 1")
     for existing in list(habit.schedules):
         if existing.effective_from == data.effective_from:
             habit.schedules.remove(existing)
@@ -128,6 +131,7 @@ def habit_out(habit: Habit, today: date) -> HabitOut:
     return HabitOut(
         id=habit.id,
         name=habit.name,
+        kind=habit.kind,
         color=habit.color,
         icon=habit.icon,
         priority=habit.priority,
@@ -161,6 +165,7 @@ def timeline(habit: Habit, logs: Iterable[Log]) -> rules.HabitTimeline:
         logs={
             log.date: rules.DayLog(done_count=log.done_count, skipped=log.skipped) for log in logs
         },
+        kind=habit.kind,  # type: ignore[arg-type]
     )
 
 

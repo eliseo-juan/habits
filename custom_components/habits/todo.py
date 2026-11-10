@@ -40,11 +40,12 @@ class HabitsTodayList(HabitsEntity, TodoListEntity):
                 description=_progress(item),
             )
             for item in self.coordinator.data.items
+            if item.to_do
         ]
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
         today = self.coordinator.data
-        current = next((i for i in today.items if str(i.habit_id) == item.uid), None)
+        current = next((i for i in today.items if i.to_do and str(i.habit_id) == item.uid), None)
         if current is None:
             raise HomeAssistantError(f"Habit {item.uid} is not due today")
         completing = item.status == TodoItemStatus.COMPLETED

@@ -62,6 +62,7 @@ Tokens are shown once and stored hashed. The token name is recorded as the `sour
 - Schedules are versioned by `effective_from`, so changing frequency never rewrites the past.
 - Failures are computed, never stored. Skipped days count neither for nor against. Today is `pending` until it ends.
 - `times_per_period` counts days completed in the week or month; a period is credited to the stats range holding its last day.
+- A habit's `kind` is `build` (success is doing it) or `limit` (success is not doing it), fixed at creation. On a limit habit a logged day is a slip: `daily` means never, `weekdays` never on those days, and `times_per_period` at most `period_target` slip days per week or month. A period fails as soon as it goes over; slips within the allowance show as `slipped`. Limit habits are never reminded and never count as to-do in Awtrix or Home Assistant.
 - Another user's resources answer 404.
 
 ## MCP
