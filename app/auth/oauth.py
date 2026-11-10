@@ -198,7 +198,10 @@ def login_submit(http: Request, request: str = Form(), email: str = Form(), pass
 
 
 def _expired() -> HTMLResponse:
-    body = "<h1>Enlace caducado</h1><p>Vuelve a conectar desde Claude.</p>"
+    body = (
+        "<h1>Enlace usado o caducado</h1>"
+        "<p>Si Claude ya aparece conectado, no tienes que hacer nada. Si no, vuelve a conectar desde Claude.</p>"
+    )
     return HTMLResponse(_layout(body), status_code=400)
 
 
@@ -209,7 +212,7 @@ def _page(
       <h1>Hábitos</h1>
       <p><b>{escape(client_name)}</b> quiere leer y marcar tus hábitos.</p>
       {f'<p class="error">{escape(error)}</p>' if error else ""}
-      <form method="post" action="/oauth/login">
+      <form method="post" action="/oauth/login" onsubmit="this.querySelector('button').disabled = true">
         <input type="hidden" name="request" value="{escape(request_id)}">
         <input name="email" type="email" placeholder="Email" value="{escape(email)}" autocomplete="username" required autofocus>
         <input name="password" type="password" placeholder="Contraseña" autocomplete="current-password" required>
