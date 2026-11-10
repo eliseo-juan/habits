@@ -8,6 +8,7 @@ from app.errors import Invalid, NotFound
 from app.models import Habit, HabitSchedule, Log, User
 from app.schemas import HabitCreate, HabitOut, HabitUpdate, ScheduleCreate, ScheduleIn, ScheduleOut
 from app.services import rules
+from app.services.webhooks import notify_changed
 
 
 def weekdays_to_mask(days: list[int] | None) -> int | None:
@@ -71,6 +72,7 @@ def create_habit(db: Session, user: User, data: HabitCreate, now: datetime) -> H
     habit.schedules.append(_schedule_row(data.schedule, start))
     db.add(habit)
     db.commit()
+    notify_changed(db, user.id)
     return habit
 
 
@@ -84,6 +86,7 @@ def update_habit(db: Session, user: User, habit_id: int, data: HabitUpdate) -> H
         setattr(habit, field, value)
     _check_dates(habit.start_date, habit.end_date)
     db.commit()
+    notify_changed(db, user.id)
     return habit
 
 
@@ -91,6 +94,7 @@ def archive_habit(db: Session, user: User, habit_id: int) -> None:
     habit = get_habit(db, user, habit_id)
     habit.archived = True
     db.commit()
+    notify_changed(db, user.id)
 
 
 def set_schedule(db: Session, user: User, habit_id: int, data: ScheduleCreate) -> Habit:
@@ -102,6 +106,7 @@ def set_schedule(db: Session, user: User, habit_id: int, data: ScheduleCreate) -
     db.flush()
     habit.schedules.append(_schedule_row(data, data.effective_from))
     db.commit()
+    notify_changed(db, user.id)
     db.refresh(habit)
     return habit
 

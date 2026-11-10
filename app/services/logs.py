@@ -7,6 +7,7 @@ from app.errors import Invalid, NotFound
 from app.models import Log
 from app.schemas import LogPut
 from app.services.habits import get_habit, user_today
+from app.services.webhooks import notify_changed
 
 
 def _reject_future_done(principal: Principal, day: date, done_count: int, now: datetime) -> None:
@@ -27,6 +28,7 @@ def set_log(
     log.updated_at = now
     db.add(log)
     db.commit()
+    notify_changed(db, principal.user.id)
     return log
 
 
@@ -42,6 +44,7 @@ def add_done(
     log.updated_at = now
     db.add(log)
     db.commit()
+    notify_changed(db, principal.user.id)
     return log
 
 
@@ -60,3 +63,4 @@ def delete_log(db: Session, principal: Principal, habit_id: int, day: date) -> N
         raise NotFound(f"no log for habit {habit_id} on {day}")
     db.delete(log)
     db.commit()
+    notify_changed(db, principal.user.id)

@@ -17,8 +17,10 @@ from app.schemas import (
     TokenCreate,
     TokenCreated,
     TokenOut,
+    WebhookIn,
+    WebhookOut,
 )
-from app.services import reminders, users
+from app.services import reminders, users, webhooks
 
 router = APIRouter(tags=["account"])
 
@@ -125,3 +127,28 @@ def update_channel(channel_id: int, data: ChannelUpdate, principal: Writer, db: 
 @router.delete("/channels/{channel_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_channel(channel_id: int, principal: Writer, db: Db):
     reminders.delete_channel(db, principal.user, channel_id)
+
+
+@router.get("/webhooks", response_model=list[WebhookOut], tags=["webhooks"])
+def list_webhooks(principal: Reader, db: Db):
+    return webhooks.list_webhooks(db, principal.user)
+
+
+@router.post(
+    "/webhooks",
+    response_model=WebhookOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["webhooks"],
+    summary="Subscribe a URL to an empty POST whenever habits or logs change",
+    responses={200: {"description": "The URL was already subscribed"}},
+)
+def subscribe_webhook(data: WebhookIn, response: Response, principal: Writer, db: Db, now: Now):
+    webhook, created = webhooks.subscribe(db, principal.user, str(data.url), now)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return webhook
+
+
+@router.delete("/webhooks/{webhook_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["webhooks"])
+def unsubscribe_webhook(webhook_id: int, principal: Writer, db: Db):
+    webhooks.unsubscribe(db, principal.user, webhook_id)

@@ -164,6 +164,16 @@ class ChannelOut(BaseModel):
     enabled: bool
 
 
+class WebhookIn(BaseModel):
+    url: HttpUrl
+
+
+class WebhookOut(BaseModel):
+    id: int
+    url: str
+    created_at: datetime
+
+
 class LoginIn(BaseModel):
     email: str
     password: str

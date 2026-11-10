@@ -108,6 +108,16 @@ class NotificationChannel(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class Webhook(Base):
+    __tablename__ = "webhooks"
+    __table_args__ = (UniqueConstraint("user_id", "url"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    url: Mapped[str] = mapped_column(String(2048))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
 class ApiToken(Base):
     __tablename__ = "api_tokens"
 
