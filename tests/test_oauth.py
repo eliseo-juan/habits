@@ -161,6 +161,26 @@ def test_login_request_expires(client, clock, alice, capsys):
     assert client.get("/oauth/login", params={"request": "unknown"}).status_code == 400
 
 
+def test_reused_login_link_tells_the_user_they_may_already_be_connected(client, alice, capsys):
+    registered = register(capsys)
+    _, challenge = pkce()
+    request_id = authorize(client, registered["client_id"], challenge)
+    code_from(login(client, request_id, alice.email, "secret-password"))
+
+    again = login(client, request_id, alice.email, "secret-password")
+    assert again.status_code == 400
+    assert "Si Claude ya aparece conectado" in again.text
+
+
+def test_login_form_can_only_be_submitted_once(client, capsys):
+    registered = register(capsys)
+    _, challenge = pkce()
+    request_id = authorize(client, registered["client_id"], challenge)
+
+    page = client.get("/oauth/login", params={"request": request_id})
+    assert "this.querySelector('button').disabled = true" in page.text
+
+
 def test_repeated_failed_logins_are_throttled(client, alice, capsys):
     registered = register(capsys)
     _, challenge = pkce()
