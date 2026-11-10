@@ -132,7 +132,9 @@ def awtrix_summary(db: Session, user: User, now: datetime, top: int = 3) -> Awtr
         line = by_id[habit.id]
         entry = rules.today_entry(line, today)
         if entry.due and entry.status is rules.DayStatus.PENDING:
-            pending.append(AwtrixHabit(id=habit.id, name=habit.name, icon=habit.icon, color=habit.color))
+            pending.append(
+                AwtrixHabit(id=habit.id, name=habit.name, icon=habit.icon, color=habit.color)
+            )
         elif entry.due and entry.status is rules.DayStatus.DONE:
             done += 1
         streak = rules.summarize(line, today, today, today).current_streak

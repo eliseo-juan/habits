@@ -31,7 +31,7 @@ def verify_password(password_hash: str | None, password: str) -> bool:
         return False
     try:
         return _hasher.verify(password_hash, password)
-    except (VerifyMismatchError, InvalidHashError):
+    except VerifyMismatchError, InvalidHashError:
         return False
 
 
@@ -39,9 +39,13 @@ def hash_secret(secret: str) -> str:
     return hashlib.sha256(secret.encode()).hexdigest()
 
 
-def create_api_token(db: Session, user: User, name: str, scope: str, now: datetime) -> tuple[ApiToken, str]:
+def create_api_token(
+    db: Session, user: User, name: str, scope: str, now: datetime
+) -> tuple[ApiToken, str]:
     plaintext = "hab_" + secrets.token_urlsafe(32)
-    token = ApiToken(user_id=user.id, name=name, token_hash=hash_secret(plaintext), scopes=scope, created_at=now)
+    token = ApiToken(
+        user_id=user.id, name=name, token_hash=hash_secret(plaintext), scopes=scope, created_at=now
+    )
     db.add(token)
     db.flush()
     return token, plaintext

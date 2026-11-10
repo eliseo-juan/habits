@@ -153,7 +153,9 @@ def timeline(habit: Habit, logs: Iterable[Log]) -> rules.HabitTimeline:
         end_date=habit.end_date,
         stats_start_date=habit.stats_start_date,
         schedules=tuple(_rule_schedule(s) for s in habit.schedules),
-        logs={log.date: rules.DayLog(done_count=log.done_count, skipped=log.skipped) for log in logs},
+        logs={
+            log.date: rules.DayLog(done_count=log.done_count, skipped=log.skipped) for log in logs
+        },
     )
 
 

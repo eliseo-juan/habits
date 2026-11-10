@@ -29,7 +29,9 @@ def _create_user(args: argparse.Namespace) -> None:
 
 
 def _read_password(args: argparse.Namespace) -> str:
-    return sys.stdin.readline().rstrip("\n") if args.password_stdin else getpass.getpass("Password: ")
+    return (
+        sys.stdin.readline().rstrip("\n") if args.password_stdin else getpass.getpass("Password: ")
+    )
 
 
 def _set_password(args: argparse.Namespace) -> None:
@@ -75,12 +77,18 @@ def main(argv: list[str] | None = None) -> int:
 
     password = commands.add_parser("set-password", help="set or replace an account's password")
     password.add_argument("email")
-    password.add_argument("--password-stdin", action="store_true", help="read the password from stdin")
+    password.add_argument(
+        "--password-stdin", action="store_true", help="read the password from stdin"
+    )
     password.set_defaults(run=_set_password)
 
-    token = commands.add_parser("create-token", help="create a personal API token and print it once")
+    token = commands.add_parser(
+        "create-token", help="create a personal API token and print it once"
+    )
     token.add_argument("email")
-    token.add_argument("--name", required=True, help="also used as the source of the marks it makes, e.g. awtrix")
+    token.add_argument(
+        "--name", required=True, help="also used as the source of the marks it makes, e.g. awtrix"
+    )
     token.add_argument("--scope", choices=["read", "write"], required=True)
     token.set_defaults(run=_create_token)
 

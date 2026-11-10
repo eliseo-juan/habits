@@ -1,0 +1,40 @@
+name: Frontend CI
+
+# Runs only when the frontend (expected in web/) changes. Assumes npm scripts:
+# lint, typecheck, test, build. Adjust FRONTEND_DIR / Node version when it lands.
+on:
+  push:
+    branches: [main]
+    paths: ["web/**"]
+  pull_request:
+    paths: ["web/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck --if-present
+      - run: npm test --if-present
+      - run: npm run build
+      - run: npm audit --audit-level=high --omit=dev

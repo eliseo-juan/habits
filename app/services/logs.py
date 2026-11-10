@@ -14,7 +14,9 @@ def _reject_future_done(principal: Principal, day: date, done_count: int, now: d
         raise Invalid("cannot mark a future day as done")
 
 
-def set_log(db: Session, principal: Principal, habit_id: int, day: date, data: LogPut, now: datetime) -> Log:
+def set_log(
+    db: Session, principal: Principal, habit_id: int, day: date, data: LogPut, now: datetime
+) -> Log:
     get_habit(db, principal.user, habit_id)
     _reject_future_done(principal, day, data.done_count, now)
     log = db.get(Log, (habit_id, day)) or Log(habit_id=habit_id, date=day)
@@ -28,7 +30,9 @@ def set_log(db: Session, principal: Principal, habit_id: int, day: date, data: L
     return log
 
 
-def add_done(db: Session, principal: Principal, habit_id: int, day: date, count: int, now: datetime) -> Log:
+def add_done(
+    db: Session, principal: Principal, habit_id: int, day: date, count: int, now: datetime
+) -> Log:
     get_habit(db, principal.user, habit_id)
     _reject_future_done(principal, day, count, now)
     log = db.get(Log, (habit_id, day)) or Log(habit_id=habit_id, date=day, done_count=0)

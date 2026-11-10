@@ -31,10 +31,18 @@ def run(now: datetime, outbox: Outbox) -> int:
 @pytest.fixture
 def reminder(client, alice):
     habit = client.post(
-        "/habits", json={"name": "Meditate", "start_date": "2026-11-01", "schedule": {"type": "daily"}}, headers=alice.auth()
+        "/habits",
+        json={"name": "Meditate", "start_date": "2026-11-01", "schedule": {"type": "daily"}},
+        headers=alice.auth(),
     ).json()
-    client.post("/channels", json={"config": {"topic": "alice-habits", "access_token": "tk"}}, headers=alice.auth())
-    created = client.post(f"/habits/{habit['id']}/reminders", json={"time_local": "08:30"}, headers=alice.auth()).json()
+    client.post(
+        "/channels",
+        json={"config": {"topic": "alice-habits", "access_token": "tk"}},
+        headers=alice.auth(),
+    )
+    created = client.post(
+        f"/habits/{habit['id']}/reminders", json={"time_local": "08:30"}, headers=alice.auth()
+    ).json()
     return {"habit": habit, "reminder": created}
 
 
@@ -61,7 +69,9 @@ def test_skips_habits_already_done_or_skipped(client, alice, reminder):
 
 
 def test_respects_reminder_weekdays(client, alice, reminder):
-    client.patch(f"/reminders/{reminder['reminder']['id']}", json={"weekdays": [1]}, headers=alice.auth())
+    client.patch(
+        f"/reminders/{reminder['reminder']['id']}", json={"weekdays": [1]}, headers=alice.auth()
+    )
     outbox = Outbox()
     assert run(at(7, 30), outbox) == 0
     assert run(at(7, 30, day=10), outbox) == 1

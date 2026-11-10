@@ -9,12 +9,12 @@ os.environ.setdefault("HABITS_SECRET_KEY", "test-secret")
 os.environ["HABITS_SCHEDULER_ENABLED"] = "false"
 os.environ["HABITS_COOKIE_SECURE"] = "false"
 
-from app import clock as clock_module  # noqa: E402
-from app.auth import deps  # noqa: E402
-from app.auth.security import create_api_token  # noqa: E402
-from app.config import get_settings  # noqa: E402
-from app.db import Base, get_sessionmaker  # noqa: E402
-from app.services.users import create_user  # noqa: E402
+from app import clock as clock_module
+from app.auth import deps
+from app.auth.security import create_api_token
+from app.config import get_settings
+from app.db import Base, get_sessionmaker
+from app.services.users import create_user
 
 NOW = datetime(2026, 11, 9, 10, 0, tzinfo=UTC)
 

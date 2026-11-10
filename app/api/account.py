@@ -36,14 +36,22 @@ def _me(user: User) -> MeOut:
 
 def _token_out(token: ApiToken) -> TokenOut:
     return TokenOut(
-        id=token.id, name=token.name, scope=token.scopes, created_at=token.created_at, last_used=token.last_used
+        id=token.id,
+        name=token.name,
+        scope=token.scopes,
+        created_at=token.created_at,
+        last_used=token.last_used,
     )
 
 
 @router.post("/auth/login", response_model=MeOut)
 def login(data: LoginIn, response: Response, db: Db, now: Now):
     user = users.find_user(db, data.email)
-    if user is None or user.disabled or not security.verify_password(user.password_hash, data.password):
+    if (
+        user is None
+        or user.disabled
+        or not security.verify_password(user.password_hash, data.password)
+    ):
         raise Unauthorized("wrong email or password")
     session_token = security.create_session(db, user, now)
     db.commit()
@@ -84,7 +92,9 @@ def _get_token(db: Session, user: User, token_id: int) -> ApiToken:
 
 @router.get("/tokens", response_model=list[TokenOut])
 def list_tokens(principal: SessionWriter, db: Db):
-    rows = db.scalars(select(ApiToken).where(ApiToken.user_id == principal.user.id).order_by(ApiToken.id))
+    rows = db.scalars(
+        select(ApiToken).where(ApiToken.user_id == principal.user.id).order_by(ApiToken.id)
+    )
     return [_token_out(t) for t in rows]
 
 

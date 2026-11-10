@@ -121,7 +121,9 @@ def _period_days(habit: HabitTimeline, schedule: Schedule, day: date) -> tuple[d
     assert schedule.period_unit is not None
     start, end = period_bounds(schedule.period_unit, day)
     start = max(start, schedule.effective_from, habit.start_date)
-    later = [s.effective_from for s in habit.schedules if s.effective_from > schedule.effective_from]
+    later = [
+        s.effective_from for s in habit.schedules if s.effective_from > schedule.effective_from
+    ]
     if later:
         end = min(end, min(later) - timedelta(days=1))
     if habit.end_date is not None:
@@ -136,7 +138,9 @@ def _days(first: date, last: date):
         day += timedelta(days=1)
 
 
-def _period_done(habit: HabitTimeline, schedule: Schedule, day: date, exclude: date | None = None) -> int:
+def _period_done(
+    habit: HabitTimeline, schedule: Schedule, day: date, exclude: date | None = None
+) -> int:
     start, end = _period_days(habit, schedule, day)
     return sum(1 for d in _days(start, end) if d != exclude and _is_done(habit, d, schedule))
 
@@ -205,7 +209,9 @@ def _units(habit: HabitTimeline, last: date, today: date) -> list[Unit]:
         if period in seen_periods:
             continue
         seen_periods.add(period)
-        counted = sum(1 for d in _days(max(period[0], first), period[1]) if _is_done(habit, d, schedule))
+        counted = sum(
+            1 for d in _days(max(period[0], first), period[1]) if _is_done(habit, d, schedule)
+        )
         if counted >= schedule.period_target:
             outcome = DayStatus.DONE
         elif period[1] < today:

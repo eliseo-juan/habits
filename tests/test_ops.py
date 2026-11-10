@@ -45,13 +45,19 @@ def test_backup_ignores_other_databases(tmp_path):
 def test_cli_creates_user_and_token(db, monkeypatch, capsys, client):
     monkeypatch.setattr("sys.stdin", io.StringIO("a-password\n"))
     assert cli.main(["create-user", "Carol@Example.com", "--password-stdin"]) == 0
-    assert cli.main(["create-token", "carol@example.com", "--name", "awtrix", "--scope", "read"]) == 0
+    assert (
+        cli.main(["create-token", "carol@example.com", "--name", "awtrix", "--scope", "read"]) == 0
+    )
     token = capsys.readouterr().out.strip().splitlines()[-1]
-    assert client.get("/awtrix/today", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    assert (
+        client.get("/awtrix/today", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+    )
     assert cli.main(["create-token", "nobody@example.com", "--name", "x", "--scope", "read"]) == 1
     monkeypatch.setattr("sys.stdin", io.StringIO("again\n"))
     assert cli.main(["create-user", "carol@example.com", "--password-stdin"]) == 1
-    response = client.post("/auth/login", json={"email": "carol@example.com", "password": "a-password"})
+    response = client.post(
+        "/auth/login", json={"email": "carol@example.com", "password": "a-password"}
+    )
     assert response.status_code == 200
 
 
@@ -64,7 +70,9 @@ def test_cli_sets_the_password_of_an_existing_account(db, monkeypatch, client):
     assert cli.main(["set-password", "nobody@example.com", "--password-stdin"]) == 1
     monkeypatch.setattr("sys.stdin", io.StringIO("new-password\n"))
     assert cli.main(["set-password", "Dave@Example.com", "--password-stdin"]) == 0
-    response = client.post("/auth/login", json={"email": "dave@example.com", "password": "new-password"})
+    response = client.post(
+        "/auth/login", json={"email": "dave@example.com", "password": "new-password"}
+    )
     assert response.status_code == 200
 
 

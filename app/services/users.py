@@ -10,7 +10,13 @@ from app.schemas import MeUpdate
 
 
 def create_user(
-    db: Session, email: str, display_name: str, password: str | None, timezone: str, role: str, now: datetime
+    db: Session,
+    email: str,
+    display_name: str,
+    password: str | None,
+    timezone: str,
+    role: str,
+    now: datetime,
 ) -> User:
     email = email.strip().lower()
     if db.scalar(select(User).where(User.email == email)):

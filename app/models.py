@@ -1,6 +1,16 @@
 from datetime import date, datetime, time
 
-from sqlalchemy import JSON, Boolean, Date, ForeignKey, Integer, String, Text, Time, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    Time,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base, UTCDateTime
@@ -36,7 +46,7 @@ class Habit(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
 
-    schedules: Mapped[list["HabitSchedule"]] = relationship(
+    schedules: Mapped[list[HabitSchedule]] = relationship(
         order_by="HabitSchedule.effective_from", cascade="all, delete-orphan", lazy="selectin"
     )
 
@@ -80,7 +90,9 @@ class Reminder(Base):
 class NotificationLog(Base):
     __tablename__ = "notification_log"
 
-    reminder_id: Mapped[int] = mapped_column(ForeignKey("reminders.id", ondelete="CASCADE"), primary_key=True)
+    reminder_id: Mapped[int] = mapped_column(
+        ForeignKey("reminders.id", ondelete="CASCADE"), primary_key=True
+    )
     date: Mapped[date] = mapped_column(Date, primary_key=True)
     sent_at: Mapped[datetime] = mapped_column(UTCDateTime)
     action_used_at: Mapped[datetime | None] = mapped_column(UTCDateTime)

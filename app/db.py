@@ -1,7 +1,6 @@
 from collections.abc import Iterator
-from functools import cache
-
 from datetime import UTC, datetime
+from functools import cache
 
 from sqlalchemy import DateTime, Engine, TypeDecorator, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
