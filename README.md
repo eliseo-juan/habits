@@ -68,12 +68,12 @@ Tokens are shown once and stored hashed. The token name is recorded as the `sour
 
 Streamable HTTP at `<HABITS_PUBLIC_URL>/mcp`, stateless, JSON responses (no SSE, so nothing to tune for proxy buffering). A read token can only use the read tools.
 
-**claude.ai, Claude Desktop and the mobile apps.** Settings → Connectors → Add custom connector, URL `https://habits.eliseo.tech/mcp`, no client ID or secret. Claude registers itself (OAuth dynamic client registration), opens the app's login page, and gets an ordinary API token named after the client, listed and revocable under `/tokens`. Connectors added on claude.ai show up in the mobile apps too. The server must be reachable from the internet, see [Public access](#public-access-cloudflare-tunnel).
+**claude.ai, Claude Desktop and the mobile apps.** Settings → Connectors → Add custom connector, URL `https://mcp.habits.lab.eliseo.tech/mcp`, no client ID or secret. Claude registers itself (OAuth dynamic client registration), opens the app's login page, and gets an ordinary API token named after the client, listed and revocable under `/tokens`. Connectors added on claude.ai show up in the mobile apps too. The server must be reachable from the internet, see [Public access](#public-access-caddy).
 
 **Claude Code**, with the same OAuth flow, or with a token on the LAN:
 
 ```sh
-claude mcp add --transport http --scope user habits https://habits.eliseo.tech/mcp
+claude mcp add --transport http --scope user habits https://mcp.habits.lab.eliseo.tech/mcp
 claude mcp add --transport http habits https://habits.lab.eliseo.tech/mcp --header "Authorization: Bearer hab_..."
 ```
 
@@ -103,7 +103,7 @@ services:
     user: "568:568"
     environment:
       HABITS_SECRET_KEY: "<long random value>"
-      HABITS_PUBLIC_URL: https://habits.lab.eliseo.tech
+      HABITS_PUBLIC_URL: https://mcp.habits.lab.eliseo.tech
     volumes:
       - /mnt/<pool>/apps/habits:/data
 ```
@@ -112,16 +112,27 @@ services:
 
 Nginx Proxy Manager: proxy host `habits.lab.eliseo.tech` → `http://<truenas-ip>:8000`, with SSL forced and HTTP/2 on. No custom locations needed.
 
-### Public access (Cloudflare Tunnel)
+### Public access (Caddy)
 
-claude.ai connects from Anthropic's servers, so the LAN-only `habits.lab.eliseo.tech` is not enough. A tunnel publishes the app without opening ports:
+claude.ai connects from Anthropic's servers, so the LAN-only `habits.lab.eliseo.tech` is not enough. A second hostname, `mcp.habits.lab.eliseo.tech`, goes through the Caddy reverse proxy in the DMZ and only lets the MCP, OAuth and reminder-action paths through; the web app and the REST API stay on the LAN.
 
-1. Cloudflare Zero Trust → Networks → Tunnels → Create a tunnel (Cloudflared) and copy its token.
-2. TrueNAS → Apps → install `cloudflared` (or a Custom App with `cloudflare/cloudflared:latest`, command `tunnel run`, env `TUNNEL_TOKEN`).
-3. In the tunnel, add a public hostname `habits.eliseo.tech` → `http://<truenas-ip>:8000`.
-4. Set `HABITS_PUBLIC_URL: https://habits.eliseo.tech` in the app and redeploy.
+1. Cloudflare DNS: an A record `mcp.habits.lab.eliseo.tech` → the public IP, DNS only (no proxy), kept current by DDNS.
+2. Caddy:
 
-Everything behind that hostname is public, so the account needs a strong password. Cloudflare Access can't sit in front of `/mcp`: claude.ai can't pass its login.
+   ```caddyfile
+   mcp.habits.lab.eliseo.tech {
+       @allowed path /mcp /authorize /token /register /oauth/* /.well-known/oauth-* /notifications/actions/*
+       handle @allowed {
+           reverse_proxy <truenas-ip>:8000
+       }
+       respond 404
+   }
+   ```
+
+3. Firewall: allow the Caddy host in the DMZ to reach `<truenas-ip>:8000`.
+4. Set `HABITS_PUBLIC_URL: https://mcp.habits.lab.eliseo.tech` in the app and redeploy. It is the OAuth issuer and the base of the reminders' "Hecho" links; the web app on `habits.lab.eliseo.tech` doesn't depend on it.
+
+The login page is public, so the account needs a strong password. Cloudflare Access can't sit in front of `/mcp`: claude.ai can't pass its login.
 
 ### Updates
 
