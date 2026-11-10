@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matriz 52x16 Hábitos</title>
+<style>
+  :root{
+    --bg:#0b0c0f; --panel:#14161b; --line:#262a33; --text:#e8eaf0; --muted:#8b92a3; --accent:#ffb020;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:rgba(11,12,15,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px}
+  h1{font-size:18px;margin:0 0 8px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center}
+  .controls label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+  .controls output{display:inline-block;min-width:2ch;color:var(--text);font-variant-numeric:tabular-nums;font-weight:600}
+  input[type=range]{accent-color:var(--accent);width:130px}
+  .presets button, details summary, #applyJson, #resetJson{
+    background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer}
+  .presets button:hover{border-color:var(--accent)}
+  details{margin-top:8px;font-size:13px;color:var(--muted)}
+  details summary{display:inline-block}
+  textarea{width:100%;height:110px;margin-top:8px;background:#0d0f13;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px ui-monospace,Menlo,monospace}
+  main{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;padding:16px;max-width:1500px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .card canvas{width:100%;aspect-ratio:52/16;border-radius:8px;display:block;background:#050505}
+  .card h2{font-size:15px;margin:2px 0 0;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .card h2 small{font-weight:500;color:var(--accent);font-size:12px;white-space:nowrap}
+  .card p{margin:0;color:var(--muted);font-size:13px}
+  .card .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+  .tag.good{color:#7bdc65;border-color:#2c5a2a}.tag.bad{color:#ff8a80;border-color:#5a2c2a}
+  .star{color:var(--accent)}
+  footer{padding:8px 16px 40px;text-align:center;color:var(--muted);font-size:12px}
+  @media (max-width:420px){main{grid-template-columns:1fr;padding:12px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Hábitos pendientes en matriz 52×16</h1>
+  <div class="controls">
+    <label>Pendientes <input id="n" type="range" min="2" max="30" value="8"><output id="nO">8</output></label>
+    <label>Hechos hoy <input id="d" type="range" min="0" max="20" value="4"><output id="dO">4</output></label>
+    <label>Hora <input id="h" type="range" min="0" max="23" value="17"><output id="hO">17</output>h</label>
+    <label>Velocidad <input id="sp" type="range" min="0.4" max="2.5" step="0.1" value="1"><output id="spO">1.0</output>x</label>
+    <span class="presets">
+      <button data-n="2">2</button><button data-n="5">5</button><button data-n="9">9</button>
+      <button data-n="15">15</button><button data-n="22">22</button><button data-n="30">30</button>
+    </span>
+  </div>
+  <details>
+    <summary>Usar datos reales (JSON de /awtrix/today)</summary>
+    <textarea id="json" placeholder='{"pending":3,"done":2,"total":5,"pending_habits":[{"id":1,"name":"Leer","icon":null,"color":"#3a9bff"}, ...]}'></textarea>
+    <div style="margin-top:6px;display:flex;gap:8px;align-items:center"><button id="applyJson">Aplicar</button><button id="resetJson">Volver a ejemplo</button><span id="jsonMsg"></span></div>
+  </details>
+</header>
+<main id="grid"></main>
+<footer>Cada LED es un píxel real de la matriz. Los hábitos de tipo «limit» nunca aparecen (ya los excluye la API).</footer>
+
+<script>
+const W = 52, H = 16, P = 16;
+
+/* ---------- datos de ejemplo ---------- */
+const PALETTE = ['#ff5a5f','#ffa23a','#ffd23f','#7bdc65','#2ec4b6','#3a9bff','#8f6bff','#ff6bd6'];
+const NAMES = ['Meditar','Leer','Beber agua','Gimnasio','Dormir 23h','Vitaminas','Caminar','Estirar','Diario','Inglés',
+ 'Fruta','Sin azúcar','Sin móvil','Ducha fría','Planificar','Dientes','Cocinar','Llamar a mamá','Código','Guitarra',
+ 'Yoga','Omega 3','Plantas','Ordenar','Gratitud','Respirar','Podcast','Cardio','Crema','Hilo dental'];
+const SAMPLE = NAMES.map((name,i)=>({name, color:PALETTE[(i*3)%PALETTE.length], icon:i%8, streak:2+((i*7+3)%14)}));
+let HABITS = SAMPLE, USING_REAL = false;
+
+/* ---------- fuente 3x5 ---------- */
+const F = {A:[2,5,7,5,5],B:[6,5,6,5,6],C:[3,4,4,4,3],D:[6,5,5,5,6],E:[7,4,6,4,7],F:[7,4,6,4,4],G:[3,4,5,5,3],H:[5,5,7,5,5],
+I:[7,2,2,2,7],J:[1,1,1,5,2],K:[5,5,6,5,5],L:[4,4,4,4,7],M:[5,7,7,5,5],N:[6,5,5,5,5],O:[2,5,5,5,2],P:[6,5,6,4,4],Q:[2,5,5,7,3],
+R:[6,5,6,5,5],S:[3,4,2,1,6],T:[7,2,2,2,2],U:[5,5,5,5,7],V:[5,5,5,5,2],W:[5,5,7,7,5],X:[5,5,2,5,5],Y:[5,5,2,2,2],Z:[7,1,2,4,7],
+0:[7,5,5,5,7],1:[2,6,2,2,7],2:[6,1,2,4,7],3:[6,1,2,1,6],4:[5,5,7,1,1],5:[7,4,6,1,6],6:[3,4,7,5,7],7:[7,1,2,2,2],8:[7,5,7,5,7],9:[7,5,7,1,6],
+'/':[1,1,2,4,4],':':[0,2,0,2,0],'.':[0,0,0,0,2],'-':[0,0,7,0,0],'!':[2,2,2,0,2],'+':[0,2,7,2,0],' ':[0,0,0,0,0]};
+/* iconos 8x8 */
+const ICONS = [
+ [0x00,0x00,0x42,0xFF,0xFF,0x42,0x00,0x00], // pesa
+ [0x00,0x66,0xBD,0xBD,0xBD,0xBD,0x7E,0x00], // libro
+ [0x08,0x08,0x1C,0x1C,0x3E,0x3E,0x3E,0x1C], // gota
+ [0x1C,0x38,0x70,0x70,0x70,0x70,0x38,0x1C], // luna
+ [0x00,0x66,0xFF,0xFF,0xFF,0x7E,0x3C,0x18], // corazón
+ [0x18,0x18,0x7E,0xFF,0x7E,0x3C,0x66,0x42], // estrella
+ [0x06,0x1E,0x3E,0x7E,0x7C,0x78,0x60,0x00], // hoja
+ [0x00,0x01,0x03,0x86,0xCC,0x78,0x30,0x00]  // check
+];
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+
+/* ---------- color ---------- */
+const rgb = h => { h=h.replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join(''); const n=parseInt(h,16); return [n>>16&255,n>>8&255,n&255]; };
+const mul = (c,k) => [c[0]*k,c[1]*k,c[2]*k];
+const hsl = (h,s,l) => { h/=360; const f=n=>{const k=(n+h*12)%12,a=s*Math.min(l,1-l);return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))))}; return [f(0),f(8),f(4)]; };
+const WHITE=[235,235,235], DIM=[60,60,66], BLACK=[0,0,0], AMBER=[255,176,32];
+const hc = h => rgb(h.color || PALETTE[0]);
+
+/* ---------- buffer ---------- */
+class Buf{
+  constructor(){this.d=new Float32Array(W*H*3);this.cx0=0;this.cx1=W}
+  clear(){this.d.fill(0);this.cx0=0;this.cx1=W}
+  set(x,y,c,a=1){x=Math.floor(x);y=Math.floor(y);if(x<this.cx0||x>=this.cx1||y<0||y>=H)return;const i=(y*W+x)*3,d=this.d;
+    if(a>=1){d[i]=c[0];d[i+1]=c[1];d[i+2]=c[2]}else{d[i]+=(c[0]-d[i])*a;d[i+1]+=(c[1]-d[i+1])*a;d[i+2]+=(c[2]-d[i+2])*a}}
+  rect(x,y,w,h,c,a=1){for(let j=0;j<h;j++)for(let i=0;i<w;i++)this.set(x+i,y+j,c,a)}
+  text(s,x,y,c,sc=1){s=norm(s);for(const ch of s){const g=F[ch]||F[' '];
+    for(let r=0;r<5;r++)for(let k=0;k<3;k++)if(g[r]&(4>>k))this.rect(x+k*sc,y+r*sc,sc,sc,c);x+=4*sc}return x}
+  icon(bits,x,y,c,sc=1){for(let r=0;r<8;r++)for(let k=0;k<8;k++)if(bits[r]&(0x80>>k))this.rect(x+k*sc,y+r*sc,sc,sc,c)}
+  clip(x0,x1){this.cx0=Math.max(0,x0);this.cx1=Math.min(W,x1)}
+  unclip(){this.cx0=0;this.cx1=W}
+}
+const textW = (s,sc=1) => String(s).length*4*sc-sc;
+
+/* ---------- utilidades de layout ---------- */
+function layoutCells(n,x0=0,y0=0,w=W,h=H,maxS=8){
+  let s=maxS;for(;s>1;s--){if(Math.floor(w/s)*Math.floor(h/s)>=n)break}
+  const colsMax=Math.floor(w/s);const cols=Math.min(n,colsMax),rows=Math.ceil(n/cols);
+  return {s,cols,rows,ox:x0+Math.floor((w-cols*s)/2),oy:y0+Math.floor((h-rows*s)/2),inner:s>=3?s-1:1};
+}
+const cellPos=(L,i)=>({x:L.ox+(i%L.cols)*L.s,y:L.oy+Math.floor(i/L.cols)*L.s});
+function marquee(b,segs,x0,x1,y,sc,t,spd,fit=true){
+  const tw=segs.reduce((a,g)=>a+g.s.length*4*sc,0);
+  b.clip(x0,x1);
+  if(fit&&tw-sc<=x1-x0){let x=x0;segs.forEach(g=>{x=b.text(g.s,x,y,g.c,sc)});}
+  else{const off=(t/1000*spd*8)%tw;for(const base of [x0-off,x0-off+tw]){let x=base;segs.forEach(g=>{x=b.text(g.s,x,y,g.c,sc)})}}
+  b.unclip();
+}
+const urgency = h => Math.max(0,Math.min(1,(h-8)/14));
+const urgColor = h => hsl(120*(1-urgency(h)),1,.5);
+
+/* ================= ESTILOS ================= */
+const STYLES = [
+
+{ id:'mosaic', title:'Mosaico adaptativo', range:'2–30', star:1,
+  desc:'Un bloque por hábito con el color del hábito. El tamaño se ajusta solo: con pocos hábitos son iconos 8×8, con 30 son bloques de 4×4.',
+  pros:['Funciona en todo el rango','Cada hábito reconocible por color'], cons:['No dice el número exacto'],
+  render(b,S,t){const L=layoutCells(S.n,0,0,W,H);
+    S.p.forEach((h,i)=>{const{x,y}=cellPos(L,i);const c=mul(hc(h),.75+.25*Math.sin(t/420+i*1.7));
+      if(L.s>=8)b.icon(ICONS[h.icon%8],x,y,c);else b.rect(x,y,L.inner,L.inner,c)})}},
+
+{ id:'numdots', title:'Número + puntos', range:'2–30', star:1,
+  desc:'Número grande de pendientes a la izquierda y, a la derecha, un punto por hábito (que se apaga cuando lo completas).',
+  pros:['Lectura exacta + intuición visual','Muy compacto'], cons:['Con 30 los puntos son pequeños'],
+  render(b,S,t){const str=String(S.n),w=textW(str,3);b.text(str,1,0,AMBER,3);
+    const x0=w+4;b.rect(x0-2,2,1,12,DIM,.6);const L=layoutCells(S.n,x0,0,W-x0,H,4);
+    S.p.forEach((h,i)=>{const{x,y}=cellPos(L,i);b.rect(x,y,L.inner,L.inner,mul(hc(h),.8+.2*Math.sin(t/500+i)))})}},
+
+{ id:'map', title:'Mapa del día', range:'2–30', star:1,
+  desc:'Todos los hábitos de hoy: los hechos en verde tenue, los pendientes encendidos con su color. Se ve el avance de un vistazo.',
+  pros:['Da sensación de progreso','Un hábito hecho se «apaga»'], cons:['Con muchos totales, bloques pequeños'],
+  render(b,S,t){const tot=S.n+S.d;const L=layoutCells(tot,0,0,W,H,6);
+    for(let i=0;i<tot;i++){const{x,y}=cellPos(L,i);
+      if(i<S.d)b.rect(x,y,L.inner,L.inner,[22,70,38]);
+      else{const h=S.p[i-S.d];b.rect(x,y,L.inner,L.inner,mul(hc(h),.75+.25*Math.sin(t/450+i)))}}}},
+
+{ id:'bar', title:'Barra segmentada', range:'2–30',
+  desc:'Texto con los pendientes y una barra dividida en un segmento por hábito del día. Rojo → verde según avanzas.',
+  pros:['Muy legible','Progreso claro'], cons:['Ocupa mucha pantalla por poca información'],
+  render(b,S,t){const tot=S.n+S.d,pct=S.d/tot;b.text(S.n+' PENDIENTES',1,1,WHITE);
+    b.rect(0,9,W,7,[22,22,26]);const fw=Math.round(W*pct);b.rect(0,9,fw,7,hsl(pct*120,1,.5));
+    if(tot<=26)for(let i=1;i<tot;i++)b.rect(Math.round(W*i/tot),9,1,7,BLACK);
+    const sx=Math.floor(t/60)%(W+10)-5;b.rect(sx,9,2,7,WHITE,.15)}},
+
+{ id:'ring', title:'Anillo de progreso', range:'2–30',
+  desc:'Anillo con el avance del día y el nº de pendientes dentro. A la derecha, los nombres pasan como ticker.',
+  pros:['Estética tipo reloj/fitness','Nombres incluidos'], cons:['Anillo pequeño con 16px'],
+  render(b,S,t){const tot=S.n+S.d,pct=S.d/tot,cx=7.5,cy=7.5;
+    for(let y=0;y<H;y++)for(let x=0;x<16;x++){const dx=x-cx,dy=y-cy,r=Math.hypot(dx,dy);if(r>5.1&&r<=7.9){
+      let a=Math.atan2(dx,-dy);if(a<0)a+=Math.PI*2;b.set(x,y,a/(Math.PI*2)<=pct?hsl(pct*120,1,.5):[40,40,46])}}
+    const s=String(S.n);b.text(s,Math.round(cx-textW(s)/2),5,WHITE);
+    marquee(b,S.p.map(h=>({s:h.name+'  ',c:hc(h)})),19,W,2,1,t,S.sp*3,false);
+    b.text('HECHO '+S.d+'/'+tot,19,9,[130,135,150])}},
+
+{ id:'ticker', title:'Ticker de nombres', range:'2–30', star:1,
+  desc:'Insignia fija con el nº de pendientes y los nombres desfilando en grande, cada uno en su color.',
+  pros:['Dice cuáles son, literalmente','Texto grande y legible'], cons:['Hay que esperar a que pase (30 = largo)'],
+  render(b,S,t){const s=String(S.n),bw=textW(s,2)+4;b.rect(0,0,bw,H,AMBER);b.text(s,2,3,BLACK,2);
+    marquee(b,S.p.map(h=>({s:h.name+'  ',c:hc(h)})),bw+2,W,3,2,t,S.sp*3.2,false)}},
+
+{ id:'carousel', title:'Carrusel icono + nombre', range:'2–12',
+  desc:'Un hábito cada pocos segundos: icono 16×16 a la izquierda, nombre, posición y puntitos de avance.',
+  pros:['Muy vistoso','Un hábito = una idea'], cons:['Con 30 tarda ~1 minuto en pasarlos todos'],
+  render(b,S,t){const i=Math.floor(t/(2200/S.sp))%S.n,h=S.p[i],c=hc(h);
+    b.icon(ICONS[h.icon%8],0,0,c,2);
+    marquee(b,[{s:h.name,c:WHITE}],19,W,1,1,t,S.sp*2.5,true);
+    b.text((i+1)+'/'+S.n,19,8,c);
+    for(let k=0;k<S.n;k++)b.set(19+Math.floor(k*32/S.n),14,k===i?c:[45,45,52])}},
+
+{ id:'eq', title:'Ecualizador de rachas', range:'2–30',
+  desc:'Una barra por hábito pendiente; la altura es la racha que perderías si no lo haces. Motiva a salvar las rachas largas.',
+  pros:['Aporta información extra (racha)','Con 30 sigue siendo claro'], cons:['Hay que explicar qué significa la altura'],
+  render(b,S,t){const n=S.n,bw=Math.max(1,Math.min(4,Math.floor(W/n)-1)),gap=bw>1||n<=17?1:0;
+    const tw=n*(bw+gap)-gap,ox=Math.floor((W-tw)/2);
+    S.p.forEach((h,i)=>{const hh=Math.max(2,Math.round(h.streak*(0.88+0.12*Math.sin(t/300+i))));const x=ox+i*(bw+gap);
+      b.rect(x,H-hh,bw,hh,mul(hc(h),.8));b.rect(x,H-hh,bw,1,WHITE,.7)})}},
+
+{ id:'sand', title:'Arena cayendo', range:'2–30',
+  desc:'Un grano por hábito cae y forma un montoncito. Cuando completas hábitos, hay menos granos. Animación relajante.',
+  pros:['Muy ambiental, «ornamental»','Cada grano = un hábito'], cons:['Información lenta de leer'],
+  render(b,S,t,st){
+    if(!st.occ||st.n!==S.n){st.occ=new Int16Array(W*H).fill(-1);st.n=S.n;st.spawn=0;st.last=0;st.hold=0}
+    const occ=st.occ;
+    if(t-st.last>45/S.sp){st.last=t;let moved=false;
+      for(let y=H-2;y>=0;y--)for(let x=0;x<W;x++){const i=y*W+x;if(occ[i]<0)continue;
+        const dn=(y+1)*W+x;
+        if(occ[dn]<0){occ[dn]=occ[i];occ[i]=-1;moved=true}
+        else{const d=Math.random()<.5?-1:1;for(const dx of [d,-d]){const nx=x+dx;if(nx>=0&&nx<W&&occ[(y+1)*W+nx]<0&&occ[y*W+nx]<0){occ[(y+1)*W+nx]=occ[i];occ[i]=-1;moved=true;break}}}}
+      if(st.spawn<S.n&&Math.random()<.6){const x=Math.floor(W/2+(Math.random()-.5)*14);if(occ[x]<0){occ[x]=st.spawn++}}
+      if(st.spawn>=S.n&&!moved){st.hold++;if(st.hold>45){st.occ=null}}}
+    for(let i=0;i<W*H;i++)if(occ[i]>=0)b.set(i%W,Math.floor(i/W),hc(S.p[occ[i]]))}},
+
+{ id:'rain', title:'Lluvia Matrix', range:'2–30',
+  desc:'Un chorro de luz por hábito pendiente cayendo con el color de cada uno, y el número encima.',
+  pros:['Llama la atención','Estética muy «píxel»'], cons:['Más ruido visual que información'],
+  render(b,S,t){const n=S.n;
+    S.p.forEach((h,i)=>{const x=Math.floor((i+.5)*W/n),sp=.006+((i*37)%11)*.0007,ph=(i*53)%100/100,len=6,
+      head=((t*sp*S.sp+ph)%1)*(H+len);
+      for(let k=0;k<len;k++){const y=Math.floor(head-k);if(y>=0&&y<H)b.set(x,y,mul(hc(h),1-k/len))}});
+    const s=String(n),w=textW(s,2);b.rect(26-Math.ceil(w/2)-2,2,w+4,12,BLACK,.7);b.text(s,26-Math.floor(w/2),3,WHITE,2)}},
+
+{ id:'pressure', title:'Presión del día', range:'2–30', star:1,
+  desc:'Horas que quedan en el día + puntos que pasan de verde a ámbar y rojo según se acerca la medianoche, con pulso.',
+  pros:['Urgencia emocional','Informa de cuánto tiempo queda'], cons:['Menos colores por hábito'],
+  render(b,S,t){const left=24-S.h,u=urgency(S.h),c=urgColor(S.h),s=left+'H',w=textW(s,2);
+    b.text(s,1,3,c,2);const x0=w+4;b.rect(x0-2,2,1,12,DIM,.6);
+    const L=layoutCells(S.n,x0,0,W-x0,H,5);
+    for(let i=0;i<S.n;i++){const{x,y}=cellPos(L,i);const p=.55+.45*Math.sin(t/(700-450*u)/S.sp*1+ i*.5);b.rect(x,y,L.inner,L.inner,mul(c,p))}}},
+
+{ id:'icons', title:'Iconos paginados', range:'2–12 (más = páginas)',
+  desc:'Iconos 8×8, hasta 12 por pantalla; si hay más, pasa de página con un indicador a la derecha.',
+  pros:['Lo más «app» de todos','Reconoces hábitos sin leer'], cons:['Necesitas un icono por hábito','30 = 3 páginas'],
+  render(b,S,t){const per=12,pages=Math.ceil(S.n/per),pg=Math.floor(t/(2800/S.sp))%pages,items=S.p.slice(pg*per,pg*per+per);
+    const rows=Math.ceil(items.length/6),oy=Math.floor((H-rows*8)/2);
+    items.forEach((h,i)=>{const r=Math.floor(i/6),inRow=Math.min(6,items.length-r*6),ox=Math.floor((W-(pages>1?4:0)-inRow*8)/2);
+      b.icon(ICONS[h.icon%8],ox+(i%6)*8,oy+r*8,mul(hc(h),.8+.2*Math.sin(t/500+i)))});
+    if(pages>1)for(let p=0;p<pages;p++){const y0=Math.floor(p*H/pages),y1=Math.floor((p+1)*H/pages)-1;b.rect(50,y0,2,Math.max(1,y1-y0),p===pg?WHITE:[45,45,52])}}},
+
+{ id:'giant', title:'Número gigante + ola', range:'2–30',
+  desc:'Solo el número, a lo grande, con una ola de fondo cuyo color depende de la hora. Para leerlo desde el sofá.',
+  pros:['Se lee desde lejos','Minimalista'], cons:['Ni nombres ni detalle'],
+  render(b,S,t){const c=urgColor(S.h);
+    for(let x=0;x<W;x++){const hh=Math.round(7+4*Math.sin(x/5+t/500*S.sp)+2*Math.sin(x/2.3-t/310*S.sp));for(let y=H-hh;y<H;y++)b.set(x,y,mul(c,.28))}
+    const s=String(S.n),w=textW(s,3),x=Math.floor((W-w)/2);
+    for(const[dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]])b.text(s,x+dx,0+dy,BLACK,3);b.text(s,x,0,WHITE,3)}},
+
+{ id:'next', title:'Número + próximo hábito', range:'2–30',
+  desc:'Número grande a la izquierda; a la derecha, icono y nombre del siguiente hábito (rotando), más «+N» que quedan.',
+  pros:['Resumen + detalle','Equilibrado'], cons:['Dos zonas, algo apretado'],
+  render(b,S,t){const s=String(S.n),w=textW(s,3);b.text(s,1,0,AMBER,3);const x0=w+5;
+    b.rect(x0-2,1,1,14,DIM,.6);
+    const i=Math.floor(t/(2400/S.sp))%S.n,h=S.p[i],c=hc(h);
+    b.icon(ICONS[h.icon%8],x0,0,c);b.text('+'+(S.n-1)+' MAS',x0+10,1,[130,135,150]);
+    marquee(b,[{s:h.name,c:c}],x0,W,9,1,t,S.sp*2.5,true);
+    for(let k=0;k<S.n;k++)b.set(x0+Math.floor(k*(W-x0-1)/Math.max(1,S.n-1)),14,k===i?c:[45,45,52])}}
+];
+
+/* ================= UI ================= */
+const grid=document.getElementById('grid');
+const S={n:8,d:4,h:17,sp:1,p:[],t:0};
+function rebuildState(){
+  if(!USING_REAL){S.p=HABITS.slice(0,S.n);}
+  S.n=S.p.length;
+}
+const cards=STYLES.map(st=>{
+  const el=document.createElement('section');el.className='card';
+  el.innerHTML=`<canvas width="${W*P}" height="${H*P}"></canvas>
+    <h2><span>${st.star?'<span class="star">★</span> ':''}${st.title}</span><small>${st.range} hábitos</small></h2>
+    <p>${st.desc}</p>
+    <div class="tags">${st.pros.map(x=>`<span class="tag good">+ ${x}</span>`).join('')}${st.cons.map(x=>`<span class="tag bad">− ${x}</span>`).join('')}</div>`;
+  grid.appendChild(el);
+  const cv=el.querySelector('canvas');
+  return {st,cv,ctx:cv.getContext('2d'),buf:new Buf(),state:{},vis:true};
+});
+const io=new IntersectionObserver(es=>es.forEach(e=>{const c=cards.find(c=>c.cv===e.target.querySelector('canvas'));if(c)c.vis=e.isIntersecting}));
+document.querySelectorAll('.card').forEach(c=>io.observe(c));
+
+function paint(c){
+  const{ctx,buf}=c;ctx.fillStyle='#050505';ctx.fillRect(0,0,W*P,H*P);
+  const d=buf.d;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=(y*W+x)*3,r=d[i],g=d[i+1],bl=d[i+2],cx=x*P+P/2,cy=y*P+P/2;
+    if(r+g+bl<18){ctx.fillStyle='#111214';ctx.beginPath();ctx.arc(cx,cy,P*.36,0,6.283);ctx.fill();continue}
+    const col=`${r|0},${g|0},${bl|0}`;
+    ctx.fillStyle=`rgba(${col},.18)`;ctx.beginPath();ctx.arc(cx,cy,P*.52,0,6.283);ctx.fill();
+    ctx.fillStyle=`rgb(${col})`;ctx.beginPath();ctx.arc(cx,cy,P*.38,0,6.283);ctx.fill();
+  }
+}
+let last=0;
+function frame(ts){
+  requestAnimationFrame(frame);
+  if(ts-last<33)return;last=ts;
+  for(const c of cards){if(!c.vis)continue;c.buf.clear();c.st.render(c.buf,S,ts,c.state);paint(c)}
+}
+requestAnimationFrame(frame);
+
+/* controles */
+const $=id=>document.getElementById(id);
+function bind(id,key,fmt=v=>v){const el=$(id),o=$(id+'O');el.addEventListener('input',()=>{S[key]=+el.value;o.textContent=fmt(+el.value);if(key==='n')rebuildState()})}
+bind('n','n');bind('d','d');bind('h','h');bind('sp','sp',v=>v.toFixed(1));
+document.querySelectorAll('.presets button').forEach(b=>b.onclick=()=>{USING_REAL=false;$('n').disabled=false;$('n').value=b.dataset.n;$('n').dispatchEvent(new Event('input'))});
+$('applyJson').onclick=()=>{
+  try{const j=JSON.parse($('json').value);const ph=j.pending_habits;if(!Array.isArray(ph)||ph.length<1)throw new Error('pending_habits vacío');
+    S.p=ph.map((h,i)=>({name:h.name,color:h.color||PALETTE[i%PALETTE.length],icon:h.id!=null?h.id%8:i%8,streak:2+((i*7+3)%14)}));
+    S.d=j.done??S.d;USING_REAL=true;S.n=S.p.length;$('n').disabled=true;$('n').value=Math.min(30,Math.max(2,S.n));$('nO').textContent=S.n;$('d').value=S.d;$('dO').textContent=S.d;
+    $('jsonMsg').textContent='OK: '+S.n+' pendientes'}catch(e){$('jsonMsg').textContent='JSON no válido: '+e.message}};
+$('resetJson').onclick=()=>{USING_REAL=false;$('n').disabled=false;$('n').dispatchEvent(new Event('input'));$('jsonMsg').textContent=''};
+rebuildState();
+</script>
+</body>
+</html>

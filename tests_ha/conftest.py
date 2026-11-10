@@ -23,13 +23,22 @@ def today_body(*items):
     return {"date": "2026-11-10", "items": list(items)}
 
 
-def item(habit_id, name, status="pending", done_count=0, times_per_day=1, kind="build"):
+def item(
+    habit_id,
+    name,
+    status="pending",
+    done_count=0,
+    times_per_day=1,
+    kind="build",
+    color=None,
+    icon=None,
+):
     return {
         "habit_id": habit_id,
         "name": name,
         "kind": kind,
-        "color": None,
-        "icon": None,
+        "color": color,
+        "icon": icon,
         "priority": 0,
         "status": status,
         "done_count": done_count,

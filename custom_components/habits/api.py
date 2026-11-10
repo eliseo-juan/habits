@@ -21,6 +21,9 @@ class TodayItem:
     done_count: int
     times_per_day: int
     kind: str = "build"
+    color: str | None = None
+    icon: str | None = None
+    priority: int = 0
 
     @property
     def settled(self) -> bool:
@@ -58,6 +61,9 @@ class HabitsClient:
                     done_count=item["done_count"],
                     times_per_day=item["times_per_day"],
                     kind=item.get("kind", "build"),
+                    color=item.get("color"),
+                    icon=item.get("icon"),
+                    priority=item.get("priority", 0),
                 )
                 for item in body["items"]
             ],

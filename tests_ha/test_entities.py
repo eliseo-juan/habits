@@ -41,6 +41,43 @@ async def test_sensors_count_todays_habits(hass, aioclient_mock, entry):
     assert hass.states.get(TODO).state == "2"
 
 
+async def test_due_sensor_exposes_habit_colors_and_status(hass, aioclient_mock, entry):
+    await setup(
+        hass,
+        entry,
+        aioclient_mock,
+        item(1, "Meditar", color="#3a9bff", icon="mdi:meditation"),
+        item(2, "Leer", status="done", done_count=1),
+        item(5, "Azúcar", kind="limit", color="#ff0000"),
+    )
+
+    habits = hass.states.get("sensor.eliseo_due_today").attributes["habits"]
+
+    assert habits == [
+        {
+            "id": 1,
+            "name": "Meditar",
+            "color": "#3a9bff",
+            "icon": "mdi:meditation",
+            "status": "pending",
+            "done_count": 0,
+            "times_per_day": 1,
+            "priority": 0,
+        },
+        {
+            "id": 2,
+            "name": "Leer",
+            "color": None,
+            "icon": None,
+            "status": "done",
+            "done_count": 1,
+            "times_per_day": 1,
+            "priority": 0,
+        },
+    ]
+    assert "habits" not in hass.states.get("sensor.eliseo_pending_today").attributes
+
+
 async def test_todo_lists_habits_with_progress(hass, aioclient_mock, entry):
     await setup(
         hass,
