@@ -5,23 +5,23 @@ description = "Self-hosted habit tracker API with remote MCP and reminders"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.162",
-    "sqlalchemy>=2.1",
-    "alembic>=1.20",
-    "pydantic>=2.14",
+    "sqlalchemy>=2.1.8",
+    "alembic>=1.20.1",
+    "pydantic>=2.14.3",
     "argon2-cffi>=25.1",
     "uvicorn>=0.54",
-    "httpx>=0.28",
+    "httpx>=0.28.1",
     "mcp>=2.3,<3",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=9.2", "pytest-cov>=7", "ruff>=0.15"]
+dev = ["pytest>=9.2", "pytest-cov>=7.1.0", "ruff>=0.17.4"]
 
 [project.scripts]
 habits = "app.cli:main"
 
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
