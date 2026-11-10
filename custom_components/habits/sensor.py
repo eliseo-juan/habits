@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription, SensorStateClass
 from homeassistant.core import HomeAssistant
@@ -15,6 +16,27 @@ PARALLEL_UPDATES = 0
 @dataclass(frozen=True, kw_only=True)
 class HabitsSensorDescription(SensorEntityDescription):
     value: Callable[[Today], int]
+    attributes: Callable[[Today], dict[str, Any]] | None = None
+
+
+def _habits(today: Today) -> dict[str, Any]:
+    """Every habit due today with what a display needs: color, icon and status."""
+    return {
+        "habits": [
+            {
+                "id": item.habit_id,
+                "name": item.name,
+                "color": item.color,
+                "icon": item.icon,
+                "status": item.status,
+                "done_count": item.done_count,
+                "times_per_day": item.times_per_day,
+                "priority": item.priority,
+            }
+            for item in today.items
+            if item.to_do
+        ]
+    }
 
 
 SENSORS = (
@@ -35,6 +57,7 @@ SENSORS = (
         translation_key="due",
         state_class=SensorStateClass.MEASUREMENT,
         value=lambda today: sum(item.to_do for item in today.items),
+        attributes=_habits,
     ),
 )
 
@@ -49,6 +72,7 @@ async def async_setup_entry(
 
 class HabitsSensor(HabitsEntity, SensorEntity):
     entity_description: HabitsSensorDescription
+    _unrecorded_attributes = frozenset({"habits"})
 
     def __init__(self, coordinator, description: HabitsSensorDescription) -> None:
         super().__init__(coordinator, description.key)
@@ -57,3 +81,9 @@ class HabitsSensor(HabitsEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         return self.entity_description.value(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        if self.entity_description.attributes is None:
+            return None
+        return self.entity_description.attributes(self.coordinator.data)
