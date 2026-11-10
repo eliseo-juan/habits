@@ -5,9 +5,9 @@ name: Frontend CI
 on:
   push:
     branches: [main]
-    paths: ["web/**", ".github/workflows/frontend.yml"]
+    paths: ["web/**"]
   pull_request:
-    paths: ["web/**", ".github/workflows/frontend.yml"]
+    paths: ["web/**"]
   workflow_dispatch:
 
 concurrency:
