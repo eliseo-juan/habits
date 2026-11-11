@@ -1,0 +1,37 @@
+name: 🐳 Docker image
+
+# Called from ✅ CI when anything in the image changes (backend/, web/, Dockerfile): builds it and checks it starts.
+# Publishing to ghcr.io is the 🚀 Publish image job in ✅ CI.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    name: Builds and starts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: habits:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test /health
+        env:
+          HABITS_SECRET_KEY: ci-only-secret
+        run: |
+          docker run -d --name habits -p 8000:8000 \
+            -e HABITS_SECRET_KEY="$HABITS_SECRET_KEY" habits:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health; then exit 0; fi
+            sleep 2
+          done
+          docker logs habits
+          exit 1

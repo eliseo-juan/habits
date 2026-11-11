@@ -1,0 +1,38 @@
+name: 🏠 Home Assistant
+
+# Called from ✅ CI when the HACS integration changes: lint and tests against Home Assistant's test harness.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.14"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install ruff
+      - run: ruff check custom_components tests_ha --output-format github
+      - run: ruff format --check custom_components tests_ha
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pytest-homeassistant-custom-component==0.13.375
+      - run: pytest -q
+        working-directory: tests_ha

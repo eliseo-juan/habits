@@ -1,11 +1,12 @@
-.venv
+**/.venv
 .git
 .github
-.pytest_cache
+**/.pytest_cache
 **/__pycache__
-*.egg-info
-data
-tests
+**/*.egg-info
+backend/data
+backend/tests
 web/node_modules
 web/dist
 mobile
+data
