@@ -1,26 +1,38 @@
 # AWTRIX clock app
 
-`habits.be` is an [AWTRIX NG](https://github.com/Blueforcer/awtrix-ng) script (Berry) that draws today's
-habits on a 52x16 clock: 6 px squares (done in green with a check, pending in the habit's color turning
-red through the day) and a 1 px bar along the bottom row that fills from the start hour to midnight, with
-the current moment blinking. The app only takes its turn in the rotation while something is pending.
+`habits.be` is an [AWTRIX NG](https://github.com/Blueforcer/awtrix-ng) script (Berry) for the 52x16 clock
+(Ulanzi TC002). It talks to the Habits server directly, with no Home Assistant in between, and draws
+today's habits:
 
-It draws everything itself. Home Assistant only publishes data, retained, on `habits/today`:
+- 6 px squares: done in green with a check, pending in the habit's color turning red through the day.
+  With more than 14 habits the squares shrink to 4 px (up to 30).
+- A 1 px bar along the bottom row that fills from the start hour to midnight; the current moment blinks.
+- A dim pixel in the top-right corner when the last refresh failed or the data is old.
+- The app only takes its turn in the rotation while something is still pending.
 
-```json
-{"habits": [{"color": [59, 130, 246], "done": true}, {"color": [234, 179, 8], "done": false}]}
-```
-
-The Home Assistant integration exposes the habits (with their colors) as the `habits` attribute of
-`sensor.<name>_due_today`; a script and an automation in Home Assistant turn that into the message above.
+Every few minutes (and when the app comes back on screen with data older than 30 s) it calls
+`GET /awtrix/today`, which already leaves out limit habits and returns the pending habits with their color
+and how many are done. Marking a habit done anywhere (web app, MCP, notification, a Home Assistant to-do
+list) shows up on the clock at the next refresh.
 
 ## Install
 
-Web UI of the clock: **Scripts** → **+**, name it `Habits`, paste `habits.be`, **Save**. Or:
+1. Create a read token for the clock:
 
-```sh
-curl -X PUT http://<clock-ip>/api/v1/apps/script/Habits -H 'Content-Type: text/plain' --data-binary @habits.be
-```
+   ```sh
+   docker exec habits ./docker-entrypoint.sh create-token me@example.com --name awtrix --scope read
+   ```
 
-Settings (⚙ on the app's row under **Apps**): the MQTT topic (default `habits/today`) and the hour the day
-starts (default 7).
+2. Put your server's host in the script: edit `hosts=habits.example.com` on the `@secret` line (and the
+   default `url`) of `habits.be`. The token may only be sent to the hosts listed there.
+3. Install it. In the web UI of the clock: **Scripts** → **+**, name it `Habits`, paste the file, **Save**. Or:
+
+   ```sh
+   curl -X PUT http://<clock-ip>/api/v1/apps/script/Habits -H 'Content-Type: text/plain' --data-binary @habits.be
+   ```
+
+4. **Apps** tab → ⚙ on the `Habits` row: paste the token under **API keys**, check the server address, and
+   set the refresh interval (default 2 min) and the hour the day starts (default 7).
+
+The clock checks the HTTPS certificate of the server, so it needs a certificate it trusts. The token is
+kept out of the script source (`@secret`), and a read token cannot change anything.
