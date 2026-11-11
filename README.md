@@ -120,7 +120,7 @@ cd tests_ha && ../.venv-ha/bin/pytest -q
 
 ## AWTRIX
 
-`GET /awtrix/today` with a read token returns a neutral summary (pending, done, total, pending habits, top streaks) for a script on the clock to render.
+`GET /awtrix/today` with a read token returns a neutral summary (pending, done, total, pending and done habits with their color and icon, top streaks) for a script on the clock to render.
 
 ## Reminders
 

@@ -1,14 +1,14 @@
 # @name    Habits
-# @desc    Today's habits from your Habits server: done in green with a check, pending in their color turning red, and a bar for the day
+# @desc    Today's habits from your Habits server: each in its own color, done ones dimmed with a check, pending ones turning red, and a bar for the day
 # @author  eliseo-juan
-# @version 2.0
+# @version 2.1
 # @config  url   text   "Habits server"  default="https://habits.example.com" help="Address of the server, without a trailing slash"
 # @config  token text   "Habits token"   default="" help="A read token: habits create-token EMAIL --name awtrix --scope read"
 # @config  every number "Refresh"        default=2 min=1 max=60 unit=min
 # @config  start number "Day starts"     default=7 min=0 max=12 unit=h help="The bar fills from this hour to midnight"
 
 # Pulls GET <url>/awtrix/today every few minutes and draws it on the 52x16 display. The server already
-# leaves out limit habits and returns the pending ones with their color, plus how many are done.
+# leaves out limit habits and returns the pending and the done habits with their color.
 # Set the server address and the token in the app's settings (the gear on its row under Apps).
 # The app only takes its turn in the rotation while something is pending.
 
@@ -94,18 +94,30 @@ class Habits
       return
     end
 
-    var nd = data.find("done", 0)
-    if nd > 30
-      nd = 30
-    end
     var cols = []
     var done = []
-    if nd > 0
-      for i : 0 .. nd - 1
-        cols.push([0, 0, 0])
-        done.push(true)
+    var dh = data.find("done_habits")
+    if isinstance(dh, list)
+      for h : dh
+        if size(cols) < 30
+          cols.push(self.color_of(h.find("color"), h.find("id", 0)))
+          done.push(true)
+        end
+      end
+    else
+      # an older server only counts them: show those in green
+      var cnt = data.find("done", 0)
+      if cnt > 30
+        cnt = 30
+      end
+      if cnt > 0
+        for i : 0 .. cnt - 1
+          cols.push([34, 197, 94])
+          done.push(true)
+        end
       end
     end
+    var nd = size(cols)
     var ph = data.find("pending_habits", [])
     if isinstance(ph, list)
       for h : ph
@@ -173,7 +185,7 @@ class Habits
       for i : 0 .. size(self.cols) - 1
         var c = self.cols[i]
         if self.done[i]
-          pcol.push(0x167838)
+          pcol.push(rgb(int(c[0] * 0.45), int(c[1] * 0.45), int(c[2] * 0.45)))   # dimmer than pending
         else
           pcol.push(rgb(int(c[0] + (255 - c[0]) * k), int(c[1] + (32 - c[1]) * k), int(c[2] + (20 - c[2]) * k)))
         end

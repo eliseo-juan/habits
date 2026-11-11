@@ -206,6 +206,8 @@ def test_awtrix_summary_with_read_token(client, alice):
     summary = client.get("/awtrix/today", headers=alice.auth("read")).json()
     assert (summary["pending"], summary["done"], summary["total"]) == (1, 1, 2)
     assert summary["pending_habits"][0]["name"] == "Read"
+    assert [h["name"] for h in summary["done_habits"]] == ["Meditate"]
+    assert {"id", "name", "icon", "color"} <= set(summary["done_habits"][0])
     assert summary["top_streaks"] == [{"name": "Meditate", "streak": 2}]
     response = client.post(
         f"/habits/{meditate['id']}/logs/2026-11-07/done", headers=alice.auth("read")

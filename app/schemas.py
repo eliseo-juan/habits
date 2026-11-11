@@ -313,6 +313,7 @@ class AwtrixOut(BaseModel):
     done: int
     total: int
     pending_habits: list[AwtrixHabit]
+    done_habits: list[AwtrixHabit]
     top_streaks: list[AwtrixStreak]
 
 

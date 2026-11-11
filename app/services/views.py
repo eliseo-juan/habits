@@ -128,17 +128,16 @@ def awtrix_summary(db: Session, user: User, now: datetime, top: int = 3) -> Awtr
     today = user_today(user, now)
     habits = list_habits(db, user)
     by_id = timelines(db, habits)
-    pending, done, streaks = [], 0, []
+    pending, done, streaks = [], [], []
     for habit in habits:
         line = by_id[habit.id]
         entry = rules.today_entry(line, today)
         to_do = habit.kind == "build" and entry.due
+        item = AwtrixHabit(id=habit.id, name=habit.name, icon=habit.icon, color=habit.color)
         if to_do and entry.status is rules.DayStatus.PENDING:
-            pending.append(
-                AwtrixHabit(id=habit.id, name=habit.name, icon=habit.icon, color=habit.color)
-            )
+            pending.append(item)
         elif to_do and entry.status is rules.DayStatus.DONE:
-            done += 1
+            done.append(item)
         streak = rules.summarize(line, today, today, today).current_streak
         if streak:
             streaks.append(AwtrixStreak(name=habit.name, streak=streak))
@@ -146,8 +145,9 @@ def awtrix_summary(db: Session, user: User, now: datetime, top: int = 3) -> Awtr
     return AwtrixOut(
         date=today,
         pending=len(pending),
-        done=done,
-        total=len(pending) + done,
+        done=len(done),
+        total=len(pending) + len(done),
         pending_habits=pending,
+        done_habits=done,
         top_streaks=streaks[:top],
     )
