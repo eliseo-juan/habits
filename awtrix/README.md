@@ -23,16 +23,16 @@ list) shows up on the clock at the next refresh.
    docker exec habits ./docker-entrypoint.sh create-token me@example.com --name awtrix --scope read
    ```
 
-2. Put your server's host in the script: edit `hosts=habits.example.com` on the `@secret` line (and the
-   default `url`) of `habits.be`. The token may only be sent to the hosts listed there.
-3. Install it. In the web UI of the clock: **Scripts** → **+**, name it `Habits`, paste the file, **Save**. Or:
+2. Install the script. In the web UI of the clock: **Scripts** → **+**, name it `Habits`, paste
+   `habits.be`, **Save**. Or:
 
    ```sh
    curl -X PUT http://<clock-ip>/api/v1/apps/script/Habits -H 'Content-Type: text/plain' --data-binary @habits.be
    ```
 
-4. **Apps** tab → ⚙ on the `Habits` row: paste the token under **API keys**, check the server address, and
-   set the refresh interval (default 2 min) and the hour the day starts (default 7).
+3. **Apps** tab → ⚙ on the `Habits` row: set the server address and paste the token. You can also change
+   the refresh interval (default 2 min) and the hour the day starts (default 7). Saving restarts the app.
 
-The clock checks the HTTPS certificate of the server, so it needs a certificate it trusts. The token is
-kept out of the script source (`@secret`), and a read token cannot change anything.
+The clock checks the HTTPS certificate of the server, so it needs a certificate it trusts. The token is a
+setting stored on the clock, so use a read-only one (it cannot change anything) and, if you turn on
+authentication on the clock, the settings are no longer readable by everyone on your network.

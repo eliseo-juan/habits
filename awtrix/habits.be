@@ -2,19 +2,17 @@
 # @desc    Today's habits from your Habits server: done in green with a check, pending in their color turning red, and a bar for the day
 # @author  eliseo-juan
 # @version 2.0
-# @needs   secret
 # @config  url   text   "Habits server"  default="https://habits.example.com" help="Address of the server, without a trailing slash"
+# @config  token text   "Habits token"   default="" help="A read token: habits create-token EMAIL --name awtrix --scope read"
 # @config  every number "Refresh"        default=2 min=1 max=60 unit=min
 # @config  start number "Day starts"     default=7 min=0 max=12 unit=h help="The bar fills from this hour to midnight"
-# @secret  token hosts=habits.example.com label="Habits token" help="Read token: habits create-token EMAIL --name awtrix --scope read"
 
 # Pulls GET <url>/awtrix/today every few minutes and draws it on the 52x16 display. The server already
 # leaves out limit habits and returns the pending ones with their color, plus how many are done.
-# Edit `hosts=` above (and the default url) to your server's host before installing.
+# Set the server address and the token in the app's settings (the gear on its row under Apps).
 # The app only takes its turn in the rotation while something is pending.
 
 import json
-import secret
 
 class Habits
   var cols      # [[r, g, b], ...] one entry per habit, done habits first
@@ -69,13 +67,14 @@ class Habits
     if self.busy
       return
     end
-    if !secret.has('token')
+    var token = store.get("token")
+    if token == nil || size(token) == 0
       self.failed = true
       return
     end
     self.busy = true
     http.get(store.get("url") + "/awtrix/today", / b, st -> self.on_body(b, st),
-             {'headers': {'Authorization': "Bearer {secret:token}", 'Accept': "application/json"},
+             {'headers': {'Authorization': "Bearer " + token, 'Accept': "application/json"},
               'timeout': 10})
   end
 
