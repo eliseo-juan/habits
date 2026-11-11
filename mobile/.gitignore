@@ -39,3 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+.env*
+
+# EAS build/update credentials never belong in git
+*.keystore
+google-services.json
+GoogleService-Info.plist

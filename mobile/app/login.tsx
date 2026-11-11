@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native"
+import Constants from "expo-constants"
 import { LinearGradient } from "expo-linear-gradient"
 import { Button } from "@/components/ui"
 import { HttpError } from "@/lib/api"
@@ -8,7 +9,7 @@ import { colors, radius } from "@/theme"
 
 export default function LoginScreen() {
   const { signIn, baseUrl } = useAuth()
-  const [server, setServer] = useState(baseUrl ?? process.env.EXPO_PUBLIC_API_URL ?? "")
+  const [server, setServer] = useState(baseUrl ?? (Constants.expoConfig?.extra?.serverUrl as string | undefined) ?? "")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)

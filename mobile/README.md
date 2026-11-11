@@ -15,7 +15,7 @@ La lógica de reglas y las consultas (`src/lib/rules.ts`, `src/lib/data.tsx`) so
 
 ## Autenticación
 
-La PWA usa una cookie de sesión; en nativo es frágil, así que la app inicia sesión con `POST /auth/token` (email + contraseña) y guarda un **token de API con escritura** en el almacén seguro del sistema (Keychain / Keystore). Se envía como `Authorization: Bearer`. El token aparece en `/tokens` de la web con el nombre `Hábitos · ios|android` y se revoca desde ahí, o al cerrar sesión en la app. El servidor se escribe en la pantalla de login (`EXPO_PUBLIC_API_URL` la rellena por defecto).
+La PWA usa una cookie de sesión; en nativo es frágil, así que la app inicia sesión con `POST /auth/token` (email + contraseña) y guarda un **token de API con escritura** en el almacén seguro del sistema (Keychain / Keystore). Se envía como `Authorization: Bearer`. El token aparece en `/tokens` de la web con el nombre `Hábitos · ios|android` y se revoca desde ahí, o al cerrar sesión en la app. El servidor se escribe en la pantalla de login (`HABITS_SERVER_URL` la rellena por defecto).
 
 La gestión de tokens (MCP, Home Assistant) sigue siendo solo de la web: los tokens de API no pueden crear otros tokens.
 
@@ -31,6 +31,40 @@ npm run typecheck
 Los widgets y las notificaciones programadas necesitan un development build.
 
 En el móvil, el servidor debe ser alcanzable desde el dispositivo (IP de la LAN o dominio público con HTTPS). Para builds nativas: `npx expo prebuild` o EAS Build (`eas build`). El icono es el de la PWA (512 px); para publicar en tiendas conviene uno de 1024 px.
+
+## Configuración privada, builds y OTA
+
+El repo es público: **nada que identifique tu despliegue va en el código**. `app.config.ts` lee de variables de entorno:
+
+| Variable | Para qué |
+|---|---|
+| `HABITS_SERVER_URL` | Servidor que aparece por defecto en el login |
+| `EAS_PROJECT_ID` | Proyecto de EAS; activa las actualizaciones OTA |
+| `APP_BUNDLE_ID` | Bundle id / package propio (opcional; por defecto uno genérico) |
+
+Sin ellas la app compila igual, solo sin servidor por defecto ni OTA. Ojo: lo que llega al config acaba dentro del binario, así que `secret` en EAS lo mantiene fuera de git y de los logs de build, no fuera de la app.
+
+**Una vez** (en tu máquina, con sesión de Expo):
+
+```sh
+npm install --global eas-cli
+cd mobile
+eas login
+eas init --id <tu-project-id>      # si pregunta por escribir el id en la config, di que no: lo lee de EAS_PROJECT_ID
+eas env:create --environment production --name EAS_PROJECT_ID --value <tu-project-id> --visibility secret
+eas env:create --environment production --name HABITS_SERVER_URL --value https://tu-servidor --visibility secret
+# repite con --environment preview y development si los usas
+```
+
+Para que el CLI también lo vea en local, copia los valores a `mobile/.env.local` (ignorado por git). Después:
+
+```sh
+eas build --profile development --platform ios|android   # dev client (widgets, notificaciones)
+eas build --profile production --platform all            # binarios de tienda
+eas submit --profile production --platform ios|android
+```
+
+**OTA** (`expo-updates`, canales `development` / `preview` / `production`, `runtimeVersion` = versión de la app): `eas update --channel production --environment production`, o automático con `.github/workflows/mobile-update.yml` al hacer push a `main` (secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` en el entorno `production` de GitHub; conviene exigir aprobación manual ahí). Una OTA solo cambia JS: si tocas código nativo, dependencias nativas o **los widgets** (su layout se compila en el build), sube `version` en `app.config.ts` y haz un build nuevo; los binarios antiguos siguen recibiendo solo OTAs de su misma versión.
 
 ## Widgets
 

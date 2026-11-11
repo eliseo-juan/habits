@@ -1,0 +1,41 @@
+name: Mobile OTA update
+
+# Publishes JS-only changes to installed apps through EAS Update. Runs only on pushes to main (never on pull
+# requests, so forks cannot reach the secrets) and inside the `production` GitHub environment, where you can
+# also require a manual approval. Needs the repo/environment secrets EXPO_TOKEN and EAS_PROJECT_ID.
+on:
+  push:
+    branches: [main]
+    paths: ["mobile/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: mobile-update
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    name: eas update (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm install --global eas-cli@27.7.2
+      - run: eas update --channel production --environment production --non-interactive --message "$GITHUB_SHA"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
