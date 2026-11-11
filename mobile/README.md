@@ -64,6 +64,23 @@ eas build --profile production --platform all            # binarios de tienda
 eas submit --profile production --platform ios|android
 ```
 
+### Instalar el APK sin pasar por Play Store
+
+El perfil `preview` genera un **APK** (instalable directamente, firmado por EAS); `production` genera un AAB, que solo sirve para subir a Play Store.
+
+```sh
+cd mobile
+eas build --profile preview --platform android
+```
+
+Tarda unos minutos en la nube de EAS (la primera vez pregunta si genera el keystore: di que sí y EAS lo guarda; no lo pierdas, o no podrás actualizar encima de la app instalada). Al terminar:
+
+- En la terminal sale una URL y un QR; también está en expo.dev → tu proyecto → **Builds**.
+- Abre ese enlace **en el móvil** y descarga el `.apk` (o `eas build:run --platform android --latest` con el móvil por USB/emulador).
+- Android pedirá permitir «instalar apps desconocidas» para el navegador la primera vez.
+
+Las siguientes versiones: otro `eas build --profile preview` para cambios nativos, y las OTAs (abajo) para cambios de JS. El APK `preview` recibe OTAs del canal `preview`: publica con `eas update --channel preview --environment preview` (el workflow de CI publica solo en `production`).
+
 **OTA** (`expo-updates`, canales `development` / `preview` / `production`): `eas update --channel production --environment production`, o automático con `.github/workflows/mobile-update.yml` al hacer push a `main` que toque `mobile/` (secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` en el entorno `production` de GitHub; conviene exigir aprobación manual ahí).
 
 La `runtimeVersion` es un **fingerprint** de la capa nativa (dependencias nativas, config plugins, widgets, permisos): una OTA solo llega a binarios compatibles, así que un cambio nativo nunca se empuja por aire a una app que no lo tiene. Si lo cambias, el siguiente `eas update` queda esperando a un build nuevo con ese fingerprint. `fingerprint.config.js` excluye `extra` (servidor, project id) para que las variables de entorno no cambien el hash; `updates.url` sí cuenta, así que el `EAS_PROJECT_ID` debe ser el mismo en tu máquina, en EAS y en GitHub. Para ver el hash: `npx fingerprint fingerprint:generate --platform ios`. En Ajustes hay un botón «Buscar actualizaciones» (en builds con OTA activo).
