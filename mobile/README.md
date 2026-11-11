@@ -66,11 +66,11 @@ eas submit --profile production --platform ios|android
 
 ### Instalar el APK sin pasar por Play Store
 
-El perfil `preview` genera un **APK** (instalable directamente, firmado por EAS); `production` genera un AAB, que solo sirve para subir a Play Store.
+Los perfiles `apk` y `preview` generan un **APK** (instalable directamente); `production` genera un AAB, que solo sirve para subir a Play Store. Para uso propio, `apk` es el recomendado: usa el entorno y el canal `production`, así recibe las OTAs que publica el CI. `preview` es para probar con otro servidor/canal.
 
 ```sh
 cd mobile
-eas build --profile preview --platform android
+eas build --profile apk --platform android
 ```
 
 Tarda unos minutos en la nube de EAS (la primera vez pregunta si genera el keystore: di que sí y EAS lo guarda; no lo pierdas, o no podrás actualizar encima de la app instalada). Al terminar:
@@ -79,7 +79,7 @@ Tarda unos minutos en la nube de EAS (la primera vez pregunta si genera el keyst
 - Abre ese enlace **en el móvil** y descarga el `.apk` (o `eas build:run --platform android --latest` con el móvil por USB/emulador).
 - Android pedirá permitir «instalar apps desconocidas» para el navegador la primera vez.
 
-Las siguientes versiones: otro `eas build --profile preview` para cambios nativos, y las OTAs (abajo) para cambios de JS. El APK `preview` recibe OTAs del canal `preview`: publica con `eas update --channel preview --environment preview` (el workflow de CI publica solo en `production`).
+Las siguientes versiones: otro `eas build --profile apk` para cambios nativos, y las OTAs (abajo) para cambios de JS. El APK `preview` recibe OTAs del canal `preview` (`eas update --channel preview --environment preview`); el CI publica solo en `production`.
 
 **OTA** (`expo-updates`, canales `development` / `preview` / `production`): `eas update --channel production --environment production`, o automático con `.github/workflows/mobile-update.yml` al hacer push a `main` que toque `mobile/` (secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` en el entorno `production` de GitHub; conviene exigir aprobación manual ahí).
 
