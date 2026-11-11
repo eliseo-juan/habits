@@ -1,3 +1,4 @@
+import { useBackLayer } from "@/lib/nav"
 import { useState } from "react"
 import { BarChart3, Check, Minus, Plus, SkipForward, Trash2 } from "lucide-react"
 import { HabitIcon } from "@/components/habit-row"
@@ -11,6 +12,7 @@ import { colorOf, dayTitle, EMPTY_LOG, scheduleLabel, type DayEntry, type DayLog
 type Props = { habit: Habit; entry: DayEntry; day: string; onClose: () => void; onStats: (habit: Habit) => void }
 
 export function DaySheet({ habit, entry, day, onClose, onStats }: Props) {
+  useBackLayer(onClose)
   const { today } = useSession()
   const writer = useLogWriter()
   const log = useLog(habit.id, day).data ?? EMPTY_LOG
@@ -27,8 +29,8 @@ export function DaySheet({ habit, entry, day, onClose, onStats }: Props) {
 
   return (
     <Sheet open onOpenChange={(open) => !open && (dismiss(), onClose())}>
-      <SheetContent side="bottom" showCloseButton={false} className="mx-auto max-w-md rounded-t-[2rem] border-white/10 bg-background/95 px-5 pb-8 backdrop-blur-xl">
-        <div className="mx-auto mt-3 h-1.5 w-10 rounded-full bg-white/15" />
+      <SheetContent side="bottom" showCloseButton={false} className="mx-auto max-w-md rounded-t-[2rem] border-white/20 bg-background/95 px-5 pb-8 backdrop-blur-xl">
+        <div className="mx-auto mt-3 h-1.5 w-10 rounded-full bg-white/25" />
         <SheetHeader className="flex-row items-center gap-3 px-0">
           <HabitIcon habit={habit} size="lg" />
           <div className="text-left">
@@ -67,7 +69,7 @@ export function DaySheet({ habit, entry, day, onClose, onStats }: Props) {
 
         <Textarea
           placeholder="Nota del día"
-          className="min-h-16 rounded-2xl border-white/10 bg-white/5"
+          className="min-h-16 rounded-2xl border-white/20 bg-white/10"
           value={note ?? log.note ?? ""}
           disabled={isFuture}
           onChange={(e) => setNote(e.target.value)}

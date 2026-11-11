@@ -10,10 +10,10 @@ import { cn } from "@/lib/utils"
 
 const DOT: Record<string, string> = {
   failed: "text-rose-300 ring-1 ring-rose-500/40",
-  skipped: "bg-white/5 text-muted-foreground",
-  pending: "bg-white/5 ring-1 ring-white/20",
+  skipped: "bg-white/10 text-muted-foreground",
+  pending: "bg-white/10 ring-1 ring-white/30",
   slipped: "text-amber-300 ring-1 ring-amber-400/40",
-  not_due: "bg-transparent text-muted-foreground/40",
+  not_due: "bg-transparent text-muted-foreground/70",
 }
 
 export function HabitsScreen({ onOpen }: { onOpen: (habit: Habit) => void }) {
@@ -53,7 +53,7 @@ function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOp
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
       onClick={onOpen}
-      className="block w-full rounded-3xl border border-white/5 bg-card/60 p-4 text-left active:bg-card"
+      className="block w-full rounded-3xl border border-white/15 bg-card p-4 text-left active:bg-card"
     >
       <div className="flex items-center gap-3">
         <HabitIcon habit={habit} />

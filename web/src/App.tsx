@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BarChart3, CalendarCheck, LayoutGrid, Loader2, Settings } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { HttpError } from "@/lib/api"
 import { habitsQuery, meQuery, queryClient, SessionContext, todayQuery, useSession } from "@/lib/data"
 import type { Habit } from "@/lib/rules"
+import { goBack, pushDetail } from "@/lib/nav"
 import { cn } from "@/lib/utils"
 import { HabitDetail } from "@/screens/habit-detail"
 import { HabitsScreen } from "@/screens/habits"
@@ -29,7 +30,19 @@ function Shell() {
   const [tab, setTab] = useState<Tab>("today")
   const [detailId, setDetailId] = useState<number | null>(null)
   const detail = habits.find((h) => h.id === detailId)
-  const openDetail = (habit: Habit) => setDetailId(habit.id)
+  const openDetail = (habit: Habit) => {
+    pushDetail(habit.id)
+    setDetailId(habit.id)
+  }
+
+  useEffect(() => {
+    const sync = () => {
+      const id = history.state?.detail
+      setDetailId(typeof id === "number" ? id : null)
+    }
+    window.addEventListener("popstate", sync)
+    return () => window.removeEventListener("popstate", sync)
+  }, [])
 
   return (
     <div className="relative mx-auto min-h-dvh max-w-md">
@@ -38,7 +51,7 @@ function Shell() {
         <AnimatePresence mode="wait">
           <motion.div key={detail ? `detail-${detail.id}` : tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             {detail ? (
-              <HabitDetail habit={detail} onBack={() => setDetailId(null)} />
+              <HabitDetail habit={detail} onBack={goBack} />
             ) : tab === "today" ? (
               <TodayScreen onStats={openDetail} />
             ) : tab === "habits" ? (
@@ -53,7 +66,7 @@ function Shell() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-        <div className="flex rounded-3xl border border-white/10 bg-card/80 p-1.5 shadow-2xl backdrop-blur-xl">
+        <div className="flex rounded-3xl border border-white/20 bg-card/80 p-1.5 shadow-2xl backdrop-blur-xl">
           {TABS.map(({ id, label, icon: Icon }) => {
             const active = tab === id && !detail
             return (
@@ -61,7 +74,7 @@ function Shell() {
                 key={id}
                 onClick={() => {
                   setTab(id)
-                  setDetailId(null)
+                  if (detail) goBack()
                 }}
                 className={cn("relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-2 text-[11px] transition-colors", active ? "text-primary" : "text-muted-foreground")}
               >

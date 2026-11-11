@@ -53,7 +53,7 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
 
       <DayStrip selected={day} onSelect={setDay} />
 
-      <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-primary/20 via-card/60 to-card/40 p-4">
+      <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-primary/20 via-card/60 to-card/40 p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">{day > today ? "Día futuro, solo consulta" : "Progreso del día"}</p>
@@ -70,7 +70,7 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
             )}
           </AnimatePresence>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/20">
           <motion.div className="h-full rounded-full bg-primary" initial={false} animate={{ width: `${percentage}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
         </div>
       </div>

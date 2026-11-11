@@ -29,7 +29,7 @@ export function DayStrip({ selected, onSelect }: { selected: string; onSelect: (
             onClick={() => onSelect(day)}
             className={cn(
               "relative flex w-12 shrink-0 snap-center flex-col items-center gap-0.5 rounded-2xl py-2 transition-colors",
-              isFuture ? "text-muted-foreground/60" : "text-muted-foreground",
+              isFuture ? "text-muted-foreground/80" : "text-muted-foreground",
               isSelected && "text-primary-foreground",
             )}
           >
@@ -44,7 +44,7 @@ export function DayStrip({ selected, onSelect }: { selected: string; onSelect: (
             <span className={cn("relative text-lg font-semibold tabular-nums", !isSelected && !isFuture && "text-foreground")}>
               {dayOfMonth(day)}
             </span>
-            <span className="relative h-1 w-6 overflow-hidden rounded-full bg-white/10">
+            <span className="relative h-1 w-6 overflow-hidden rounded-full bg-white/20">
               {!isFuture && statuses.length > 0 && (
                 <span
                   className={cn("block h-full rounded-full", isSelected ? "bg-primary-foreground" : "bg-primary")}

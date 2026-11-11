@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 export function Chip({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-muted-foreground ring-1 ring-white/5", className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-muted-foreground ring-1 ring-white/15", className)}>
       {children}
     </span>
   )
@@ -57,14 +57,14 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: { habit: Habit; 
     <motion.div
       layout
       className={cn(
-        "group flex items-center gap-3 rounded-3xl border border-white/5 bg-card/60 p-3 backdrop-blur transition-colors active:bg-card",
+        "group flex items-center gap-3 rounded-3xl border border-white/15 bg-card p-3 backdrop-blur transition-colors active:bg-card",
         dimmed && "opacity-60",
       )}
     >
       <button onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <HabitIcon habit={habit} />
         <span className="min-w-0 flex-1">
-          <span className={cn("block truncate font-medium", entry.status === "done" && "text-muted-foreground line-through decoration-white/20")}>
+          <span className={cn("block truncate font-medium", entry.status === "done" && "text-muted-foreground line-through decoration-white/40")}>
             {habit.name}
           </span>
           <span className="mt-1 flex flex-wrap gap-1">

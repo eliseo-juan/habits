@@ -44,14 +44,14 @@ export function ProgressScreen() {
         </div>
       </header>
 
-      <section className="space-y-3 rounded-3xl border border-white/5 bg-card/60 p-4">
+      <section className="space-y-3 rounded-3xl border border-white/15 bg-card p-4">
         {rows.map(({ habit, percentage }) => (
           <div key={habit.id}>
             <div className="mb-1 flex justify-between text-sm">
               <span className="truncate">{habit.name}</span>
               <span className="tabular-nums text-muted-foreground">{percentage ?? "–"}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="h-2 overflow-hidden rounded-full bg-white/20">
               <motion.div
                 className="h-full rounded-full"
                 style={{ background: colorOf(habit) }}
@@ -64,7 +64,7 @@ export function ProgressScreen() {
         ))}
       </section>
 
-      <section className="rounded-3xl border border-white/5 bg-card/60 p-4">
+      <section className="rounded-3xl border border-white/15 bg-card p-4">
         <p className="mb-3 text-sm font-medium">Día a día</p>
         <div className="space-y-1.5">
           {rows.map(({ habit, statusOf }) => (
@@ -78,7 +78,7 @@ export function ProgressScreen() {
                   return (
                     <span
                       key={day}
-                      className={cn("h-5 rounded-[3px]", st === "failed" ? "bg-white/15" : st === "done" ? "" : st === "not_due" ? "bg-white/[0.02]" : "bg-white/5")}
+                      className={cn("h-5 rounded-[3px]", st === "failed" ? "bg-white/25" : st === "done" ? "" : st === "not_due" ? "bg-white/[0.05]" : "bg-white/10")}
                       style={st === "done" ? { background: colorOf(habit) } : undefined}
                     />
                   )
