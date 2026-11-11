@@ -64,6 +64,25 @@ eas build --profile production --platform all            # binarios de tienda
 eas submit --profile production --platform ios|android
 ```
 
+### Instalar el APK sin pasar por Play Store
+
+Los perfiles `apk` y `preview` generan un **APK** (instalable directamente); `production` genera un AAB, que solo sirve para subir a Play Store. Para uso propio, `apk` es el recomendado: usa el entorno y el canal `production`, así recibe las OTAs que publica el CI. `preview` es para probar con otro servidor/canal.
+
+```sh
+cd mobile
+eas build --profile apk --platform android
+```
+
+Tarda unos minutos en la nube de EAS (la primera vez pregunta si genera el keystore: di que sí y EAS lo guarda; no lo pierdas, o no podrás actualizar encima de la app instalada). Al terminar:
+
+- En la terminal sale una URL y un QR; también está en expo.dev → tu proyecto → **Builds**.
+- Abre ese enlace **en el móvil** y descarga el `.apk` (o `eas build:run --platform android --latest` con el móvil por USB/emulador).
+- Android pedirá permitir «instalar apps desconocidas» para el navegador la primera vez.
+
+**Desde GitHub:** Actions → «Mobile build (APK)» → Run workflow (solo manual; elige `apk` o `preview`). Encola el build en EAS y deja el enlace en el resumen de la ejecución; no espera a que termine. Necesita los secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` del entorno `production`, y que el keystore ya exista: haz el primer build una vez desde tu terminal (los builds no interactivos no pueden generarlo).
+
+Las siguientes versiones: otro `eas build --profile apk` para cambios nativos, y las OTAs (abajo) para cambios de JS. El APK `preview` recibe OTAs del canal `preview` (`eas update --channel preview --environment preview`); el CI publica solo en `production`.
+
 **OTA** (`expo-updates`, canales `development` / `preview` / `production`): `eas update --channel production --environment production`, o automático con `.github/workflows/mobile-update.yml` al hacer push a `main` que toque `mobile/` (secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` en el entorno `production` de GitHub; conviene exigir aprobación manual ahí).
 
 La `runtimeVersion` es un **fingerprint** de la capa nativa (dependencias nativas, config plugins, widgets, permisos): una OTA solo llega a binarios compatibles, así que un cambio nativo nunca se empuja por aire a una app que no lo tiene. Si lo cambias, el siguiente `eas update` queda esperando a un build nuevo con ese fingerprint. `fingerprint.config.js` excluye `extra` (servidor, project id) para que las variables de entorno no cambien el hash; `updates.url` sí cuenta, así que el `EAS_PROJECT_ID` debe ser el mismo en tu máquina, en EAS y en GitHub. Para ver el hash: `npx fingerprint fingerprint:generate --platform ios`. En Ajustes hay un botón «Buscar actualizaciones» (en builds con OTA activo).
