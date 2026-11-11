@@ -3,6 +3,9 @@ name: Mobile OTA update
 # Publishes JS-only changes to installed apps through EAS Update. Runs only on pushes to main (never on pull
 # requests, so forks cannot reach the secrets) and inside the `production` GitHub environment, where you can
 # also require a manual approval. Needs the repo/environment secrets EXPO_TOKEN and EAS_PROJECT_ID.
+# Android only: there is no iOS build, so iOS updates would reach nobody.
+# When a change alters the native fingerprint, no installed APK can take the new update, so the job queues an `apk`
+# build for that runtime (unless one already exists or is in progress) and links it in the run summary.
 on:
   push:
     branches: [main]
@@ -18,7 +21,7 @@ permissions:
 
 jobs:
   update:
-    name: eas update (production)
+    name: eas update (production, android)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Forks have no secrets (and no business publishing); the job only runs in the owner's repository.
@@ -27,6 +30,9 @@ jobs:
     defaults:
       run:
         working-directory: mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -37,8 +43,32 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm install --global eas-cli@27.7.2
-      - run: eas update --channel production --environment production --non-interactive --message "$COMMIT_MESSAGE"
+      - name: Publish the update
+        id: update
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message || github.sha }}
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+        run: |
+          eas update --channel production --environment production --platform android --non-interactive --json \
+            --message "$COMMIT_MESSAGE" > "$RUNNER_TEMP/update.json"
+          runtime=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))[0].runtimeVersion' "$RUNNER_TEMP/update.json")
+          echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
+      - name: Queue an APK build if no build has this runtime
+        env:
+          RUNTIME: ${{ steps.update.outputs.runtime }}
+        run: |
+          eas build:list --platform android --build-profile apk --runtime-version "$RUNTIME" --limit 20 --json --non-interactive \
+            > "$RUNNER_TEMP/builds.json"
+          usable=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).filter(b => !["ERRORED", "CANCELED"].includes(b.status)).length' "$RUNNER_TEMP/builds.json")
+          if [ "$usable" -gt 0 ]; then
+            echo "Runtime \`$RUNTIME\` already has an APK build; the update reaches it." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          eas build --platform android --profile apk --non-interactive --no-wait --json > "$RUNNER_TEMP/build.json"
+          url=$(node -p 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); (Array.isArray(b) ? b[0] : b).buildDetailsPageUrl ?? ""' "$RUNNER_TEMP/build.json")
+          {
+            echo "### Native change: APK build queued"
+            echo
+            echo "Runtime \`$RUNTIME\` had no APK build, so installed apps cannot take this update until you install the new one."
+            echo
+            echo "${url:-See expo.dev → Builds}"
+          } >> "$GITHUB_STEP_SUMMARY"
