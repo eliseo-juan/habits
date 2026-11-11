@@ -7,15 +7,15 @@ built PWA and reminder/webhook delivery. Personal project: the owner is the only
 
 | Path | What | Stack |
 |---|---|---|
-| `app/` | Backend | Python 3.14, FastAPI, SQLAlchemy, Alembic |
-| `migrations/` | Alembic migrations | |
-| `tests/` | Backend tests | pytest |
+| `backend/` | Server: `app/`, `migrations/`, `tests/` | Python 3.14, FastAPI, SQLAlchemy, Alembic |
 | `web/` | PWA | React, Vite, Tailwind, shadcn |
 | `mobile/` | Native app (see `mobile/AGENTS.md`) | Expo |
 | `custom_components/habits/`, `tests_ha/` | Home Assistant integration (HACS) | |
 | `awtrix/`, `awtrix-preview/` | AWTRIX clock app and layout previews | |
 
 ## Backend architecture
+
+Paths below are relative to `backend/`.
 
 - Business logic lives in `app/services/`. `app/api/` (REST) and `app/mcp/server.py` (MCP)
   are thin adapters over the same services: a behavior change goes in the service so both
@@ -35,7 +35,7 @@ Full list in README "Rules". The ones code changes trip on:
 
 ## Commands
 
-Backend (repo root, venv in `.venv`):
+Backend (from `backend/`, venv in `backend/.venv`):
 
 ```sh
 .venv/bin/pip install -e ".[dev]"
@@ -48,12 +48,35 @@ Backend (repo root, venv in `.venv`):
 - Mobile: see `mobile/AGENTS.md`.
 - Home Assistant (`tests_ha/`): `pytest -q` with `pytest-homeassistant-custom-component`.
 
-Run the checks for every part you touched before calling a task done; CI runs all of them.
+Ruff config is the root `ruff.toml` and covers `backend/`, `custom_components/` and `tests_ha/`.
+
+Run the checks for every part you touched before calling a task done.
+
+## CI
+
+`✅ CI` (`ci.yml`) runs on every PR and push to `main`. Its `🔎 Changes` job picks which
+component workflows run from the paths a change touches, and `CI ok` is the single required
+status: it passes when every component that ran passed. Tags and manual runs check everything.
+
+| Workflow | Runs when | Checks |
+|---|---|---|
+| `🐍 Backend` (`backend.yml`) | `backend/`, `ruff.toml` | Ruff, pytest, migrations round-trip, pip-audit |
+| `🌐 Web` (`web.yml`) | `web/` | oxlint, build (includes `tsc`), npm audit |
+| `📱 Mobile` (`mobile.yml`) | `mobile/` | Typecheck, Android prebuild, JS bundle |
+| `🏠 Home Assistant` (`home-assistant.yml`) | `custom_components/`, `tests_ha/`, `hacs.json` | Ruff, HA test harness |
+| `🐳 Docker image` (`docker.yml`) | `backend/`, `web/`, `Dockerfile` | Image builds and answers `/health` |
+
+Delivery is marked 🚀: `🚀 Publish image` (in `ci.yml`, pushes to `main` and tags that change
+the image), `🚀 Mobile OTA update` (pushes to `main` touching `mobile/`) and
+`🚀 Mobile APK build` (manual). `🔒 Owner only` closes outside PRs and issues.
+
+A new component gets its own reusable workflow with an emoji name, a filter in `🔎 Changes`
+and an entry in `CI ok`'s `needs`.
 
 ## Changes
 
-- Schema change → new Alembic migration in `migrations/versions/` (numbered `000N_name.py`)
-  that also downgrades cleanly. CI runs upgrade → check → downgrade base → upgrade.
+- Schema change → new Alembic migration in `backend/migrations/versions/` (numbered `000N_name.py`)
+  that also downgrades cleanly.
 - API change → check every client: `web/`, `mobile/`, `custom_components/habits/`,
   `awtrix/` and the MCP tools.
 - Ship behavior changes with tests and bug fixes with a regression test.

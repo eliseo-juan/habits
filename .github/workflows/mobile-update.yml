@@ -1,4 +1,4 @@
-name: Mobile OTA update
+name: 🚀 Mobile OTA update
 
 # Publishes JS-only changes to installed apps through EAS Update. Runs only on pushes to main (never on pull
 # requests, so forks cannot reach the secrets) and inside the `production` GitHub environment, where you can

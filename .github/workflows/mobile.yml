@@ -1,16 +1,9 @@
-name: Mobile CI
+name: 📱 Mobile
 
+# Called from ✅ CI when mobile/ changes: typecheck, Android prebuild and JS bundle of the Expo app.
+# Publishing lives in 🚀 Mobile OTA update and 🚀 Mobile APK build.
 on:
-  push:
-    branches: [main]
-    paths: ["mobile/**"]
-  pull_request:
-    paths: ["mobile/**"]
-  workflow_dispatch:
-
-concurrency:
-  group: mobile-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
 
 permissions:
   contents: read

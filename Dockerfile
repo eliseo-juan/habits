@@ -15,12 +15,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HABITS_WEB_DIR=/app/web
 
 WORKDIR /app
-COPY pyproject.toml ./
-COPY app ./app
+COPY backend/pyproject.toml ./
+COPY backend/app ./app
 RUN pip install .
 
-COPY alembic.ini docker-entrypoint.sh ./
-COPY migrations ./migrations
+COPY backend/alembic.ini backend/docker-entrypoint.sh ./
+COPY backend/migrations ./migrations
 COPY --from=web /web/dist ./web
 
 RUN useradd --uid 1000 --create-home habits && mkdir /data && chown habits /data

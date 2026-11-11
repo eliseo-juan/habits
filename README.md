@@ -4,7 +4,10 @@ Self-hosted habit tracker: REST API, installable PWA, remote MCP server, a summa
 
 ## Run locally
 
+The server lives in `backend/`; run these from there.
+
 ```sh
+cd backend
 python3.14 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 export HABITS_SECRET_KEY=dev-secret HABITS_COOKIE_SECURE=false
@@ -101,7 +104,7 @@ Five wrong passwords for the same email block logins for that email for 15 minut
 - `todo.<name>_today`: the habits due today. Checking one completes it (all of its remaining `times_per_day`); unchecking clears the day. Skipped habits show as completed.
 - `sensor.<name>_pending_today`, `_done_today`, `_due_today`.
 
-Install it from the Marketplace (HACS): ⋮ → Custom repositories → `eliseo-juan/habits`, type Integration, then download it and restart. Settings → Devices & services → Add integration → Habits, with the LAN URL (`https://habits.lab.eliseo.tech`) and a write token:
+Install it from the Marketplace (HACS): ⋮ → Custom repositories → `eliseo-juan/habits`, type Integration, then download it and restart. Settings → Devices & services → Add integration → Habits, with the server's URL (for example `https://habits.example.com`) and a write token:
 
 ```sh
 docker exec habits ./docker-entrypoint.sh create-token me@example.com --name home-assistant --scope write
@@ -132,7 +135,7 @@ Add an ntfy channel (`POST /channels` with `{"config": {"topic": "...", "server"
 
 ## Deploy
 
-Every push to `main` runs the tests and publishes `ghcr.io/eliseo-juan/habits:latest` plus a `sha-…` tag (and `X.Y.Z` for `v*` tags). `docker-compose.yml` runs it with the database in `./data`:
+Every push to `main` that changes the image (`backend/`, `web/`, `Dockerfile`) runs the checks and publishes `ghcr.io/eliseo-juan/habits:latest` plus a `sha-…` tag (and `X.Y.Z` for `v*` tags). `docker-compose.yml` runs it with the database in `./data`:
 
 ```sh
 export HABITS_SECRET_KEY="$(openssl rand -hex 32)" HABITS_PUBLIC_URL=https://habits.example.com

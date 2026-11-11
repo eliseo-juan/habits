@@ -1,4 +1,4 @@
-name: Owner only
+name: 🔒 Owner only
 
 # This is a personal project: PRs and issues from anyone but the owner are closed on sight.
 # Uses pull_request_target so it also works for forks, and never checks out or runs PR code.

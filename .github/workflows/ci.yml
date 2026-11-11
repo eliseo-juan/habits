@@ -1,166 +1,105 @@
-name: CI
+name: ✅ CI
 
-# The mobile app has its own workflows (mobile*.yml) and is not part of the server image, so mobile-only changes
-# skip this one. Tag pushes ignore path filters, so releases always run it.
+# Entry point for every check. `🔎 Changes` decides which component workflows run, and `CI ok` always reports, so it
+# is the single required status for main whatever a PR touches. Tags and manual runs check everything.
 on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths-ignore: ["mobile/**", ".github/workflows/mobile*.yml"]
   pull_request:
-    paths-ignore: ["mobile/**", ".github/workflows/mobile*.yml"]
   workflow_dispatch:
 
 # A new push to the same ref supersedes the run in flight (never cancels main/tags: they publish).
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' && github.ref_name != 'main' }}
 
 permissions:
   contents: read
 
-env:
-  PYTHON_VERSION: "3.14"
-
 jobs:
-  lint:
-    name: Lint
+  changes:
+    name: 🔎 Changes
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outcome == 'skipped' || steps.filter.outputs.ci == 'true' || steps.filter.outputs.backend == 'true' }}
+      web: ${{ steps.filter.outcome == 'skipped' || steps.filter.outputs.ci == 'true' || steps.filter.outputs.web == 'true' }}
+      mobile: ${{ steps.filter.outcome == 'skipped' || steps.filter.outputs.ci == 'true' || steps.filter.outputs.mobile == 'true' }}
+      home-assistant: ${{ steps.filter.outcome == 'skipped' || steps.filter.outputs.ci == 'true' || steps.filter.outputs.home-assistant == 'true' }}
+      image: ${{ steps.filter.outcome == 'skipped' || steps.filter.outputs.ci == 'true' || steps.filter.outputs.image == 'true' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - id: filter
+        if: github.ref_type != 'tag' && github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: pyproject.toml
-      - run: pip install -e ".[dev]"
-      - run: ruff check . --output-format github
-      - run: ruff format --check .
+          filters: |
+            ci:
+              - '.github/workflows/ci.yml'
+            backend:
+              - 'backend/**'
+              - 'ruff.toml'
+              - '.github/workflows/backend.yml'
+            web:
+              - 'web/**'
+              - '.github/workflows/web.yml'
+            mobile:
+              - 'mobile/**'
+              - '.github/workflows/mobile.yml'
+            home-assistant:
+              - 'custom_components/**'
+              - 'tests_ha/**'
+              - 'hacs.json'
+              - 'ruff.toml'
+              - '.github/workflows/home-assistant.yml'
+            image:
+              - 'backend/**'
+              - 'web/**'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.github/workflows/docker.yml'
+
+  backend:
+    name: 🐍 Backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    uses: ./.github/workflows/backend.yml
 
   web:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
+    name: 🌐 Web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    uses: ./.github/workflows/web.yml
 
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: pyproject.toml
-      - run: pip install -e ".[dev]"
-      - run: pytest -q --cov --cov-report=term-missing --cov-report=xml
-      - name: Coverage summary
-        if: always()
-        run: |
-          if [ -f coverage.xml ]; then
-            coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
-          fi
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: coverage-xml
-          path: coverage.xml
-          if-no-files-found: ignore
+  mobile:
+    name: 📱 Mobile
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    uses: ./.github/workflows/mobile.yml
 
   home-assistant:
-    name: Home Assistant integration
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - run: pip install pytest-homeassistant-custom-component==0.13.375
-      - run: pytest -q
-        working-directory: tests_ha
+    name: 🏠 Home Assistant
+    needs: changes
+    if: needs.changes.outputs.home-assistant == 'true'
+    uses: ./.github/workflows/home-assistant.yml
 
-  migrations:
-    name: Migrations
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      HABITS_DATABASE_URL: sqlite:///${{ github.workspace }}/ci-migrations.db
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: pyproject.toml
-      - run: pip install -e .
-      - name: Upgrade from empty to head
-        run: alembic upgrade head
-      - name: Models and migrations agree (no missing migration)
-        run: alembic check
-      - name: Downgrade to base and back
-        run: |
-          alembic downgrade base
-          alembic upgrade head
+  image:
+    name: 🐳 Docker image
+    needs: changes
+    if: needs.changes.outputs.image == 'true'
+    uses: ./.github/workflows/docker.yml
 
-  audit:
-    name: Dependency audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - run: pip install pip-audit .
-      - run: pip freeze --exclude habits > /tmp/requirements.txt && pip-audit --requirement /tmp/requirements.txt --no-deps --disable-pip
-
-  docker:
-    name: Image builds and starts
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
-        with:
-          context: .
-          load: true
-          tags: habits:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Smoke test /health
-        env:
-          HABITS_SECRET_KEY: ci-only-secret
-        run: |
-          docker run -d --name habits -p 8000:8000 \
-            -e HABITS_SECRET_KEY="$HABITS_SECRET_KEY" habits:ci
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8000/health; then exit 0; fi
-            sleep 2
-          done
-          docker logs habits
-          exit 1
-
-  # Single required status for branch protection: green only if every job above passed.
+  # Single required status for the main ruleset: green when every component that ran passed (skipped is fine).
   ci-ok:
     name: CI ok
     if: always()
-    needs: [lint, test, home-assistant, web, migrations, audit, docker]
+    needs: [changes, backend, web, mobile, home-assistant, image]
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
       - run: |
           if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
@@ -168,9 +107,9 @@ jobs:
           fi
 
   publish:
-    name: Publish image
-    needs: [ci-ok]
-    if: github.event_name == 'push'
+    name: 🚀 Publish image
+    needs: [changes, ci-ok]
+    if: github.event_name == 'push' && needs.changes.outputs.image == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

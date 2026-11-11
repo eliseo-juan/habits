@@ -1,6 +1,6 @@
-name: Mobile build (APK)
+name: 🚀 Mobile APK build
 
-# Manual only: Actions tab → "Mobile build (APK)" → Run workflow. Queues an Android build on EAS and links it in the
+# Manual only: Actions tab → "🚀 Mobile APK build" → Run workflow. Queues an Android build on EAS and links it in the
 # run summary; it does not wait for the build, so it costs almost no runner time. Uses the same secrets as the OTA
 # workflow (EXPO_TOKEN, EAS_PROJECT_ID) inside the `production` environment. The first build must be made once from a
 # terminal (`eas build --profile apk --platform android`) so EAS can create and store the signing keystore;
@@ -28,8 +28,8 @@ jobs:
       run:
         working-directory: mobile
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
