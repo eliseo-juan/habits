@@ -85,6 +85,13 @@ def create_api_token(
     return token, plaintext
 
 
+def revoke_api_token(db: Session, plaintext: str, now: datetime) -> None:
+    token = db.scalar(select(ApiToken).where(ApiToken.token_hash == hash_secret(plaintext)))
+    if token is not None and token.revoked_at is None:
+        token.revoked_at = now
+        db.commit()
+
+
 def create_session(db: Session, user: User, now: datetime) -> str:
     plaintext = secrets.token_urlsafe(32)
     db.add(WebSession(id=hash_secret(plaintext), user_id=user.id, expires_at=now + SESSION_TTL))

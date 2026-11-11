@@ -42,6 +42,10 @@ npm run build                     # dist/, what HABITS_WEB_DIR points at
 
 The image builds it and serves it from the same origin. On Android, open the site in Chrome and use "Install app".
 
+## Mobile app
+
+`mobile/` is an Expo (React Native) app with the same screens and behaviour as the PWA. It signs in with `POST /auth/token` and keeps a revocable API token in the device's secure storage. See [mobile/README.md](mobile/README.md).
+
 ## Accounts and tokens
 
 There is no sign-up. Accounts and the first tokens are made with the CLI, which the image runs when given arguments:
@@ -53,7 +57,7 @@ docker exec habits ./docker-entrypoint.sh create-token me@example.com --name awt
 docker exec habits ./docker-entrypoint.sh create-token me@example.com --name claude --scope write
 ```
 
-Tokens are shown once and stored hashed. The token name is recorded as the `source` of every mark it makes. A logged-in web session (`POST /auth/login`) can also list, create and revoke tokens through `/tokens`; API tokens cannot mint other tokens.
+Tokens are shown once and stored hashed. The token name is recorded as the `source` of every mark it makes. Native apps sign in with `POST /auth/token` (email, password, `device_name`), which returns a write token; `POST /auth/logout` with that token revokes it. A logged-in web session (`POST /auth/login`) can also list, create and revoke tokens through `/tokens`; API tokens cannot mint other tokens.
 
 ## Rules
 

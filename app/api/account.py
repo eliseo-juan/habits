@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import security
-from app.auth.deps import SESSION_COOKIE, Db, Now, Reader, SessionWriter, Writer
+from app.auth.deps import SESSION_COOKIE, Db, Now, Reader, SessionWriter, Writer, bearer_token
 from app.config import get_settings
 from app.errors import NotFound
 from app.models import ApiToken, User
@@ -11,6 +11,7 @@ from app.schemas import (
     ChannelIn,
     ChannelOut,
     ChannelUpdate,
+    DeviceLoginIn,
     LoginIn,
     MeOut,
     MeUpdate,
@@ -65,10 +66,23 @@ def login(data: LoginIn, request: Request, response: Response, db: Db, now: Now)
     return _me(user)
 
 
+@router.post("/auth/token", response_model=TokenCreated, status_code=status.HTTP_201_CREATED)
+def login_for_token(data: DeviceLoginIn, request: Request, db: Db, now: Now):
+    """Native apps sign in with the password and keep a revocable API token instead of a cookie."""
+    user = security.authenticate(
+        db, request.app.state.login_throttle, data.email, data.password, now
+    )
+    token, plaintext = security.create_api_token(db, user, data.device_name, "write", now)
+    db.commit()
+    return TokenCreated(**_token_out(token).model_dump(), token=plaintext)
+
+
 @router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(request: Request, response: Response, db: Db):
+def logout(request: Request, response: Response, db: Db, now: Now):
     if cookie := request.cookies.get(SESSION_COOKIE):
         security.end_session(db, cookie)
+    if bearer := bearer_token(request):
+        security.revoke_api_token(db, bearer, now)
     response.delete_cookie(SESSION_COOKIE)
 
 

@@ -1,0 +1,94 @@
+import { useState } from "react"
+import { Text, View } from "react-native"
+import Animated, { ZoomIn, ZoomOut } from "react-native-reanimated"
+import { Ionicons } from "@expo/vector-icons"
+import { router } from "expo-router"
+import { DayStrip } from "@/components/day-strip"
+import { HabitRow } from "@/components/habit-row"
+import { Button, Card, PageHeader, Progress, Screen, SectionTitle } from "@/components/ui"
+import { useDay, useSession, useStatuses } from "@/lib/data"
+import { dayTitle, MONTHS, parse, type DayEntry, type Habit } from "@/lib/rules"
+import { colors } from "@/theme"
+
+type Row = { habit: Habit; entry: DayEntry }
+
+export default function TodayScreen() {
+  const { today, habits } = useSession()
+  const statusOf = useStatuses()
+  const [day, setDay] = useState(today)
+  const items = useDay(day).data?.items
+  const open = (habit: Habit) => router.push({ pathname: "/log/[habitId]", params: { habitId: String(habit.id), day } })
+
+  const due: Row[] = (items ?? []).flatMap((entry) => {
+    const habit = habits.find((h) => h.id === entry.habit_id)
+    return habit ? [{ habit, entry }] : []
+  })
+  const toDo = due.filter((r) => r.habit.kind === "build")
+  const avoid = due.filter((r) => r.habit.kind === "limit")
+  // Period habits whose target is already met aren't due today but stay visible, dimmed.
+  const metThisPeriod: Row[] = habits
+    .filter((h) => h.kind === "build" && h.schedule.type === "times_per_period" && day >= h.start_date && items && !items.some((i) => i.habit_id === h.id))
+    .map((habit) => {
+      const status = statusOf(habit.id, day)
+      const target = habit.schedule.times_per_day
+      return { habit, entry: { habit_id: habit.id, status, done_count: status === "done" ? target : 0, times_per_day: target, period_done: null, period_target: null } }
+    })
+  const done = toDo.filter((r) => r.entry.status === "done").length
+  const percentage = toDo.length ? Math.round((100 * done) / toDo.length) : 0
+  const date = parse(day)
+
+  return (
+    <Screen refreshable>
+      <PageHeader
+        eyebrow={`${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`}
+        title={dayTitle(day, today)}
+        right={day !== today ? <Button variant="secondary" size="md" label="Hoy" icon={<Ionicons name="refresh" size={16} color={colors.foreground} />} onPress={() => setDay(today)} style={{ borderRadius: 99, minHeight: 36 }} /> : undefined}
+      />
+
+      <DayStrip selected={day} onSelect={setDay} />
+
+      <Card style={{ backgroundColor: "rgba(77,219,165,0.10)", gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View>
+            <Text style={{ fontSize: 14, color: colors.mutedForeground }}>{day > today ? "Día futuro, solo consulta" : "Progreso del día"}</Text>
+            <Text style={{ fontSize: 24, fontWeight: "600", color: colors.foreground }}>
+              {done}
+              <Text style={{ color: colors.mutedForeground }}> / {toDo.length}</Text>
+            </Text>
+          </View>
+          {toDo.length > 0 && done === toDo.length && (
+            <Animated.View entering={ZoomIn.springify()} exiting={ZoomOut}>
+              <Ionicons name="sparkles" size={32} color={colors.primary} />
+            </Animated.View>
+          )}
+        </View>
+        <Progress value={percentage} color={colors.primary} />
+      </Card>
+
+      <View style={{ gap: 8 }}>
+        {items && toDo.length === 0 && <Text style={{ paddingVertical: 40, textAlign: "center", color: colors.mutedForeground }}>Nada que hacer este día ✨</Text>}
+        {toDo.map(({ habit, entry }) => (
+          <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => open(habit)} />
+        ))}
+      </View>
+
+      {avoid.length > 0 && (
+        <View style={{ gap: 8 }}>
+          <SectionTitle>A evitar</SectionTitle>
+          {avoid.map(({ habit, entry }) => (
+            <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => open(habit)} />
+          ))}
+        </View>
+      )}
+
+      {metThisPeriod.length > 0 && (
+        <View style={{ gap: 8 }}>
+          <SectionTitle>Objetivo cumplido este periodo</SectionTitle>
+          {metThisPeriod.map(({ habit, entry }) => (
+            <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => open(habit)} dimmed />
+          ))}
+        </View>
+      )}
+    </Screen>
+  )
+}
