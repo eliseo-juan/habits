@@ -295,7 +295,9 @@ def test_device_tokens_manage_tokens_but_write_tokens_cannot(client, alice):
 
     assert client.get("/tokens", headers=alice.auth()).status_code == 403
     assert (
-        client.post("/tokens", json={"name": "x", "scope": "write"}, headers=alice.auth()).status_code
+        client.post(
+            "/tokens", json={"name": "x", "scope": "write"}, headers=alice.auth()
+        ).status_code
         == 403
     )
     assert (

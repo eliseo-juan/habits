@@ -123,9 +123,7 @@ def principal_from_session(db: Session, plaintext: str, now: datetime) -> Princi
     user = db.get(User, session.user_id)
     if user is None or user.disabled:
         return None
-    return Principal(
-        user=user, can_write=True, source="app", can_manage_tokens=True
-    )
+    return Principal(user=user, can_write=True, source="app", can_manage_tokens=True)
 
 
 def end_session(db: Session, plaintext: str) -> None:
