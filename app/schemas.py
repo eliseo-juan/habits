@@ -202,6 +202,7 @@ class TokenOut(BaseModel):
     scope: Literal["read", "write"]
     created_at: datetime
     last_used: datetime | None
+    revoked_at: datetime | None = None
 
 
 class TokenCreated(TokenOut):

@@ -94,7 +94,7 @@ def create_session(db: Session, user: User, now: datetime) -> str:
 
 def principal_from_token(db: Session, plaintext: str, now: datetime) -> Principal | None:
     token = db.scalar(select(ApiToken).where(ApiToken.token_hash == hash_secret(plaintext)))
-    if token is None:
+    if token is None or token.revoked_at is not None:
         return None
     user = db.get(User, token.user_id)
     if user is None or user.disabled:
