@@ -7,7 +7,7 @@ import { EMPTY_LOG, type DayEntry, type DayLog, type Habit, type Status } from "
 export type Me = { id: number; email: string; display_name: string; timezone: string; day_cutoff: string }
 type YearOut = { year: number; habits: { habit_id: number; percentage: number | null; months: { month: string; percentage: number | null }[]; days: Record<string, Status> }[] }
 type HabitStats = { done: number; failed: number; skipped: number; percentage: number | null; current_streak: number; best_streak: number }
-type Reminder = { id: number; time_local: string; enabled: boolean }
+export type Reminder = { id: number; time_local: string; weekdays: number[] | null; enabled: boolean }
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: () => api<Me>("/me") })
 export const todayQuery = queryOptions({ queryKey: ["today"], queryFn: () => api<{ date: string }>("/today") })
@@ -26,8 +26,8 @@ const logQuery = (habitId: number, day: string) =>
 export const useDay = (day: string) => useQuery({ queryKey: ["day", day], queryFn: () => api<{ items: DayEntry[] }>(`/today?date=${day}`) })
 export const useYear = (year: number) => useQuery({ queryKey: ["year", year], queryFn: () => api<YearOut>(`/stats/year?year=${year}`) })
 export const useHabitStats = (habitId: number) => useQuery({ queryKey: ["stats", habitId], queryFn: () => api<HabitStats>(`/habits/${habitId}/stats`) })
-export const useReminders = (habitId: number) =>
-  useQuery({ queryKey: ["reminders", habitId], queryFn: () => api<Reminder[]>(`/habits/${habitId}/reminders`), staleTime: 5 * 60_000 })
+export const useReminders = (habitId: number, { enabled = true }: { enabled?: boolean } = {}) =>
+  useQuery({ queryKey: ["reminders", habitId], queryFn: () => api<Reminder[]>(`/habits/${habitId}/reminders`), staleTime: 5 * 60_000, enabled })
 export const useLog = (habitId: number, day: string) => useQuery(logQuery(habitId, day))
 
 type Session = { me: Me; today: string; habits: Habit[] }

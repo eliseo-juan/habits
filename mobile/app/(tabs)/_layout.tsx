@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons"
 import { BlurView } from "expo-blur"
 import * as Haptics from "expo-haptics"
 import { Tabs } from "expo-router"
-import { Platform, StyleSheet } from "react-native"
+import { Platform, StyleSheet, View } from "react-native"
+import { Glow } from "@/components/ui"
 import { colors, headerOptions } from "@/theme"
 
 type Name = keyof typeof Ionicons.glyphMap
@@ -16,22 +17,26 @@ const TABS: { name: string; title: string; icon: Name; focused: Name }[] = [
 
 export default function TabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        ...headerOptions,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
-        // Translucent bar over the content (blurred on iOS, solid on Android where blur is costly).
-        tabBarStyle: { position: "absolute", backgroundColor: Platform.OS === "ios" ? "transparent" : colors.card, borderTopColor: colors.border, elevation: 0 },
-        tabBarBackground: () => (Platform.OS === "ios" ? <BlurView tint="dark" intensity={60} style={StyleSheet.absoluteFill} /> : null),
-        tabBarLabelStyle: { fontSize: 11 },
-        sceneStyle: { backgroundColor: colors.background },
-      }}
-      screenListeners={{ tabPress: () => Haptics.selectionAsync() }}
-    >
-      {TABS.map(({ name, title, icon, focused }) => (
-        <Tabs.Screen key={name} name={name} options={{ title, tabBarIcon: ({ color, size, focused: on }) => <Ionicons name={on ? focused : icon} size={size} color={color as string} /> }} />
-      ))}
-    </Tabs>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Glow />
+      <Tabs
+        screenOptions={{
+          ...headerOptions,
+          headerStyle: { backgroundColor: "transparent" },
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.mutedForeground,
+          // Translucent bar over the content (blurred on iOS, solid on Android where blur is costly).
+          tabBarStyle: { position: "absolute", backgroundColor: Platform.OS === "ios" ? "transparent" : colors.card, borderTopColor: colors.border, elevation: 0 },
+          tabBarBackground: () => (Platform.OS === "ios" ? <BlurView tint="dark" intensity={60} style={StyleSheet.absoluteFill} /> : null),
+          tabBarLabelStyle: { fontSize: 11 },
+          sceneStyle: { backgroundColor: "transparent" },
+        }}
+        screenListeners={{ tabPress: () => Haptics.selectionAsync() }}
+      >
+        {TABS.map(({ name, title, icon, focused }) => (
+          <Tabs.Screen key={name} name={name} options={{ title, tabBarIcon: ({ color, size, focused: on }) => <Ionicons name={on ? focused : icon} size={size} color={color as string} /> }} />
+        ))}
+      </Tabs>
+    </View>
   )
 }

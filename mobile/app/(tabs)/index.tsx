@@ -1,10 +1,10 @@
 import { useState } from "react"
-import { Text, View } from "react-native"
+import { Pressable, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { router, Tabs } from "expo-router"
 import { DayStrip } from "@/components/day-strip"
 import { HabitRow } from "@/components/habit-row"
-import { Button, Screen, SectionTitle } from "@/components/ui"
+import { Screen, SectionTitle } from "@/components/ui"
 import { useDay, useSession, useStatuses } from "@/lib/data"
 import { dayTitle, MONTHS, parse, type DayEntry, type Habit } from "@/lib/rules"
 import { colors } from "@/theme"
@@ -41,7 +41,11 @@ export default function TodayScreen() {
           headerTitle: `${dayTitle(day, today)}, ${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`,
           headerRight:
             day !== today
-              ? () => <Button variant="secondary" label="Hoy" icon={<Ionicons name="refresh" size={16} color={colors.foreground} />} onPress={() => setDay(today)} style={{ borderRadius: 99, minHeight: 36, marginRight: 16 }} />
+              ? () => (
+                  <Pressable onPress={() => setDay(today)} hitSlop={10} accessibilityLabel="Ir a hoy" style={({ pressed }) => [{ marginRight: 16 }, pressed && { opacity: 0.6 }]}>
+                    <Ionicons name="today-outline" size={24} color={colors.foreground} />
+                  </Pressable>
+                )
               : undefined,
         }}
       />

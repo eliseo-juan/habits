@@ -93,10 +93,10 @@ function Sheet({ habit, entry, day }: { habit: NonNullable<ReturnType<typeof use
         </View>
       )}
 
-      <Button size="lg" label={habit.kind === "limit" ? "Lo hice" : "Hecho"} icon={<Ionicons name="checkmark" size={20} color={colors.primaryForeground} />} disabled={isFuture} onPress={() => close(save({ done_count: target }))} />
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Button style={{ flex: 1 }} size="lg" variant="secondary" label="Saltar" icon={<Ionicons name="play-skip-forward" size={18} color={colors.foreground} />} disabled={isFuture} onPress={() => close(save({ done_count: 0, skipped: true }))} />
-        <Button style={{ flex: 1 }} size="lg" variant="secondary" label="Borrar" icon={<Ionicons name="trash-outline" size={18} color={colors.foreground} />} disabled={isFuture} onPress={() => close(write(EMPTY_LOG))} />
+      <View style={[styles.segments, isFuture && { opacity: 0.45 }]}>
+        <Segment icon="checkmark" label={habit.kind === "limit" ? "Lo hice" : "Hecho"} active={log.done_count >= target} primary disabled={isFuture} onPress={() => close(save({ done_count: target }))} />
+        <Segment icon="play-skip-forward" label="Saltado" active={log.skipped} disabled={isFuture} onPress={() => close(save({ done_count: 0, skipped: true }))} />
+        <Segment icon="remove-circle-outline" label="Vacío" active={!log.skipped && log.done_count === 0} disabled={isFuture} onPress={() => close(write({ ...EMPTY_LOG, note: current.note }))} />
       </View>
 
       {writingNote || current.note ? (
@@ -120,7 +120,27 @@ function Sheet({ habit, entry, day }: { habit: NonNullable<ReturnType<typeof use
   )
 }
 
+type SegmentProps = { icon: keyof typeof Ionicons.glyphMap; label: string; active: boolean; primary?: boolean; disabled: boolean; onPress: () => void }
+
+function Segment({ icon, label, active, primary, disabled, onPress }: SegmentProps) {
+  const fg = active && primary ? colors.primaryForeground : active ? colors.foreground : colors.mutedForeground
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active, disabled }}
+      style={({ pressed }) => [styles.segment, active && { backgroundColor: primary ? colors.primary : colors.white15 }, pressed && { opacity: 0.7 }]}
+    >
+      <Ionicons name={icon} size={20} color={fg} />
+      <Text style={{ fontSize: 13, fontWeight: "600", color: fg }}>{label}</Text>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
+  segments: { flexDirection: "row", gap: 4, padding: 4, borderRadius: radius.md + 4, backgroundColor: colors.white10 },
+  segment: { flex: 1, minHeight: 60, alignItems: "center", justifyContent: "center", gap: 2, borderRadius: radius.md },
   sheet: { gap: 16, paddingHorizontal: 20, paddingTop: 24, backgroundColor: colors.popover },
   round: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", backgroundColor: colors.white10 },
   note: { minHeight: 64, borderRadius: radius.md, borderWidth: 1, borderColor: colors.white15, backgroundColor: colors.white10, padding: 12, fontSize: 16, color: colors.foreground, textAlignVertical: "top" },

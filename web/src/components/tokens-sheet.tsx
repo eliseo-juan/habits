@@ -10,12 +10,14 @@ import { cn } from "@/lib/utils"
 export type ApiToken = {
   id: number
   name: string
-  scope: "read" | "write"
+  scope: "read" | "write" | "device"
   created_at: string
   last_used: string | null
   revoked_at: string | null
 }
 type Created = ApiToken & { token: string }
+
+const SCOPE_LABELS = { read: "Solo lectura", write: "Lectura y escritura", device: "App móvil" } as const
 
 export const tokensQuery = { queryKey: ["tokens"], queryFn: () => api<ApiToken[]>("/tokens") }
 
@@ -117,7 +119,7 @@ export function TokensSheet({ onClose }: { onClose: () => void }) {
               <div className="min-w-0 flex-1">
                 <p className={cn("truncate text-sm font-medium", t.revoked_at && "line-through")}>{t.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {t.revoked_at ? `Deprecado el ${date(t.revoked_at)}` : t.scope === "write" ? "Lectura y escritura" : "Solo lectura"} ·{" "}
+                  {t.revoked_at ? `Deprecado el ${date(t.revoked_at)}` : SCOPE_LABELS[t.scope]} ·{" "}
                   {t.last_used ? `usado ${date(t.last_used)}` : "sin usar"}
                 </p>
               </div>

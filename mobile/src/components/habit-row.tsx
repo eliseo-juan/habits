@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated"
 import * as Haptics from "expo-haptics"
+import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
 import { HabitRing } from "@/components/habit-ring"
 import { useToast } from "@/components/toast"
@@ -13,9 +14,14 @@ export function HabitIcon({ habit, size = "md" }: { habit: Look; size?: "md" | "
   const color = colorOf(habit)
   const box = size === "md" ? 44 : 56
   return (
-    <View style={{ width: box, height: box, borderRadius: radius.md, alignItems: "center", justifyContent: "center", backgroundColor: `${color}26`, borderWidth: 1, borderColor: `${color}33` }}>
+    <LinearGradient
+      colors={[`${color}33`, `${color}0d`]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{ width: box, height: box, borderRadius: radius.md, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: `${color}33` }}
+    >
       <Text style={{ fontSize: size === "md" ? 20 : 28, fontWeight: "600", color }}>{emojiOf(habit)}</Text>
-    </View>
+    </LinearGradient>
   )
 }
 

@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type PressableProps, type ScrollViewProps, type StyleProp, type TextStyle, type ViewStyle } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
+import { LinearGradient } from "expo-linear-gradient"
 import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { colors, radius } from "@/theme"
@@ -26,6 +27,11 @@ export function Screen({ children, refreshable, contentStyle, ...props }: Scroll
       {children}
     </ScrollView>
   )
+}
+
+// The PWA's soft primary glow behind the top of the screen; parents must leave their background transparent.
+export function Glow() {
+  return <LinearGradient pointerEvents="none" colors={["rgba(77,219,165,0.18)", "rgba(77,219,165,0.05)", "transparent"]} style={styles.glow} />
 }
 
 export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
@@ -109,7 +115,8 @@ export function Fab({ icon, label, busy, disabled, style, ...props }: FabProps) 
 }
 
 export const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
+  screen: { flex: 1, backgroundColor: "transparent" },
+  glow: { position: "absolute", top: 0, left: 0, right: 0, height: 288 },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: 16 },
   chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: colors.white10, borderWidth: 1, borderColor: colors.white10 },
   chipText: { fontSize: 11, color: colors.mutedForeground },

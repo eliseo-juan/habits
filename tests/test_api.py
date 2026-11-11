@@ -274,11 +274,36 @@ def test_device_login_issues_revocable_token(client, alice):
     assert client.post("/auth/token", json={**body, "password": "nope"}).status_code == 401
     created = client.post("/auth/token", json=body)
     assert created.status_code == 201
-    assert created.json()["scope"] == "write" and created.json()["name"] == "phone"
+    assert created.json()["scope"] == "device" and created.json()["name"] == "phone"
     auth = {"Authorization": f"Bearer {created.json()['token']}"}
     assert client.get("/me", headers=auth).json()["email"] == alice.email
     assert client.post("/auth/logout", headers=auth).status_code == 204
     assert client.get("/me", headers=auth).status_code == 401
+
+
+def test_device_tokens_manage_tokens_but_write_tokens_cannot(client, alice):
+    body = {"email": alice.email, "password": "secret-password", "device_name": "phone"}
+    auth = {"Authorization": f"Bearer {client.post('/auth/token', json=body).json()['token']}"}
+    assert client.patch("/me", json={"timezone": "Europe/Madrid"}, headers=auth).status_code == 200
+
+    created = client.post("/tokens", json={"name": "ha", "scope": "read"}, headers=auth)
+    assert created.status_code == 201
+    listed = client.get("/tokens", headers=auth).json()
+    assert [t["name"] for t in listed if t["current"]] == ["phone"]
+    assert client.post(f"/tokens/{created.json()['id']}/revoke", headers=auth).status_code == 200
+    assert client.delete(f"/tokens/{created.json()['id']}", headers=auth).status_code == 204
+
+    assert client.get("/tokens", headers=alice.auth()).status_code == 403
+    assert (
+        client.post(
+            "/tokens", json={"name": "x", "scope": "write"}, headers=alice.auth()
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post("/tokens", json={"name": "x", "scope": "device"}, headers=auth).status_code
+        == 422
+    )
 
 
 def test_update_me_timezone(client, alice):

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { Ionicons } from "@expo/vector-icons"
 import { router, Stack, useLocalSearchParams } from "expo-router"
@@ -9,7 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useToast } from "@/components/toast"
 import { Button, Fab, SectionTitle } from "@/components/ui"
 import { api } from "@/lib/api"
-import { useSession } from "@/lib/data"
+import { habitsQuery, useReminders, useSession, type Reminder } from "@/lib/data"
+import { remindersEnabled, syncReminders } from "@/lib/reminders"
 import { colorOf, parse, iso, WEEKDAYS, type Habit, type Schedule } from "@/lib/rules"
 import { colors, HABIT_COLORS, radius } from "@/theme"
 
@@ -86,6 +87,67 @@ function DateField({ label, value, onChange, min, optional }: { label: string; v
   )
 }
 
+type DraftReminder = Omit<Reminder, "id" | "time_local"> & { id?: number; time: string; key: string }
+
+const toDraft = (r: Reminder): DraftReminder => ({ id: r.id, key: String(r.id), time: r.time_local.slice(0, 5), weekdays: r.weekdays, enabled: r.enabled })
+const reminderBody = (r: DraftReminder) => ({ time_local: r.time, weekdays: r.weekdays, enabled: r.enabled })
+
+function TimeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [hour, minute] = value.split(":").map(Number)
+  const pad = (n: number) => String(n).padStart(2, "0")
+
+  const picker = (
+    <DateTimePicker
+      value={new Date(2000, 0, 1, hour, minute)}
+      mode="time"
+      is24Hour
+      themeVariant="dark"
+      locale="es-ES"
+      display={Platform.OS === "ios" ? "compact" : "default"}
+      onChange={(event, selected) => {
+        setOpen(false)
+        if (event.type !== "dismissed" && selected) onChange(`${pad(selected.getHours())}:${pad(selected.getMinutes())}`)
+      }}
+    />
+  )
+
+  if (Platform.OS === "ios") return picker
+  return (
+    <>
+      <Pressable onPress={() => setOpen(true)} accessibilityLabel="Cambiar hora">
+        <Text style={{ fontSize: 18, fontWeight: "500", fontVariant: ["tabular-nums"], color: colors.foreground }}>{value}</Text>
+      </Pressable>
+      {open && picker}
+    </>
+  )
+}
+
+function RemindersEditor({ value, onChange }: { value: DraftReminder[]; onChange: (next: DraftReminder[]) => void }) {
+  const update = (key: string, changes: Partial<DraftReminder>) => onChange(value.map((r) => (r.key === key ? { ...r, ...changes } : r)))
+  const add = () => onChange([...value, { key: `new-${Date.now()}`, time: "09:00", weekdays: null, enabled: true }])
+
+  return (
+    <View style={{ gap: 8 }}>
+      <SectionTitle>Recordatorios</SectionTitle>
+      {value.map((r) => (
+        <View key={r.key} style={[styles.field, { flexDirection: "row", alignItems: "center", gap: 12, paddingRight: 12 }]}>
+          <Ionicons name={r.enabled ? "notifications-outline" : "notifications-off-outline"} size={18} color={colors.mutedForeground} />
+          <View style={{ flex: 1, alignItems: "flex-start" }}>
+            <TimeField value={r.time} onChange={(time) => update(r.key, { time })} />
+          </View>
+          <Switch value={r.enabled} onValueChange={(enabled) => update(r.key, { enabled })} trackColor={{ true: colors.primary, false: colors.muted }} accessibilityLabel="Activo" />
+          <Pressable onPress={() => onChange(value.filter((x) => x.key !== r.key))} hitSlop={10} accessibilityLabel="Quitar recordatorio">
+            <Ionicons name="trash-outline" size={20} color={colors.rose} />
+          </Pressable>
+        </View>
+      ))}
+      <Button variant="secondary" label="Añadir recordatorio" icon={<Ionicons name="add" size={18} color={colors.foreground} />} onPress={add} />
+      <Text style={styles.hint}>Avisan en este móvil si activas los recordatorios en Ajustes.</Text>
+    </View>
+  )
+}
+
 export default function HabitFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>()
   const { today, habits } = useSession()
@@ -103,6 +165,9 @@ export default function HabitFormScreen() {
   const [endDate, setEndDate] = useState(habit?.end_date ?? "")
   const [schedule, setSchedule] = useState<Schedule>(habit?.schedule ?? { type: "daily", times_per_day: 1, weekdays: null, period_unit: null, period_target: null })
   const [busy, setBusy] = useState(false)
+  const savedReminders = useReminders(habit?.id ?? -1, { enabled: !!habit }).data
+  const [draftReminders, setDraftReminders] = useState<DraftReminder[] | null>(null)
+  const reminders = draftReminders ?? (savedReminders ?? []).map(toDraft)
 
   const patch = (changes: Partial<Schedule>) => setSchedule((s) => ({ ...s, ...changes }))
   function setType(type: Schedule["type"]) {
@@ -141,17 +206,34 @@ export default function HabitFormScreen() {
     period_target: schedule.type === "times_per_period" ? schedule.period_target : null,
   }
 
+  async function saveReminders(habitId: number) {
+    if (draftReminders === null) return
+    const before = new Map((savedReminders ?? []).map((r) => [r.id, toDraft(r)]))
+    const kept = new Set(draftReminders.flatMap((r) => (r.id ? [r.id] : [])))
+    await Promise.all([
+      ...[...before.keys()].filter((id) => !kept.has(id)).map((id) => api(`/reminders/${id}`, { method: "DELETE" })),
+      ...draftReminders.map((r) => {
+        if (!r.id) return api(`/habits/${habitId}/reminders`, { method: "POST", body: reminderBody(r) })
+        const old = before.get(r.id)
+        return old && JSON.stringify(reminderBody(old)) !== JSON.stringify(reminderBody(r)) ? api(`/reminders/${r.id}`, { method: "PATCH", body: reminderBody(r) }) : null
+      }),
+    ])
+    if (await remindersEnabled()) await syncReminders(await client.fetchQuery({ ...habitsQuery, staleTime: 0 })).catch(() => {})
+  }
+
   const save = () =>
     run(async () => {
       const look = { name: name.trim(), icon: icon.trim() || null, color, start_date: startDate, end_date: endDate || null }
       if (!habit) {
-        await api("/habits", { method: "POST", body: { ...look, kind, schedule: scheduleBody } })
+        const created = await api<Habit>("/habits", { method: "POST", body: { ...look, kind, schedule: scheduleBody } })
+        if (kind === "build") await saveReminders(created.id)
         return
       }
       await api(`/habits/${habit.id}`, { method: "PATCH", body: look })
       if (JSON.stringify(scheduleBody) !== JSON.stringify(pick(habit.schedule))) {
         await api(`/habits/${habit.id}/schedules`, { method: "POST", body: { ...scheduleBody, effective_from: today } })
       }
+      if (kind === "build") await saveReminders(habit.id)
     })
 
   const confirm = (title: string, message: string, action: string, onConfirm: () => void) =>
@@ -166,8 +248,8 @@ export default function HabitFormScreen() {
         options={{
           title: habit ? "Editar hábito" : "Nuevo hábito",
           headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={10} accessibilityLabel="Cerrar">
-              <Ionicons name="close" size={26} color={colors.foreground} />
+            <Pressable onPress={() => router.back()} hitSlop={10} accessibilityLabel="Cerrar" style={{ marginRight: Platform.OS === "android" ? 24 : 0 }}>
+              <Ionicons name="close" size={24} color={colors.foreground} />
             </Pressable>
           ),
         }}
@@ -254,6 +336,8 @@ export default function HabitFormScreen() {
           )}
           {habit && <Text style={styles.hint}>Los cambios de frecuencia se aplican desde hoy.</Text>}
         </View>
+
+        {kind === "build" && (!habit || savedReminders) && <RemindersEditor value={reminders} onChange={setDraftReminders} />}
 
         <View style={{ gap: 8 }}>
           <SectionTitle>Fechas</SectionTitle>
