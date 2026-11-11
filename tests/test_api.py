@@ -269,6 +269,18 @@ def test_login_session_and_tokens(client, alice):
     assert client.get("/me").status_code == 401
 
 
+def test_device_login_issues_revocable_token(client, alice):
+    body = {"email": "ALICE@example.com", "password": "secret-password", "device_name": "phone"}
+    assert client.post("/auth/token", json={**body, "password": "nope"}).status_code == 401
+    created = client.post("/auth/token", json=body)
+    assert created.status_code == 201
+    assert created.json()["scope"] == "write" and created.json()["name"] == "phone"
+    auth = {"Authorization": f"Bearer {created.json()['token']}"}
+    assert client.get("/me", headers=auth).json()["email"] == alice.email
+    assert client.post("/auth/logout", headers=auth).status_code == 204
+    assert client.get("/me", headers=auth).status_code == 401
+
+
 def test_update_me_timezone(client, alice):
     assert (
         client.patch("/me", json={"timezone": "Mars/Base"}, headers=alice.auth()).status_code == 422

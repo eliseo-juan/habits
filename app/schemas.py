@@ -191,6 +191,10 @@ class LoginIn(BaseModel):
     password: str
 
 
+class DeviceLoginIn(LoginIn):
+    device_name: str = Field("mobile", min_length=1, max_length=64)
+
+
 class TokenCreate(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     scope: Literal["read", "write"]

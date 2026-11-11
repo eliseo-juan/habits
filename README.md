@@ -53,7 +53,7 @@ docker exec habits ./docker-entrypoint.sh create-token me@example.com --name awt
 docker exec habits ./docker-entrypoint.sh create-token me@example.com --name claude --scope write
 ```
 
-Tokens are shown once and stored hashed. The token name is recorded as the `source` of every mark it makes. A logged-in web session (`POST /auth/login`) can also list, create and revoke tokens through `/tokens`; API tokens cannot mint other tokens.
+Tokens are shown once and stored hashed. The token name is recorded as the `source` of every mark it makes. Native apps sign in with `POST /auth/token` (email, password, `device_name`), which returns a write token; `POST /auth/logout` with that token revokes it. A logged-in web session (`POST /auth/login`) can also list, create and revoke tokens through `/tokens`; API tokens cannot mint other tokens.
 
 ## Rules
 
