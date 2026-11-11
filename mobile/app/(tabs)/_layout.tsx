@@ -3,7 +3,7 @@ import { BlurView } from "expo-blur"
 import * as Haptics from "expo-haptics"
 import { Tabs } from "expo-router"
 import { Platform, StyleSheet } from "react-native"
-import { colors } from "@/theme"
+import { colors, headerOptions } from "@/theme"
 
 type Name = keyof typeof Ionicons.glyphMap
 
@@ -18,7 +18,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        ...headerOptions,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         // Translucent bar over the content (blurred on iOS, solid on Android where blur is costly).

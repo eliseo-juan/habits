@@ -27,3 +27,12 @@ export const colors = {
 export const radius = { sm: 10, md: 16, lg: 24, xl: 32 } as const
 
 export const HABIT_COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316", "#eab308", "#14b8a6"]
+
+export const headerOptions = {
+  headerStyle: { backgroundColor: colors.background },
+  headerTintColor: colors.foreground,
+  headerTitleStyle: { fontWeight: "600" as const },
+  headerShadowVisible: false,
+}
+
+export const motion = { duration: 220 } as const

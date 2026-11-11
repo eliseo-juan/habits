@@ -2,15 +2,18 @@ import { useState } from "react"
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import DateTimePicker from "@react-native-community/datetimepicker"
 import { Ionicons } from "@expo/vector-icons"
-import { router, useLocalSearchParams } from "expo-router"
+import { router, Stack, useLocalSearchParams } from "expo-router"
+import { useHeaderHeight } from "expo-router/react-navigation"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useToast } from "@/components/toast"
-import { Button, SectionTitle } from "@/components/ui"
+import { Button, Fab, SectionTitle } from "@/components/ui"
 import { api } from "@/lib/api"
 import { useSession } from "@/lib/data"
 import { colorOf, parse, iso, WEEKDAYS, type Habit, type Schedule } from "@/lib/rules"
 import { colors, HABIT_COLORS, radius } from "@/theme"
+
+const MONDAY = 1
 
 const TYPES = [
   { id: "daily", label: "Diario" },
@@ -45,6 +48,8 @@ function DateField({ label, value, onChange, min, optional }: { label: string; v
       mode="date"
       minimumDate={min ? toLocal(parse(min)) : undefined}
       themeVariant="dark"
+      locale="es-ES"
+      firstDayOfWeek={MONDAY}
       display={Platform.OS === "ios" ? "compact" : "default"}
       onChange={(event, selected) => {
         setOpen(false)
@@ -88,6 +93,7 @@ export default function HabitFormScreen() {
   const client = useQueryClient()
   const { toast } = useToast()
   const insets = useSafeAreaInsets()
+  const headerHeight = useHeaderHeight()
 
   const [kind, setKind] = useState<Habit["kind"]>(habit?.kind ?? "build")
   const [name, setName] = useState(habit?.name ?? "")
@@ -155,16 +161,19 @@ export default function HabitFormScreen() {
     ])
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
-        <Pressable onPress={() => router.back()} hitSlop={10} accessibilityLabel="Cerrar" style={{ padding: 8 }}>
-          <Ionicons name="close" size={26} color={colors.foreground} />
-        </Pressable>
-        <Text style={{ flex: 1, fontSize: 18, fontWeight: "600", color: colors.foreground }}>{habit ? "Editar hábito" : "Nuevo hábito"}</Text>
-        <Button label="Guardar" disabled={!valid} busy={busy} onPress={save} style={{ borderRadius: 99, paddingHorizontal: 24 }} />
-      </View>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={headerHeight} style={{ flex: 1, backgroundColor: colors.background }}>
+      <Stack.Screen
+        options={{
+          title: habit ? "Editar hábito" : "Nuevo hábito",
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} hitSlop={10} accessibilityLabel="Cerrar">
+              <Ionicons name="close" size={26} color={colors.foreground} />
+            </Pressable>
+          ),
+        }}
+      />
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 24, paddingBottom: Math.max(insets.bottom, 16) + 32 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 24, paddingBottom: Math.max(insets.bottom, 16) + 96 }} keyboardShouldPersistTaps="handled">
         {!habit && (
           <View style={{ gap: 8 }}>
             <SectionTitle>Tipo</SectionTitle>
@@ -291,12 +300,12 @@ export default function HabitFormScreen() {
           </View>
         )}
       </ScrollView>
+      <Fab icon="checkmark" label="Guardar" disabled={!valid} busy={busy} onPress={save} style={{ bottom: Math.max(insets.bottom, 16) + 8 }} />
     </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   field: { minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white10, paddingHorizontal: 16, fontSize: 16, color: colors.foreground, justifyContent: "center" },
   hint: { paddingHorizontal: 4, fontSize: 12, color: colors.mutedForeground },
   segments: { flexDirection: "row", gap: 6, padding: 4, borderRadius: radius.md, backgroundColor: colors.white10 },

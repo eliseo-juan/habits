@@ -1,11 +1,10 @@
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type PressableProps, type ScrollViewProps, type StyleProp, type TextStyle, type ViewStyle } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { Ionicons } from "@expo/vector-icons"
 import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { colors, radius } from "@/theme"
 
 export function Screen({ children, refreshable, contentStyle, ...props }: ScrollViewProps & { refreshable?: boolean; contentStyle?: StyleProp<ViewStyle> }) {
-  const insets = useSafeAreaInsets()
   const client = useQueryClient()
   const [refreshing, setRefreshing] = useState(false)
 
@@ -18,7 +17,7 @@ export function Screen({ children, refreshable, contentStyle, ...props }: Scroll
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={[{ paddingTop: insets.top + 12, paddingBottom: 110, paddingHorizontal: 16, gap: 20 }, contentStyle]}
+      contentContainerStyle={[{ paddingTop: 12, paddingBottom: 110, paddingHorizontal: 16, gap: 20 }, contentStyle]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} /> : undefined}
@@ -45,18 +44,6 @@ export const chipTextStyle = (tone?: "orange"): StyleProp<TextStyle> => [styles.
 
 export function SectionTitle({ children }: { children: string }) {
   return <Text style={styles.sectionTitle}>{children}</Text>
-}
-
-export function PageHeader({ eyebrow, title, right }: { eyebrow?: string; title: string; right?: React.ReactNode }) {
-  return (
-    <View style={styles.pageHeader}>
-      <View style={{ flexShrink: 1 }}>
-        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-        <Text style={styles.pageTitle}>{title}</Text>
-      </View>
-      {right}
-    </View>
-  )
 }
 
 type ButtonProps = Omit<PressableProps, "children" | "style"> & {
@@ -101,11 +88,23 @@ export function Loading() {
   )
 }
 
-export function Progress({ value, color, height = 8 }: { value: number; color: string; height?: number }) {
+type FabProps = Omit<PressableProps, "children" | "style"> & {
+  icon: keyof typeof Ionicons.glyphMap
+  label?: string
+  busy?: boolean
+  style?: StyleProp<ViewStyle>
+}
+
+export function Fab({ icon, label, busy, disabled, style, ...props }: FabProps) {
   return (
-    <View style={{ height, borderRadius: 99, backgroundColor: colors.white15, overflow: "hidden" }}>
-      <View style={{ height: "100%", width: `${Math.max(0, Math.min(100, value))}%`, borderRadius: 99, backgroundColor: color }} />
-    </View>
+    <Pressable
+      disabled={disabled || busy}
+      style={({ pressed }) => [styles.fab, label ? styles.fabExtended : null, (disabled || busy) && { opacity: 0.45 }, pressed && { transform: [{ scale: 0.95 }] }, style]}
+      {...props}
+    >
+      {busy ? <ActivityIndicator color={colors.primaryForeground} /> : <Ionicons name={icon} size={label ? 22 : 32} color={colors.primaryForeground} />}
+      {label ? <Text style={styles.fabLabel}>{label}</Text> : null}
+    </Pressable>
   )
 }
 
@@ -115,11 +114,27 @@ export const styles = StyleSheet.create({
   chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: colors.white10, borderWidth: 1, borderColor: colors.white10 },
   chipText: { fontSize: 11, color: colors.mutedForeground },
   sectionTitle: { paddingHorizontal: 4, fontSize: 12, fontWeight: "500", letterSpacing: 1, color: colors.mutedForeground, textTransform: "uppercase" },
-  pageHeader: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
-  eyebrow: { fontSize: 14, color: colors.mutedForeground },
-  pageTitle: { fontSize: 30, fontWeight: "600", letterSpacing: -0.5, color: colors.foreground },
   button: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16, borderRadius: radius.md },
   buttonLg: { minHeight: 56, borderRadius: radius.md },
   buttonText: { fontSize: 14, fontWeight: "600" },
+  fab: {
+    position: "absolute",
+    right: 20,
+    minWidth: 56,
+    height: 56,
+    borderRadius: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  fabExtended: { paddingHorizontal: 24 },
+  fabLabel: { fontSize: 16, fontWeight: "600", color: colors.primaryForeground },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background, padding: 24 },
 })

@@ -1,13 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
-import Animated, { FadeInDown } from "react-native-reanimated"
+import Animated, { FadeIn } from "react-native-reanimated"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { HabitIcon } from "@/components/habit-row"
-import { Card, Chip, chipTextStyle, PageHeader, Screen } from "@/components/ui"
+import { Card, Chip, chipTextStyle, Fab, Screen } from "@/components/ui"
 import { useHabitStats, useSession, useStatuses } from "@/lib/data"
 import { addDays, colorOf, percent, scheduleLabel, streakLabel, weekday, WEEKDAYS, type Habit, type Status } from "@/lib/rules"
-import { colors } from "@/theme"
+import { colors, motion } from "@/theme"
 
 export const DOT: Record<Exclude<Status, "done">, object> = {
   failed: { borderWidth: 1, borderColor: colors.roseRing },
@@ -31,18 +31,11 @@ export default function HabitsScreen() {
   return (
     <View style={{ flex: 1 }}>
       <Screen refreshable contentStyle={{ paddingBottom: 170 }}>
-        <PageHeader eyebrow={`${habits.length} activos`} title="Hábitos" />
         {habits.map((habit, index) => (
           <HabitCard key={habit.id} index={index} habit={habit} onOpen={() => router.push({ pathname: "/habit/[id]", params: { id: String(habit.id) } })} />
         ))}
       </Screen>
-      <Pressable
-        onPress={() => router.push("/habit-form")}
-        accessibilityLabel="Nuevo hábito"
-        style={({ pressed }) => [styles.fab, { bottom: 24 + 56 + insets.bottom }, pressed && { transform: [{ scale: 0.92 }] }]}
-      >
-        <Ionicons name="add" size={32} color={colors.primaryForeground} />
-      </Pressable>
+      <Fab icon="add" onPress={() => router.push("/habit-form")} accessibilityLabel="Nuevo hábito" style={{ bottom: 24 + 56 + insets.bottom }} />
     </View>
   )
 }
@@ -55,7 +48,7 @@ function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOp
   const color = colorOf(habit)
 
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 40).springify().damping(20)}>
+    <Animated.View entering={FadeIn.delay(Math.min(index, 8) * 30).duration(motion.duration)}>
     <Pressable onPress={onOpen} style={({ pressed }) => pressed && { opacity: 0.8, transform: [{ scale: 0.985 }] }}>
       <Card style={{ gap: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -104,19 +97,4 @@ function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOp
 
 const styles = StyleSheet.create({
   dot: { width: 32, height: 32, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  fab: {
-    position: "absolute",
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
-  },
 })

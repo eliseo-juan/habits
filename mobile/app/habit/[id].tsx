@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Pressable, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import { router, useLocalSearchParams } from "expo-router"
+import { router, Stack, useLocalSearchParams } from "expo-router"
 import { HabitIcon } from "@/components/habit-row"
 import { Card, Screen } from "@/components/ui"
 import { useHabitStats, useLogWriter, useReminders, useSession, useStatuses, useYear } from "@/lib/data"
@@ -68,15 +68,19 @@ function Detail({ habit }: { habit: Habit }) {
 
   return (
     <Screen contentStyle={{ paddingBottom: 40 }}>
+      <Stack.Screen
+        options={{
+          title: habit.name,
+          headerRight: () => (
+            <Pressable onPress={() => router.push({ pathname: "/habit-form", params: { id: String(habit.id) } })} hitSlop={10} accessibilityLabel="Editar hábito">
+              <Ionicons name="pencil" size={22} color={colors.foreground} />
+            </Pressable>
+          ),
+        }}
+      />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Pressable onPress={() => router.back()} hitSlop={10} accessibilityLabel="Volver">
-          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
-        </Pressable>
         <HabitIcon habit={habit} />
         <View style={{ flex: 1 }}>
-          <Text numberOfLines={1} style={{ fontSize: 20, fontWeight: "600", color: colors.foreground }}>
-            {habit.name}
-          </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Text style={{ fontSize: 12, color: colors.mutedForeground }}>{scheduleLabel(habit)}</Text>
             {reminders.length > 0 && (
@@ -88,9 +92,6 @@ function Detail({ habit }: { habit: Habit }) {
             )}
           </View>
         </View>
-        <Pressable onPress={() => router.push({ pathname: "/habit-form", params: { id: String(habit.id) } })} hitSlop={10} accessibilityLabel="Editar hábito">
-          <Ionicons name="pencil" size={22} color={colors.foreground} />
-        </Pressable>
       </View>
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>

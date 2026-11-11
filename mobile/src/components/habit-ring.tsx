@@ -1,10 +1,10 @@
 import { useEffect } from "react"
 import { StyleSheet, Text, View } from "react-native"
-import Animated, { useAnimatedProps, useSharedValue, withSpring, withTiming } from "react-native-reanimated"
+import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from "react-native-reanimated"
 import Svg, { Circle } from "react-native-svg"
 import { Ionicons } from "@expo/vector-icons"
 import type { Status } from "@/lib/rules"
-import { colors } from "@/theme"
+import { colors, motion } from "@/theme"
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
@@ -19,7 +19,7 @@ export function HabitRing({ status, count, target, color, size = 44 }: Props) {
   const filled = useSharedValue(status === "done" ? 1 : 0)
 
   useEffect(() => {
-    progress.value = withSpring(fraction, { stiffness: 200, damping: 25 })
+    progress.value = withTiming(fraction, { duration: motion.duration, easing: Easing.out(Easing.cubic) })
     filled.value = withTiming(status === "done" ? 1 : 0, { duration: 200 })
   }, [fraction, status, progress, filled])
 

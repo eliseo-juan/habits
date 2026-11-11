@@ -1,11 +1,10 @@
 import { useState } from "react"
 import { Text, View } from "react-native"
-import Animated, { ZoomIn, ZoomOut } from "react-native-reanimated"
 import { Ionicons } from "@expo/vector-icons"
-import { router } from "expo-router"
+import { router, Tabs } from "expo-router"
 import { DayStrip } from "@/components/day-strip"
 import { HabitRow } from "@/components/habit-row"
-import { Button, Card, PageHeader, Progress, Screen, SectionTitle } from "@/components/ui"
+import { Button, Screen, SectionTitle } from "@/components/ui"
 import { useDay, useSession, useStatuses } from "@/lib/data"
 import { dayTitle, MONTHS, parse, type DayEntry, type Habit } from "@/lib/rules"
 import { colors } from "@/theme"
@@ -33,38 +32,24 @@ export default function TodayScreen() {
       const target = habit.schedule.times_per_day
       return { habit, entry: { habit_id: habit.id, status, done_count: status === "done" ? target : 0, times_per_day: target, period_done: null, period_target: null } }
     })
-  const done = toDo.filter((r) => r.entry.status === "done").length
-  const percentage = toDo.length ? Math.round((100 * done) / toDo.length) : 0
   const date = parse(day)
 
   return (
-    <Screen refreshable>
-      <PageHeader
-        eyebrow={`${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`}
-        title={dayTitle(day, today)}
-        right={day !== today ? <Button variant="secondary" size="md" label="Hoy" icon={<Ionicons name="refresh" size={16} color={colors.foreground} />} onPress={() => setDay(today)} style={{ borderRadius: 99, minHeight: 36 }} /> : undefined}
+    <View style={{ flex: 1 }}>
+      <Tabs.Screen
+        options={{
+          headerTitle: `${dayTitle(day, today)}, ${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`,
+          headerRight:
+            day !== today
+              ? () => <Button variant="secondary" label="Hoy" icon={<Ionicons name="refresh" size={16} color={colors.foreground} />} onPress={() => setDay(today)} style={{ borderRadius: 99, minHeight: 36, marginRight: 16 }} />
+              : undefined,
+        }}
       />
+      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <DayStrip selected={day} onSelect={setDay} />
+      </View>
 
-      <DayStrip selected={day} onSelect={setDay} />
-
-      <Card style={{ backgroundColor: "rgba(77,219,165,0.10)", gap: 12 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <View>
-            <Text style={{ fontSize: 14, color: colors.mutedForeground }}>{day > today ? "Día futuro, solo consulta" : "Progreso del día"}</Text>
-            <Text style={{ fontSize: 24, fontWeight: "600", color: colors.foreground }}>
-              {done}
-              <Text style={{ color: colors.mutedForeground }}> / {toDo.length}</Text>
-            </Text>
-          </View>
-          {toDo.length > 0 && done === toDo.length && (
-            <Animated.View entering={ZoomIn.springify()} exiting={ZoomOut}>
-              <Ionicons name="sparkles" size={32} color={colors.primary} />
-            </Animated.View>
-          )}
-        </View>
-        <Progress value={percentage} color={colors.primary} />
-      </Card>
-
+      <Screen refreshable contentStyle={{ paddingTop: 8 }}>
       <View style={{ gap: 8 }}>
         {items && toDo.length === 0 && <Text style={{ paddingVertical: 40, textAlign: "center", color: colors.mutedForeground }}>Nada que hacer este día ✨</Text>}
         {toDo.map(({ habit, entry }) => (
@@ -89,6 +74,7 @@ export default function TodayScreen() {
           ))}
         </View>
       )}
-    </Screen>
+      </Screen>
+    </View>
   )
 }

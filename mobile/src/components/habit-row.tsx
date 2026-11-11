@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
-import Animated, { FadeInDown, LinearTransition, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated"
+import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated"
 import * as Haptics from "expo-haptics"
 import { Ionicons } from "@expo/vector-icons"
 import { HabitRing } from "@/components/habit-ring"
@@ -7,7 +7,7 @@ import { useToast } from "@/components/toast"
 import { Chip, chipTextStyle } from "@/components/ui"
 import { useHabitStats, useLogWriter, useReminders, useSession } from "@/lib/data"
 import { colorOf, emojiOf, scheduleLabel, type DayEntry, type Habit, type Look } from "@/lib/rules"
-import { colors, radius } from "@/theme"
+import { colors, motion, radius } from "@/theme"
 
 export function HabitIcon({ habit, size = "md" }: { habit: Look; size?: "md" | "lg" }) {
   const color = colorOf(habit)
@@ -62,7 +62,7 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: Props) {
   }
 
   return (
-    <Animated.View entering={FadeInDown.springify().damping(20)} layout={LinearTransition.springify().damping(28)} style={[styles.row, dimmed && { opacity: 0.6 }]}>
+    <Animated.View entering={FadeIn.duration(motion.duration)} layout={LinearTransition.duration(motion.duration)} style={[styles.row, dimmed && { opacity: 0.6 }]}>
       <Pressable onPress={onOpen} style={({ pressed }) => [styles.open, pressed && { opacity: 0.7 }]}>
         <HabitIcon habit={habit} />
         <View style={{ flex: 1, gap: 4 }}>
@@ -83,8 +83,8 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: Props) {
       </Pressable>
       <Pressable
         onPress={tap}
-        onPressIn={() => (scale.value = withSpring(0.85))}
-        onPressOut={() => (scale.value = withSpring(1))}
+        onPressIn={() => scale.set(withTiming(0.92, { duration: 100 }))}
+        onPressOut={() => scale.set(withTiming(1, { duration: 150 }))}
         disabled={isFuture}
         hitSlop={8}
         accessibilityLabel={`Marcar ${habit.name}`}

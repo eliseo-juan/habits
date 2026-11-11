@@ -12,7 +12,8 @@ export function DayStrip({ selected, onSelect }: { selected: string; onSelect: (
   const statusOf = useStatuses()
   const ref = useRef<ComponentRef<typeof ScrollView>>(null)
   const width = useRef(0)
-  const days = Array.from({ length: 21 }, (_, i) => addDays(today, i - 14))
+  const firstMonday = addDays(today, -weekday(today) - 14)
+  const days = Array.from({ length: 21 }, (_, i) => addDays(firstMonday, i))
 
   const center = (animated: boolean) => {
     const index = days.indexOf(selected)

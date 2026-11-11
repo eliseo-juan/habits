@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react"
 import { Pressable, Text, View } from "react-native"
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated"
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated"
 import { Ionicons } from "@expo/vector-icons"
-import { Card, PageHeader, Screen } from "@/components/ui"
+import { Tabs } from "expo-router"
+import { Card, Screen } from "@/components/ui"
 import { useSession, useYear } from "@/lib/data"
 import { addDays, colorOf, emojiOf, monthBounds, MONTHS, shiftMonth, type Status } from "@/lib/rules"
-import { colors } from "@/theme"
+import { colors, motion } from "@/theme"
 
 function Bar({ value, color }: { value: number; color: string }) {
   const width = useSharedValue(0)
   useEffect(() => {
-    width.value = withSpring(value, { stiffness: 80, damping: 18 })
+    width.value = withTiming(value, { duration: motion.duration * 2, easing: Easing.out(Easing.cubic) })
   }, [value, width])
   const style = useAnimatedStyle(() => ({ width: `${width.value}%` }))
   return (
@@ -56,9 +57,13 @@ export default function ProgressScreen() {
 
   return (
     <Screen refreshable>
-      <PageHeader eyebrow="Media del mes" title={`${average ?? "–"}%`} right={<MonthSwitch month={month} onChange={setMonth} />} />
+      <Tabs.Screen options={{ headerRight: () => <View style={{ marginRight: 12 }}><MonthSwitch month={month} onChange={setMonth} /></View> }} />
 
       <Card style={{ gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Media del mes</Text>
+          <Text style={{ fontSize: 24, fontWeight: "600", color: colors.foreground, fontVariant: ["tabular-nums"] }}>{average ?? "–"}%</Text>
+        </View>
         {rows.map(({ habit, percentage }) => (
           <View key={habit.id} style={{ gap: 4 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>

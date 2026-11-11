@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Alert, Switch, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Constants from "expo-constants"
-import { Button, Card, PageHeader, Screen } from "@/components/ui"
+import { Button, Card, Screen } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/components/toast"
 import { useSession } from "@/lib/data"
@@ -30,8 +30,6 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <PageHeader eyebrow={me.email} title="Ajustes" />
-
       <Card style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View style={{ width: 40, height: 40, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(77,219,165,0.15)" }}>
           <Ionicons name="notifications" size={20} color={colors.primary} />
@@ -44,6 +42,7 @@ export default function SettingsScreen() {
       </Card>
 
       <Card style={{ padding: 0 }}>
+        <Row icon="person-outline" label="Cuenta" value={me.email} />
         <Row icon="globe-outline" label="Zona horaria" value={me.timezone} />
         <Row icon="time-outline" label="El día termina a las" value={me.day_cutoff.slice(0, 5)} />
         <Row icon="server-outline" label="Servidor" value={(baseUrl ?? "").replace(/^https?:\/\//, "")} />

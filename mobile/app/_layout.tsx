@@ -16,7 +16,7 @@ import { persistOptions, queryClient } from "@/lib/query"
 import { RemindersSync } from "@/components/reminders-sync"
 import { WidgetSync } from "@/widgets/widget-sync"
 import "@/widgets/background"
-import { colors } from "@/theme"
+import { colors, headerOptions } from "@/theme"
 
 SplashScreen.preventAutoHideAsync()
 
@@ -55,14 +55,14 @@ function Gate() {
           <RemindersSync />
         </>
       )}
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <Stack screenOptions={{ ...headerOptions, headerShown: false, headerBackButtonDisplayMode: "minimal", contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="login" />
         </Stack.Protected>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="habit/[id]" />
-          <Stack.Screen name="habit-form" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
+          <Stack.Screen name="habit/[id]" options={{ headerShown: true, title: "" }} />
+          <Stack.Screen name="habit-form" options={{ headerShown: true, presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
           <Stack.Screen
             name="log/[habitId]"
             options={{
