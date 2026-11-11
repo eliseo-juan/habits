@@ -1,111 +1,117 @@
-# Habits mobile app (Expo)
+# SmartHabits mobile app
 
-Native version of the `web/` PWA: the same screens, behaviour and features on React Native + Expo (SDK 58, expo-router), plus home screen widgets, an offline cache and local reminders.
+Android and iOS app for SmartHabits, built with Expo (SDK 58) and expo-router. It has the same screens as the [web app](../web/README.md), plus home screen and lock screen widgets, an offline cache and local reminders. The UI is in Spanish.
 
-| PWA | App |
-|---|---|
-| Today: day strip, progress, one-tap marking, undo, day sheet (counter, skip, clear, note) | `app/(tabs)/index.tsx`, `app/log/[habitId].tsx` |
-| Habits: cards with the last week, streak and % | `app/(tabs)/habits.tsx` |
-| Detail: stats, monthly calendar (done → skipped → empty), 6-month map | `app/habit/[id].tsx` |
-| Habit form: create, edit, frequency, dates, reset stats, archive | `app/habit-form.tsx` |
-| Monthly progress | `app/(tabs)/progress.tsx` |
-| Settings | `app/(tabs)/settings.tsx` |
-| API tokens | `app/tokens.tsx` |
+## Run it
 
-The rules and queries (`src/lib/rules.ts`, `src/lib/data.tsx`) are the PWA's; the theme (`src/theme.ts`) is its dark palette. The UI is in Spanish.
-
-## Authentication
-
-The PWA uses a session cookie, which is fragile on native, so the app signs in with `POST /auth/token` (email and password) and keeps the returned **device token** in the system's secure storage (Keychain / Keystore). It is sent as `Authorization: Bearer`. The token shows up under `/tokens` named `Hábitos · ios|android` and can be revoked from there, or by signing out in the app. The server URL is entered on the login screen; `HABITS_SERVER_URL` pre-fills it.
-
-A device token can also list, create and revoke the account's other tokens (MCP, Home Assistant, …) from the app; ordinary API tokens cannot.
-
-## Development
+Start the [server](../backend/README.md) somewhere the phone can reach (a LAN IP or an HTTPS domain), then:
 
 ```sh
 cd mobile
 npm ci
-npx expo start            # Expo Go or a development build; scan the QR code
+npx expo start        # scan the QR code with Expo Go or a development build
+```
+
+Enter the server URL, email and password on the login screen.
+
+```sh
+npm run lint
 npm run typecheck
 ```
 
-Widgets and scheduled notifications need a development build.
+Expo Go is enough for the screens. Widgets and scheduled notifications need a development build: `npx expo run:ios|android`, or `eas build --profile development` (see [Builds](#builds-and-updates)).
 
-The server must be reachable from the device (a LAN IP or a public HTTPS domain). For native builds use `npx expo prebuild` or EAS Build (`eas build`). The icon is the PWA's (512 px); store listings want a 1024 px one.
+## How it works
 
-## Configuration, builds and OTA updates
+```
+app/                     routes (expo-router)
+  (tabs)/                Today, Habits, Progress, Settings
+  log/[habitId].tsx      day sheet: counter, skip, clear, note
+  habit/[id].tsx         habit detail: stats, monthly calendar, 6-month map
+  habit-form.tsx         create and edit: schedule, dates, reminders, archive
+  tokens.tsx             list, create and revoke API tokens
+  login.tsx
+src/
+  lib/                   API client, auth, queries (data.tsx), schedule rules, local reminders
+  components/            week strip, rows, rings, toasts, shared UI
+  widgets/               widget layouts and the code that feeds them
+  theme.ts
+```
 
-The repository is public, so **nothing that identifies a deployment goes in the code**. `app.config.ts` reads it from environment variables:
+`src/lib/rules.ts` and `src/lib/data.tsx` mirror the web app's, so both clients behave the same.
+
+### Signing in
+
+The app calls `POST /auth/token` with email, password and device name, and keeps the returned device token in secure storage (Keychain / Keystore). Every request sends it as `Authorization: Bearer`. The token appears in the account's token list as `Hábitos · ios|android` and is revoked by signing out or from any client. A device token can also manage the account's other tokens, which is what the Tokens screen uses.
+
+### Offline
+
+The query cache is persisted to AsyncStorage for 24 hours, so the app opens at once with the last data it saw, refreshes in the background, and keeps showing it while offline. Writes made offline fail with a notice; there is no queue.
+
+### Reminders
+
+Reminders are edited in the habit form and stored on the server, so ntfy delivers them too if it is set up. Settings → "Recordatorios en este móvil" mirrors them on this phone as repeating local notifications, daily or on given weekdays; tapping one opens that habit's day sheet.
+
+### Widgets
+
+Built with [`expo-widgets`](https://docs.expo.dev/versions/v58.0.0/sdk/widgets/): one "today's habits" widget with a layout per platform.
+
+- iOS (SwiftUI, `src/widgets/HabitsWidget.tsx`): small, medium, large and lock screen (circular, rectangular, inline). Needs an App Group, which the config plugin sets up and which requires a paid Apple developer account.
+- Android (Jetpack Compose, `src/widgets/HabitsWidget.android.tsx`): 3×2, resizable.
+
+Widgets run in an isolated runtime with no hooks or network, so they receive data already prepared. `widget-sync.tsx` pushes it whenever today's data changes, and a background task (`expo-background-task`, at most every ~15 minutes, as the OS decides) refreshes it while the app is closed, reading the token from secure storage. Signing out clears them. Tapping a widget opens the app; it cannot mark habits yet.
+
+## Builds and updates
+
+### Configuration
+
+The repository is public, so nothing that identifies a deployment lives in the code. `app.config.ts` reads it from the environment:
 
 | Variable | Purpose |
 |---|---|
 | `HABITS_SERVER_URL` | Server pre-filled on the login screen |
 | `EAS_PROJECT_ID` | EAS project; enables OTA updates |
-| `APP_BUNDLE_ID` | Your own iOS bundle id / Android package (optional; defaults to a generic one) |
+| `APP_BUNDLE_ID` | Your own iOS bundle id and Android package (optional) |
 
-Without them the app still builds, just with no default server and no OTA updates. Whatever reaches the config ends up inside the binary: `secret` visibility in EAS keeps a value out of git and build logs, not out of the app.
+Without them the app still builds, with no default server and no OTA updates. Whatever reaches the config ends up inside the binary: `secret` visibility in EAS keeps a value out of git and build logs, not out of the app.
 
-**Once**, on a machine signed in to Expo:
-
-```sh
-npm install --global eas-cli
-cd mobile
-eas login
-eas init --id <project-id>      # if asked to write the id into the config, say no: it is read from EAS_PROJECT_ID
-eas env:create --environment production --name EAS_PROJECT_ID --value <project-id> --visibility secret
-eas env:create --environment production --name HABITS_SERVER_URL --value https://habits.example.com --visibility secret
-# repeat with --environment preview and development if you use them
-```
-
-For the CLI to see the values locally too, copy them to `mobile/.env.local` (ignored by git). Then:
-
-```sh
-eas build --profile development --platform ios|android   # dev client (widgets, notifications)
-eas build --profile production --platform all            # store binaries
-eas submit --profile production --platform ios|android
-```
-
-### Installing an APK without the Play Store
-
-The `apk` and `preview` profiles produce an **APK** that installs directly; `production` produces an AAB, which is only for uploading to the Play Store. For sideloading, `apk` is the one to use: it uses the `production` environment and channel, so it receives the OTA updates CI publishes. `preview` is for testing against another server or channel.
+Once, signed in to Expo:
 
 ```sh
 cd mobile
-eas build --profile apk --platform android
+npx eas-cli@latest login
+npx eas-cli@latest init --id <project-id>   # decline writing the id into the config; it comes from EAS_PROJECT_ID
+npx eas-cli@latest env:create --environment production --name EAS_PROJECT_ID --value <project-id> --visibility secret
+npx eas-cli@latest env:create --environment production --name HABITS_SERVER_URL --value https://habits.example.com --visibility secret
 ```
 
-It takes a few minutes on EAS. The first time, EAS offers to generate the keystore: accept and EAS stores it. Losing it means new builds cannot be installed over the existing app. When it finishes:
+Repeat for the `preview` and `development` environments if you use them, and copy the values to `mobile/.env.local` (git-ignored) so local commands see them too.
 
-- The terminal prints a URL and a QR code; the build is also under expo.dev → the project → **Builds**.
-- Open that link **on the phone** and download the `.apk` (or run `eas build:run --platform android --latest` with the phone on USB or an emulator).
-- The first time, Android asks to allow the browser to "install unknown apps".
+### Builds
 
-**From GitHub:** Actions → "🚀 Mobile APK build" → Run workflow (manual only; pick `apk` or `preview`). It queues the build on EAS and links it in the run summary without waiting for it. It needs the `EXPO_TOKEN` and `EAS_PROJECT_ID` secrets in the `production` environment, and an existing keystore: make the first build once from a terminal, since non-interactive builds cannot generate one.
+| Profile | Output | Use |
+|---|---|---|
+| `development` | dev client | local development with widgets and notifications |
+| `apk` | APK, `production` environment and channel | sideloading on Android; receives the OTA updates CI publishes |
+| `preview` | APK, `preview` channel | testing against another server or channel |
+| `production` | AAB / IPA | the stores (`eas submit`) |
 
-After that, JS changes ship as OTA updates (below). For native changes CI queues the `eas build --profile apk` by itself (see below) and the new APK only needs installing. The `preview` APK receives updates from the `preview` channel (`eas update --channel preview --environment preview`); CI only publishes to `production`.
+```sh
+npx eas-cli@latest build --profile apk --platform android
+```
 
-**OTA updates** (`expo-updates`, channels `development` / `preview` / `production`): `eas update --channel production --environment production`, or automatically through `.github/workflows/mobile-update.yml` on every push to `main` that touches `mobile/`. CI publishes **Android only**, as there is no iOS build; for iOS run it by hand with `--platform ios`. It needs the `EXPO_TOKEN` and `EAS_PROJECT_ID` secrets in the GitHub `production` environment, which is also the place to require a manual approval.
+The first Android build offers to generate a keystore; accept and EAS keeps it. Losing it means new builds can't be installed over the existing app. When the build finishes, open its link on the phone and install the `.apk` (Android asks once to allow installs from the browser), or run `eas build:run --platform android --latest` with a device connected.
 
-The `runtimeVersion` is a **fingerprint** of the native layer (native dependencies, config plugins, widgets, permissions). An update only reaches compatible binaries, so a native change is never pushed over the air to an app that lacks it. When the fingerprint changes, the next `eas update` waits for a new build with that fingerprint. That is why the OTA workflow, after publishing, looks for an `apk` build with that runtime and, if there is none (not even queued), queues one and links it in the run summary. `fingerprint.config.js` leaves out `extra` (server, project id) so environment variables do not change the hash; `updates.url` does count, so `EAS_PROJECT_ID` must be the same locally, on EAS and on GitHub. To print the hash: `npx fingerprint fingerprint:generate --platform android`. Builds with OTA enabled have a "Buscar actualizaciones" (check for updates) button in Settings.
+From GitHub: Actions → **🚀 Mobile APK build** → Run workflow. It queues the build on EAS and links it in the run summary. It needs `EXPO_TOKEN` and `EAS_PROJECT_ID` in the `production` environment and an existing keystore, since non-interactive builds can't create one.
 
-## Widgets
+### OTA updates
 
-Built with [`expo-widgets`](https://docs.expo.dev/versions/latest/sdk/widgets/): a single "Hábitos de hoy" (today's habits) widget with its own layout per platform.
+JavaScript changes ship over the air with `expo-updates`. **🚀 Mobile OTA update** publishes to the `production` channel, Android only, on every push to `main` that touches `mobile/`. For iOS or other channels, run `eas update --channel <channel> --environment <environment>` by hand.
 
-- iOS (SwiftUI, `src/widgets/HabitsWidget.tsx`): small, medium, large and lock screen (circular, rectangular, inline).
-- Android (Jetpack Compose, `src/widgets/HabitsWidget.android.tsx`): 3×2, resizable.
-
-Widgets run in an isolated runtime (no hooks, no async), so they receive data already prepared. `WidgetSync` (`src/widgets/widget-sync.tsx`) pushes it whenever today's data changes, and a background task (`expo-background-task`, at least ~15 minutes apart, as the OS decides) refreshes it while the app is closed, reading the token from secure storage. Signing out clears them. Tapping the widget opens the app; it cannot mark habits because it cannot call the API.
-
-They need a **development build** and do not work in Expo Go: `npx expo prebuild` and `npx expo run:ios|android`, or EAS Build. On iOS the widget needs an App Group, which the plugin configures; that requires a paid Apple developer account.
-
-## Offline and reminders
-
-- The query cache is persisted to AsyncStorage for 24 hours: the app opens instantly with the last data seen and refreshes in the background, and keeps showing it while offline. Writes made offline fail with a notice (there is no queue).
-- Settings → "Recordatorios en este móvil" (reminders on this phone) mirrors each habit's server reminders as repeating local notifications (daily or on given weekdays). Tapping one opens that habit's sheet. With ntfy configured as well, both arrive.
+The `runtimeVersion` is a fingerprint of the native layer (native dependencies, config plugins, widgets, permissions), so an update only reaches binaries that have the same native code. When a change alters the fingerprint, the workflow looks for an `apk` build with that runtime and queues one if there is none; installing it is the only manual step. `fingerprint.config.js` leaves out `extra` (server, project id) so the environment does not change the hash, but `updates.url` counts, so `EAS_PROJECT_ID` must match locally, on EAS and on GitHub. To print the hash: `npx fingerprint fingerprint:generate --platform android`. Builds with OTA enabled have a "Buscar actualizaciones" (check for updates) button in Settings.
 
 ## Not done yet
 
-- Marking habits from the widget (needs an endpoint usable without the app, such as signed links like the ntfy ones).
+- Marking habits from a widget (it needs an endpoint usable without the app, such as signed links like the reminder ones).
 - An offline write queue and optimistic updates.
-- Live Activities (the library supports them on iOS).
+- Live Activities.
