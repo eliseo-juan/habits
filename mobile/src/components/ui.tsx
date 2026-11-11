@@ -18,7 +18,7 @@ export function Screen({ children, refreshable, contentStyle, ...props }: Scroll
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={[{ paddingTop: insets.top + 12, paddingBottom: 32, paddingHorizontal: 16, gap: 20 }, contentStyle]}
+      contentContainerStyle={[{ paddingTop: insets.top + 12, paddingBottom: 110, paddingHorizontal: 16, gap: 20 }, contentStyle]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       refreshControl={refreshable ? <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} /> : undefined}

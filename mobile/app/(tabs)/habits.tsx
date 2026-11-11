@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
+import Animated, { FadeInDown } from "react-native-reanimated"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -29,16 +30,16 @@ export default function HabitsScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen refreshable contentStyle={{ paddingBottom: 100 }}>
+      <Screen refreshable contentStyle={{ paddingBottom: 170 }}>
         <PageHeader eyebrow={`${habits.length} activos`} title="Hábitos" />
-        {habits.map((habit) => (
-          <HabitCard key={habit.id} habit={habit} onOpen={() => router.push({ pathname: "/habit/[id]", params: { id: String(habit.id) } })} />
+        {habits.map((habit, index) => (
+          <HabitCard key={habit.id} index={index} habit={habit} onOpen={() => router.push({ pathname: "/habit/[id]", params: { id: String(habit.id) } })} />
         ))}
       </Screen>
       <Pressable
         onPress={() => router.push("/habit-form")}
         accessibilityLabel="Nuevo hábito"
-        style={({ pressed }) => [styles.fab, { bottom: 20 + Math.min(insets.bottom, 0) }, pressed && { transform: [{ scale: 0.92 }] }]}
+        style={({ pressed }) => [styles.fab, { bottom: 24 + 56 + insets.bottom }, pressed && { transform: [{ scale: 0.92 }] }]}
       >
         <Ionicons name="add" size={32} color={colors.primaryForeground} />
       </Pressable>
@@ -46,7 +47,7 @@ export default function HabitsScreen() {
   )
 }
 
-function HabitCard({ habit, onOpen }: { habit: Habit; onOpen: () => void }) {
+function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOpen: () => void }) {
   const { today } = useSession()
   const statusOf = useStatuses()
   const stats = useHabitStats(habit.id).data
@@ -54,7 +55,8 @@ function HabitCard({ habit, onOpen }: { habit: Habit; onOpen: () => void }) {
   const color = colorOf(habit)
 
   return (
-    <Pressable onPress={onOpen} style={({ pressed }) => pressed && { opacity: 0.8 }}>
+    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 40).springify().damping(20)}>
+    <Pressable onPress={onOpen} style={({ pressed }) => pressed && { opacity: 0.8, transform: [{ scale: 0.985 }] }}>
       <Card style={{ gap: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <HabitIcon habit={habit} />
@@ -96,6 +98,7 @@ function HabitCard({ habit, onOpen }: { habit: Habit; onOpen: () => void }) {
         </View>
       </Card>
     </Pressable>
+    </Animated.View>
   )
 }
 

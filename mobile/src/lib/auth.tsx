@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { Platform } from "react-native"
 import { logoutRemote, loginForToken, normalizeBaseUrl, setCredentials, setUnauthorizedHandler } from "@/lib/api"
-import { queryClient } from "@/lib/query"
+import { persister, queryClient } from "@/lib/query"
 import { storage } from "@/lib/storage"
+import { clearWidget } from "@/widgets/sync"
 
 const URL_KEY = "habits.baseUrl"
 const TOKEN_KEY = "habits.token"
@@ -38,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCredentials(null)
     setState(null)
     queryClient.clear()
+    await persister.removeClient()
+    clearWidget()
     await storage.remove(TOKEN_KEY)
   }, [])
 

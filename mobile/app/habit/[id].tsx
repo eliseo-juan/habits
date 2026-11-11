@@ -67,7 +67,7 @@ function Detail({ habit }: { habit: Habit }) {
   const heatmap = Array.from({ length: 27 }, (_, w) => Array.from({ length: 7 }, (_, d) => addDays(yearStart, w * 7 + d)))
 
   return (
-    <Screen>
+    <Screen contentStyle={{ paddingBottom: 40 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <Pressable onPress={() => router.back()} hitSlop={10} accessibilityLabel="Volver">
           <Ionicons name="arrow-back" size={24} color={colors.foreground} />

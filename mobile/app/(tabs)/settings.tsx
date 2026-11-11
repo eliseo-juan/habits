@@ -1,13 +1,25 @@
+import { useEffect, useState } from "react"
 import { Alert, Switch, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Constants from "expo-constants"
 import { Button, Card, PageHeader, Screen } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
+import { useToast } from "@/components/toast"
 import { useSession } from "@/lib/data"
+import { remindersEnabled, setRemindersEnabled } from "@/lib/reminders"
 import { colors } from "@/theme"
 
 export default function SettingsScreen() {
-  const { me } = useSession()
+  const { me, habits } = useSession()
+  const { toast } = useToast()
+  const [reminders, setReminders] = useState(false)
+  useEffect(() => void remindersEnabled().then(setReminders), [])
+
+  async function toggleReminders(on: boolean) {
+    const result = await setRemindersEnabled(on, habits).catch(() => false)
+    setReminders(result)
+    if (on && !result) toast("No se pudieron activar", { description: "Permite las notificaciones en los ajustes del sistema.", error: true })
+  }
   const { baseUrl, signOut } = useAuth()
 
   const confirmSignOut = () =>
@@ -26,9 +38,9 @@ export default function SettingsScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: "500", color: colors.foreground }}>Recordatorios en este móvil</Text>
-          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Próximamente</Text>
+          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Con los horarios de cada hábito</Text>
         </View>
-        <Switch value={false} disabled />
+        <Switch value={reminders} onValueChange={toggleReminders} trackColor={{ true: colors.primary, false: colors.muted }} />
       </Card>
 
       <Card style={{ padding: 0 }}>

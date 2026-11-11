@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
-import Animated, { LinearTransition, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated"
+import Animated, { FadeInDown, LinearTransition, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated"
 import * as Haptics from "expo-haptics"
 import { Ionicons } from "@expo/vector-icons"
 import { HabitRing } from "@/components/habit-ring"
@@ -62,7 +62,7 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: Props) {
   }
 
   return (
-    <Animated.View layout={LinearTransition.springify().damping(28)} style={[styles.row, dimmed && { opacity: 0.6 }]}>
+    <Animated.View entering={FadeInDown.springify().damping(20)} layout={LinearTransition.springify().damping(28)} style={[styles.row, dimmed && { opacity: 0.6 }]}>
       <Pressable onPress={onOpen} style={({ pressed }) => [styles.open, pressed && { opacity: 0.7 }]}>
         <HabitIcon habit={habit} />
         <View style={{ flex: 1, gap: 4 }}>
