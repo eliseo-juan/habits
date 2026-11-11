@@ -11,7 +11,7 @@ built PWA and reminder/webhook delivery. Personal project: the owner is the only
 | `web/` | PWA | React, Vite, Tailwind, shadcn |
 | `mobile/` | Native app (see `mobile/AGENTS.md`) | Expo |
 | `custom_components/habits/`, `tests_ha/` | Home Assistant integration (HACS) | |
-| `awtrix/`, `awtrix-preview/` | AWTRIX clock app and layout previews | |
+| `awtrix/` | AWTRIX clock app | |
 
 ## Backend architecture
 

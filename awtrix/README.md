@@ -33,12 +33,3 @@ Every few minutes, and whenever the app comes back on screen with data older tha
 
 Settings are declared in the `# @config` header of `habits.be`; bump `# @version` when changing the script.
 
-## Layout previews
-
-`../awtrix-preview/` holds standalone HTML pages that simulate the 52x16 matrix in a browser, used to try layouts before writing Berry. Open them directly, no build needed:
-
-- `index.html`: layout options for the habit grid.
-- `simple.html`: the final design, with sliders for habit count and time of day.
-- `drama.html`: more expressive variations for pending habits.
-
-They are design sketches, not used at runtime, and their text is in Spanish.
