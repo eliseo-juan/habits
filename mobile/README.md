@@ -79,6 +79,8 @@ Tarda unos minutos en la nube de EAS (la primera vez pregunta si genera el keyst
 - Abre ese enlace **en el móvil** y descarga el `.apk` (o `eas build:run --platform android --latest` con el móvil por USB/emulador).
 - Android pedirá permitir «instalar apps desconocidas» para el navegador la primera vez.
 
+**Desde GitHub:** Actions → «Mobile build (APK)» → Run workflow (solo manual; elige `apk` o `preview`). Encola el build en EAS y deja el enlace en el resumen de la ejecución; no espera a que termine. Necesita los secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` del entorno `production`, y que el keystore ya exista: haz el primer build una vez desde tu terminal (los builds no interactivos no pueden generarlo).
+
 Las siguientes versiones: otro `eas build --profile apk` para cambios nativos, y las OTAs (abajo) para cambios de JS. El APK `preview` recibe OTAs del canal `preview` (`eas update --channel preview --environment preview`); el CI publica solo en `production`.
 
 **OTA** (`expo-updates`, canales `development` / `preview` / `production`): `eas update --channel production --environment production`, o automático con `.github/workflows/mobile-update.yml` al hacer push a `main` que toque `mobile/` (secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` en el entorno `production` de GitHub; conviene exigir aprobación manual ahí).
