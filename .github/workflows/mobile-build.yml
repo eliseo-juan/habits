@@ -1,0 +1,53 @@
+name: Mobile build (APK)
+
+# Manual only: Actions tab → "Mobile build (APK)" → Run workflow. Queues an Android build on EAS and links it in the
+# run summary; it does not wait for the build, so it costs almost no runner time. Uses the same secrets as the OTA
+# workflow (EXPO_TOKEN, EAS_PROJECT_ID) inside the `production` environment. The first build must be made once from a
+# terminal (`eas build --profile apk --platform android`) so EAS can create and store the signing keystore;
+# non-interactive builds cannot generate it.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile (apk = production channel and environment, preview = preview)
+        type: choice
+        options: [apk, preview]
+        default: apk
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: eas build (android)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.repository == 'eliseo-juan/habits'
+    environment: production
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm install --global eas-cli@27.7.2
+      - name: Queue the build
+        env:
+          PROFILE: ${{ inputs.profile }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+        run: |
+          eas build --platform android --profile "$PROFILE" --non-interactive --no-wait --json | tee build.json
+          url=$(node -e 'const b=JSON.parse(require("fs").readFileSync("build.json","utf8"));console.log((Array.isArray(b)?b[0]:b).buildDetailsPageUrl ?? "")')
+          {
+            echo "### Android build queued ($PROFILE)"
+            echo
+            echo "${url:-See expo.dev → Builds}"
+            echo
+            echo "Open that page on your phone when it finishes and download the .apk."
+          } >> "$GITHUB_STEP_SUMMARY"
