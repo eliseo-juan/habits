@@ -1,14 +1,17 @@
+import { useState } from "react"
 import { BellRing, Clock, Globe, KeyRound, LogOut } from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { api } from "@/lib/api"
+import { TokensSheet, tokensQuery } from "@/components/tokens-sheet"
 import { useSession } from "@/lib/data"
 
 export function SettingsScreen() {
   const { me } = useSession()
   const client = useQueryClient()
-  const tokens = useQuery({ queryKey: ["tokens"], queryFn: () => api<unknown[]>("/tokens") }).data
+  const tokens = useQuery(tokensQuery).data?.filter((t) => !t.revoked_at)
+  const [open, setOpen] = useState(false)
 
   async function logout() {
     await api("/auth/logout", { method: "POST" })
@@ -38,8 +41,10 @@ export function SettingsScreen() {
       <section className="divide-y divide-white/5 rounded-3xl border border-white/5 bg-card/60">
         <Row icon={<Globe />} label="Zona horaria" value={me.timezone} />
         <Row icon={<Clock />} label="El día termina a las" value={me.day_cutoff.slice(0, 5)} />
-        <Row icon={<KeyRound />} label="Tokens de acceso" value={tokens ? `${tokens.length} ${tokens.length === 1 ? "activo" : "activos"}` : "–"} />
+        <Row icon={<KeyRound />} label="Tokens de acceso" value={tokens ? `${tokens.length} ${tokens.length === 1 ? "activo" : "activos"}` : "–"} onClick={() => setOpen(true)} />
       </section>
+
+      {open && <TokensSheet onClose={() => setOpen(false)} />}
 
       <Button variant="ghost" className="w-full text-rose-400" onClick={logout}>
         <LogOut /> Cerrar sesión
@@ -48,9 +53,9 @@ export function SettingsScreen() {
   )
 }
 
-function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Row({ icon, label, value, onClick }: { icon: React.ReactNode; label: string; value: string; onClick?: () => void }) {
   return (
-    <div className="flex items-center gap-3 p-4 [&_svg]:size-4 [&_svg]:text-muted-foreground">
+    <div role={onClick ? "button" : undefined} onClick={onClick} className="flex items-center gap-3 p-4 [&_svg]:size-4 [&_svg]:text-muted-foreground">
       {icon}
       <span className="flex-1 text-sm">{label}</span>
       <span className="text-sm text-muted-foreground">{value}</span>

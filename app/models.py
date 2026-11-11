@@ -129,6 +129,7 @@ class ApiToken(Base):
     scopes: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
     last_used: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class WebSession(Base):

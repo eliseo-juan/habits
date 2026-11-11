@@ -43,6 +43,7 @@ def _token_out(token: ApiToken) -> TokenOut:
         scope=token.scopes,
         created_at=token.created_at,
         last_used=token.last_used,
+        revoked_at=token.revoked_at,
     )
 
 
@@ -101,6 +102,15 @@ def create_token(data: TokenCreate, principal: SessionWriter, db: Db, now: Now):
     token, plaintext = security.create_api_token(db, principal.user, data.name, data.scope, now)
     db.commit()
     return TokenCreated(**_token_out(token).model_dump(), token=plaintext)
+
+
+@router.post("/tokens/{token_id}/revoke", response_model=TokenOut)
+def revoke_token(token_id: int, principal: SessionWriter, db: Db, now: Now):
+    token = _get_token(db, principal.user, token_id)
+    if token.revoked_at is None:
+        token.revoked_at = now
+        db.commit()
+    return _token_out(token)
 
 
 @router.delete("/tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT)

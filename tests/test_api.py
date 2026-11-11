@@ -255,6 +255,10 @@ def test_login_session_and_tokens(client, alice):
     names = [t["name"] for t in client.get("/tokens").json()]
     assert names == ["test-write", "awtrix", "mcp"]
     assert "token" not in client.get("/tokens").json()[0]
+    revoked = client.post(f"/tokens/{created.json()['id']}/revoke")
+    assert revoked.status_code == 200 and revoked.json()["revoked_at"] is not None
+    assert client.get("/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+    assert len(client.get("/tokens").json()) == 3
     assert client.delete(f"/tokens/{created.json()['id']}").status_code == 204
     assert client.get("/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
