@@ -64,7 +64,9 @@ eas build --profile production --platform all            # binarios de tienda
 eas submit --profile production --platform ios|android
 ```
 
-**OTA** (`expo-updates`, canales `development` / `preview` / `production`, `runtimeVersion` = versión de la app): `eas update --channel production --environment production`, o automático con `.github/workflows/mobile-update.yml` al hacer push a `main` (secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` en el entorno `production` de GitHub; conviene exigir aprobación manual ahí). Una OTA solo cambia JS: si tocas código nativo, dependencias nativas o **los widgets** (su layout se compila en el build), sube `version` en `app.config.ts` y haz un build nuevo; los binarios antiguos siguen recibiendo solo OTAs de su misma versión.
+**OTA** (`expo-updates`, canales `development` / `preview` / `production`): `eas update --channel production --environment production`, o automático con `.github/workflows/mobile-update.yml` al hacer push a `main` que toque `mobile/` (secretos `EXPO_TOKEN` y `EAS_PROJECT_ID` en el entorno `production` de GitHub; conviene exigir aprobación manual ahí).
+
+La `runtimeVersion` es un **fingerprint** de la capa nativa (dependencias nativas, config plugins, widgets, permisos): una OTA solo llega a binarios compatibles, así que un cambio nativo nunca se empuja por aire a una app que no lo tiene. Si lo cambias, el siguiente `eas update` queda esperando a un build nuevo con ese fingerprint. `fingerprint.config.js` excluye `extra` (servidor, project id) para que las variables de entorno no cambien el hash; `updates.url` sí cuenta, así que el `EAS_PROJECT_ID` debe ser el mismo en tu máquina, en EAS y en GitHub. Para ver el hash: `npx fingerprint fingerprint:generate --platform ios`. En Ajustes hay un botón «Buscar actualizaciones» (en builds con OTA activo).
 
 ## Widgets
 

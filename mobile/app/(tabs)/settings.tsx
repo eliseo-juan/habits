@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
-import { Alert, Switch, Text, View } from "react-native"
+import { Alert, Pressable, Switch, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Constants from "expo-constants"
+import * as Updates from "expo-updates"
 import { Button, Card, Screen } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/components/toast"
@@ -13,6 +14,7 @@ export default function SettingsScreen() {
   const { me, habits } = useSession()
   const { toast } = useToast()
   const [reminders, setReminders] = useState(false)
+  const [checking, setChecking] = useState(false)
   useEffect(() => void remindersEnabled().then(setReminders), [])
 
   async function toggleReminders(on: boolean) {
@@ -21,6 +23,21 @@ export default function SettingsScreen() {
     if (on && !result) toast("No se pudieron activar", { description: "Permite las notificaciones en los ajustes del sistema.", error: true })
   }
   const { baseUrl, signOut } = useAuth()
+
+  // OTA: downloads a pending update and restarts into it. Disabled in dev builds and Expo Go.
+  async function checkForUpdates() {
+    setChecking(true)
+    try {
+      const { isAvailable } = await Updates.checkForUpdateAsync()
+      if (!isAvailable) return toast("Estás al día")
+      await Updates.fetchUpdateAsync()
+      await Updates.reloadAsync()
+    } catch {
+      toast("No se pudo comprobar", { description: "Inténtalo de nuevo más tarde.", error: true })
+    } finally {
+      setChecking(false)
+    }
+  }
 
   const confirmSignOut = () =>
     Alert.alert("¿Cerrar sesión?", "Se revocará el acceso de este dispositivo.", [
@@ -46,7 +63,8 @@ export default function SettingsScreen() {
         <Row icon="globe-outline" label="Zona horaria" value={me.timezone} />
         <Row icon="time-outline" label="El día termina a las" value={me.day_cutoff.slice(0, 5)} />
         <Row icon="server-outline" label="Servidor" value={(baseUrl ?? "").replace(/^https?:\/\//, "")} />
-        <Row icon="information-circle-outline" label="Versión" value={Constants.expoConfig?.version ?? "–"} last />
+        <Row icon="information-circle-outline" label="Versión" value={`${Constants.expoConfig?.version ?? "–"}${Updates.updateId ? ` · ${Updates.updateId.slice(0, 6)}` : ""}`} last={!Updates.isEnabled} />
+        {Updates.isEnabled && <Row icon="cloud-download-outline" label={checking ? "Comprobando…" : "Buscar actualizaciones"} value="" onPress={checkForUpdates} last />}
       </Card>
 
       <Text style={{ paddingHorizontal: 4, fontSize: 12, color: colors.mutedForeground }}>Los tokens de acceso (MCP, Home Assistant) se gestionan desde la web del servidor.</Text>
@@ -56,14 +74,15 @@ export default function SettingsScreen() {
   )
 }
 
-function Row({ icon, label, value, last }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; last?: boolean }) {
+function Row({ icon, label, value, last, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; last?: boolean; onPress?: () => void }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.border }}>
+    <Pressable disabled={!onPress} onPress={onPress} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.border }}>
       <Ionicons name={icon} size={16} color={colors.mutedForeground} />
       <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{label}</Text>
       <Text numberOfLines={1} style={{ flexShrink: 1, maxWidth: "55%", fontSize: 14, color: colors.mutedForeground }}>
         {value}
       </Text>
-    </View>
+      {onPress && <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />}
+    </Pressable>
   )
 }

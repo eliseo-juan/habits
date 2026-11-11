@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: "./assets/icon.png",
     userInterfaceStyle: "dark",
     backgroundColor: "#0b0d12",
-    ios: { supportsTablet: false, bundleIdentifier: bundleId },
+    ios: { supportsTablet: false, bundleIdentifier: bundleId, config: { usesNonExemptEncryption: false } },
     android: {
       package: bundleId,
       adaptiveIcon: {
@@ -34,9 +34,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       predictiveBackGestureEnabled: false,
     },
     web: { bundler: "metro", output: "single" },
-    // OTA: JS-only changes ship through `eas update`; a new binary is needed when native code or the widgets change.
-    runtimeVersion: { policy: "appVersion" },
-    ...(projectId ? { updates: { url: `https://u.expo.dev/${projectId}` } } : {}),
+    // OTA: JS-only changes ship through `eas update`. The runtime version is a fingerprint of the native layer
+    // (native deps, config plugins, widgets), so an update only reaches binaries it is compatible with and a native
+    // change can never be pushed over the air to an app that lacks it.
+    runtimeVersion: { policy: "fingerprint" },
+    ...(projectId ? { updates: { url: `https://u.expo.dev/${projectId}`, checkAutomatically: "ON_LOAD", fallbackToCacheTimeout: 0 } } : {}),
     extra: {
       ...config.extra,
       serverUrl: process.env.HABITS_SERVER_URL ?? process.env.EXPO_PUBLIC_API_URL ?? "",

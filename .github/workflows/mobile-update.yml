@@ -6,7 +6,7 @@ name: Mobile OTA update
 on:
   push:
     branches: [main]
-    paths: ["mobile/**"]
+    paths: ["mobile/**", "!mobile/**/*.md"]
   workflow_dispatch:
 
 concurrency:
@@ -21,6 +21,8 @@ jobs:
     name: eas update (production)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Forks have no secrets (and no business publishing); the job only runs in the owner's repository.
+    if: github.repository == 'eliseo-juan/habits'
     environment: production
     defaults:
       run:
@@ -35,7 +37,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm install --global eas-cli@27.7.2
-      - run: eas update --channel production --environment production --non-interactive --message "$GITHUB_SHA"
+      - run: eas update --channel production --environment production --non-interactive --message "$COMMIT_MESSAGE"
         env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || github.sha }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}

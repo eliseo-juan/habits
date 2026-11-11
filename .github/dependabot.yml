@@ -13,3 +13,19 @@ updates:
   - package-ecosystem: docker
     directory: /
     schedule: {interval: weekly}
+  # Expo pins every native package to the SDK (`npx expo install --fix`), so only the tooling that is not
+  # SDK-managed is bumped automatically; SDK upgrades are done by hand.
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule: {interval: weekly}
+    groups:
+      mobile: {patterns: ["*"]}
+    ignore:
+      - dependency-name: "expo*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "@react-native*"
+      - dependency-name: "typescript"
+      - dependency-name: "@types/react"
