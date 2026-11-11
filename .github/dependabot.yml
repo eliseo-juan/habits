@@ -13,6 +13,11 @@ updates:
   - package-ecosystem: docker
     directory: /
     schedule: {interval: weekly}
+  - package-ecosystem: npm
+    directory: /web
+    schedule: {interval: weekly}
+    groups:
+      web: {patterns: ["*"]}
   # Expo pins every native package to the SDK (`npx expo install --fix`), so only the tooling that is not
   # SDK-managed is bumped automatically; SDK upgrades are done by hand.
   - package-ecosystem: npm

@@ -30,12 +30,9 @@ jobs:
     defaults:
       run:
         working-directory: mobile
-    env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: lts/*
           cache: npm
@@ -47,6 +44,8 @@ jobs:
         id: update
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message || github.sha }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
         run: |
           eas update --channel production --environment production --platform android --non-interactive --json \
             --message "$COMMIT_MESSAGE" > "$RUNNER_TEMP/update.json"
@@ -55,6 +54,8 @@ jobs:
       - name: Queue an APK build if no build has this runtime
         env:
           RUNTIME: ${{ steps.update.outputs.runtime }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
         run: |
           eas build:list --platform android --build-profile apk --runtime-version "$RUNTIME" --limit 20 --json --non-interactive \
             > "$RUNNER_TEMP/builds.json"
