@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import security
-from app.auth.deps import SESSION_COOKIE, Db, Now, Reader, SessionWriter, Writer, bearer_token
+from app.auth.deps import SESSION_COOKIE, Db, Now, Reader, TokenManager, Writer, bearer_token
 from app.config import get_settings
 from app.errors import NotFound
 from app.models import ApiToken, User
@@ -37,7 +37,7 @@ def _me(user: User) -> MeOut:
     )
 
 
-def _token_out(token: ApiToken) -> TokenOut:
+def _token_out(token: ApiToken, bearer: str | None = None) -> TokenOut:
     return TokenOut(
         id=token.id,
         name=token.name,
@@ -45,6 +45,7 @@ def _token_out(token: ApiToken) -> TokenOut:
         created_at=token.created_at,
         last_used=token.last_used,
         revoked_at=token.revoked_at,
+        current=bearer is not None and token.token_hash == security.hash_secret(bearer),
     )
 
 
@@ -72,7 +73,7 @@ def login_for_token(data: DeviceLoginIn, request: Request, db: Db, now: Now):
     user = security.authenticate(
         db, request.app.state.login_throttle, data.email, data.password, now
     )
-    token, plaintext = security.create_api_token(db, user, data.device_name, "write", now)
+    token, plaintext = security.create_api_token(db, user, data.device_name, "device", now)
     db.commit()
     return TokenCreated(**_token_out(token).model_dump(), token=plaintext)
 
@@ -104,22 +105,23 @@ def _get_token(db: Session, user: User, token_id: int) -> ApiToken:
 
 
 @router.get("/tokens", response_model=list[TokenOut])
-def list_tokens(principal: SessionWriter, db: Db):
+def list_tokens(principal: TokenManager, request: Request, db: Db):
     rows = db.scalars(
         select(ApiToken).where(ApiToken.user_id == principal.user.id).order_by(ApiToken.id)
     )
-    return [_token_out(t) for t in rows]
+    bearer = bearer_token(request)
+    return [_token_out(t, bearer) for t in rows]
 
 
 @router.post("/tokens", response_model=TokenCreated, status_code=status.HTTP_201_CREATED)
-def create_token(data: TokenCreate, principal: SessionWriter, db: Db, now: Now):
+def create_token(data: TokenCreate, principal: TokenManager, db: Db, now: Now):
     token, plaintext = security.create_api_token(db, principal.user, data.name, data.scope, now)
     db.commit()
     return TokenCreated(**_token_out(token).model_dump(), token=plaintext)
 
 
 @router.post("/tokens/{token_id}/revoke", response_model=TokenOut)
-def revoke_token(token_id: int, principal: SessionWriter, db: Db, now: Now):
+def revoke_token(token_id: int, principal: TokenManager, db: Db, now: Now):
     token = _get_token(db, principal.user, token_id)
     if token.revoked_at is None:
         token.revoked_at = now
@@ -128,7 +130,7 @@ def revoke_token(token_id: int, principal: SessionWriter, db: Db, now: Now):
 
 
 @router.delete("/tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_token(token_id: int, principal: SessionWriter, db: Db):
+def delete_token(token_id: int, principal: TokenManager, db: Db):
     db.delete(_get_token(db, principal.user, token_id))
     db.commit()
 

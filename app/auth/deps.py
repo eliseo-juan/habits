@@ -40,12 +40,12 @@ def writer(principal: Annotated[Principal, Depends(current_principal)]) -> Princ
     return principal
 
 
-def session_writer(principal: Annotated[Principal, Depends(current_principal)]) -> Principal:
-    if not principal.via_session:
-        raise Forbidden("token management needs a web session")
+def token_manager(principal: Annotated[Principal, Depends(current_principal)]) -> Principal:
+    if not principal.can_manage_tokens:
+        raise Forbidden("token management needs a web session or the mobile app")
     return principal
 
 
 Reader = Annotated[Principal, Depends(current_principal)]
 Writer = Annotated[Principal, Depends(writer)]
-SessionWriter = Annotated[Principal, Depends(session_writer)]
+TokenManager = Annotated[Principal, Depends(token_manager)]

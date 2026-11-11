@@ -1,13 +1,12 @@
 import { Platform } from "react-native"
 import * as Notifications from "expo-notifications"
 import { api } from "@/lib/api"
+import type { Reminder } from "@/lib/data"
 import { emojiOf, type Habit } from "@/lib/rules"
 import { storage } from "@/lib/storage"
 
 const FLAG = "habits.localReminders"
 const CHANNEL = "reminders"
-
-type Reminder = { id: number; time_local: string; weekdays: number[] | null; enabled: boolean }
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldPlaySound: false, shouldSetBadge: false, shouldShowBanner: true, shouldShowList: true }),

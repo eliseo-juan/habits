@@ -203,10 +203,11 @@ class TokenCreate(BaseModel):
 class TokenOut(BaseModel):
     id: int
     name: str
-    scope: Literal["read", "write"]
+    scope: Literal["read", "write", "device"]
     created_at: datetime
     last_used: datetime | None
     revoked_at: datetime | None = None
+    current: bool = False
 
 
 class TokenCreated(TokenOut):

@@ -16,11 +16,14 @@ const CELL: Record<Exclude<Status, "done">, { box: object; text: string; strike?
   not_due: { box: {}, text: "rgba(182,186,196,0.6)" },
 }
 
-function monthDays(month: string): (string | null)[] {
+// Monday-first weeks; days outside the month are null so every row has exactly seven cells.
+function monthWeeks(month: string): (string | null)[][] {
   const [year, number] = month.split("-").map(Number)
   const first = iso(new Date(Date.UTC(year, number - 1, 1)))
   const length = new Date(Date.UTC(year, number, 0)).getUTCDate()
-  return [...Array(weekday(first)).fill(null), ...Array.from({ length }, (_, i) => addDays(first, i))]
+  const cells = [...Array(weekday(first)).fill(null), ...Array.from({ length }, (_, i) => addDays(first, i))]
+  while (cells.length % 7) cells.push(null)
+  return Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7))
 }
 
 export default function HabitDetailScreen() {
@@ -116,41 +119,46 @@ function Detail({ habit }: { habit: Habit }) {
             <Ionicons name="chevron-forward" size={22} color={colors.mutedForeground} />
           </Pressable>
         </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-          {WEEKDAYS.map((w) => (
-            <Text key={w} style={{ width: `${100 / 7}%`, textAlign: "center", paddingBottom: 4, fontSize: 11, color: colors.mutedForeground, textTransform: "capitalize" }}>
-              {w.slice(0, 2)}
-            </Text>
-          ))}
-          {monthDays(month).map((day, i) => {
-            if (!day) return <View key={`blank-${i}`} style={{ width: `${100 / 7}%` }} />
-            const st: Status = day > today ? "not_due" : (monthView?.days[day] ?? "not_due")
-            const style = st === "done" ? null : CELL[st]
-            return (
-              <View key={day} style={{ width: `${100 / 7}%`, padding: 2 }}>
-                <Pressable
-                  onPress={() => cycle(day)}
-                  style={({ pressed }) => [
-                    { aspectRatio: 1, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-                    st === "done" ? { backgroundColor: color } : style?.box,
-                    pressed && { transform: [{ scale: 0.88 }] },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontVariant: ["tabular-nums"],
-                      fontWeight: day === today ? "700" : "400",
-                      color: st === "done" ? "#fff" : style?.text,
-                      textDecorationLine: style?.strike ? "line-through" : "none",
-                    }}
+        <View style={{ gap: 4 }}>
+          <View style={{ flexDirection: "row" }}>
+            {WEEKDAYS.map((w) => (
+              <Text key={w} style={{ flex: 1, textAlign: "center", fontSize: 11, color: colors.mutedForeground, textTransform: "capitalize" }}>
+                {w.slice(0, 2)}
+              </Text>
+            ))}
+          </View>
+          {monthWeeks(month).map((week, w) => (
+            <View key={w} style={{ flexDirection: "row", gap: 4 }}>
+              {week.map((day, d) => {
+                if (!day) return <View key={`blank-${d}`} style={{ flex: 1 }} />
+                const st: Status = day > today ? "not_due" : (monthView?.days[day] ?? "not_due")
+                const style = st === "done" ? null : CELL[st]
+                return (
+                  <Pressable
+                    key={day}
+                    onPress={() => cycle(day)}
+                    style={({ pressed }) => [
+                      { flex: 1, aspectRatio: 1, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+                      st === "done" ? { backgroundColor: color } : style?.box,
+                      pressed && { transform: [{ scale: 0.88 }] },
+                    ]}
                   >
-                    {+day.slice(8)}
-                  </Text>
-                </Pressable>
-              </View>
-            )
-          })}
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontVariant: ["tabular-nums"],
+                        fontWeight: day === today ? "700" : "400",
+                        color: st === "done" ? "#fff" : style?.text,
+                        textDecorationLine: style?.strike ? "line-through" : "none",
+                      }}
+                    >
+                      {+day.slice(8)}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          ))}
         </View>
         <Text style={{ textAlign: "center", fontSize: 11, color: colors.mutedForeground }}>Toca un día pasado: {habit.kind === "limit" ? "lo hice" : "hecho"} → saltado → vacío</Text>
       </Card>

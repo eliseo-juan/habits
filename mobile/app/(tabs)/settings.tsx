@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Alert, Pressable, Switch, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Constants from "expo-constants"
+import { router } from "expo-router"
 import * as Updates from "expo-updates"
 import { Button, Card, Screen } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
@@ -53,7 +54,7 @@ export default function SettingsScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: "500", color: colors.foreground }}>Recordatorios en este móvil</Text>
-          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Con los horarios de cada hábito</Text>
+          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Las horas se configuran en cada hábito</Text>
         </View>
         <Switch value={reminders} onValueChange={toggleReminders} trackColor={{ true: colors.primary, false: colors.muted }} />
       </Card>
@@ -67,7 +68,9 @@ export default function SettingsScreen() {
         {Updates.isEnabled && <Row icon="cloud-download-outline" label={checking ? "Comprobando…" : "Buscar actualizaciones"} value="" onPress={checkForUpdates} last />}
       </Card>
 
-      <Text style={{ paddingHorizontal: 4, fontSize: 12, color: colors.mutedForeground }}>Los tokens de acceso (MCP, Home Assistant) se gestionan desde la web del servidor.</Text>
+      <Card style={{ padding: 0 }}>
+        <Row icon="key-outline" label="Tokens de acceso" value="MCP, Home Assistant" onPress={() => router.push("/tokens")} last />
+      </Card>
 
       <Button variant="ghost" label="Cerrar sesión" icon={<Ionicons name="log-out-outline" size={18} color={colors.destructive} />} onPress={confirmSignOut} style={{ borderRadius: 24 }} />
     </Screen>

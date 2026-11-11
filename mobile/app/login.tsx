@@ -1,8 +1,7 @@
 import { useState } from "react"
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native"
 import Constants from "expo-constants"
-import { LinearGradient } from "expo-linear-gradient"
-import { Button } from "@/components/ui"
+import { Button, Glow } from "@/components/ui"
 import { HttpError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { colors, radius } from "@/theme"
@@ -37,7 +36,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.root}>
-      <LinearGradient colors={["rgba(77,219,165,0.18)", "transparent"]} style={styles.glow} />
+      <Glow />
       <View style={styles.form}>
         <Text style={styles.title}>Hábitos</Text>
         <Text style={styles.subtitle}>Entra para ver y marcar tus hábitos.</Text>
@@ -53,7 +52,6 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: "center", paddingHorizontal: 24, backgroundColor: colors.background },
-  glow: { position: "absolute", top: 0, left: 0, right: 0, height: 288 },
   form: { gap: 12, width: "100%", maxWidth: 384, alignSelf: "center" },
   title: { fontSize: 30, fontWeight: "600", letterSpacing: -0.5, color: colors.foreground },
   subtitle: { fontSize: 14, color: colors.mutedForeground, paddingBottom: 12 },
