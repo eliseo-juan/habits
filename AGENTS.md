@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Self-hosted habit tracker. One FastAPI backend serves a REST API, a remote MCP server, the
+SmartHabits, a self-hosted habit tracker. One FastAPI backend serves a REST API, a remote MCP server, the
 built PWA and reminder/webhook delivery. Personal project: the owner is the only contributor.
 
 ## Layout
@@ -26,7 +26,7 @@ Paths below are relative to `backend/`.
 
 ## Domain rules that are easy to break
 
-Full list in README "Rules". The ones code changes trip on:
+Full list in `backend/README.md` "Rules". The ones code changes trip on:
 
 - A day is the user's logical day (their timezone, rolled over at `day_cutoff`).
 - Failures are computed, never stored. Skipped days count neither for nor against.
@@ -92,3 +92,7 @@ PR descriptions, commit messages, READMEs and other docs are generic: they descr
 project does and how anyone would run it, not how the owner uses it. Leave out personal
 hostnames, domains, devices, accounts, habits, tokens and deployment details. Use
 placeholders such as `habits.example.com` and `me@example.com`.
+
+The root `README.md` is the product pitch: what SmartHabits does and why it is different.
+Every piece in the layout table has its own README on how to run it and how it works; update
+it in the same PR when that changes. Code identifiers keep the `habits` name.
