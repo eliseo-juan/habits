@@ -1,10 +1,14 @@
 name: CI
 
+# The mobile app has its own workflows (mobile*.yml) and is not part of the server image, so mobile-only changes
+# skip this one. Tag pushes ignore path filters, so releases always run it.
 on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths-ignore: ["mobile/**", ".github/workflows/mobile*.yml"]
   pull_request:
+    paths-ignore: ["mobile/**", ".github/workflows/mobile*.yml"]
   workflow_dispatch:
 
 # A new push to the same ref supersedes the run in flight (never cancels main/tags: they publish).
