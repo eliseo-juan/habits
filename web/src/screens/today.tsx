@@ -1,5 +1,5 @@
-import { RotateCcw, Sparkles } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
+import { RotateCcw } from "lucide-react"
+import { AnimatePresence } from "motion/react"
 import { DaySheet } from "@/components/day-sheet"
 import { DayStrip } from "@/components/day-strip"
 import { HabitRow } from "@/components/habit-row"
@@ -36,7 +36,6 @@ export function TodayScreen() {
     })
   const open = [...due, ...metThisPeriod].find((r) => r.habit.id === openId)
   const done = toDo.filter((r) => r.entry.status === "done").length
-  const percentage = toDo.length ? Math.round((100 * done) / toDo.length) : 0
   const date = parse(day)
 
   return (
@@ -48,36 +47,21 @@ export function TodayScreen() {
           </p>
           <h1 className="text-3xl font-semibold tracking-tight">{dayTitle(day, today)}</h1>
         </div>
-        {day !== today && (
-          <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setDay(today)}>
-            <RotateCcw /> Hoy
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {toDo.length > 0 && (
+            <span className="text-sm font-medium text-muted-foreground tabular-nums">
+              {done}/{toDo.length}
+            </span>
+          )}
+          {day !== today && (
+            <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setDay(today)}>
+              <RotateCcw /> Hoy
+            </Button>
+          )}
+        </div>
       </header>
 
       <DayStrip selected={day} onSelect={setDay} />
-
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/20 via-card/60 to-card/40 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{day > today ? "Día futuro, solo consulta" : "Progreso del día"}</p>
-            <p className="text-2xl font-semibold tabular-nums">
-              {done}
-              <span className="text-muted-foreground"> / {toDo.length}</span>
-            </p>
-          </div>
-          <AnimatePresence>
-            {toDo.length > 0 && done === toDo.length && (
-              <motion.span initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }} className="text-primary">
-                <Sparkles className="size-8" />
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15">
-          <motion.div className="h-full rounded-full bg-primary" initial={false} animate={{ width: `${percentage}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
-        </div>
-      </div>
 
       <div className="space-y-2">
         {items && toDo.length === 0 && <p className="py-10 text-center text-muted-foreground">Nada que hacer este día ✨</p>}
