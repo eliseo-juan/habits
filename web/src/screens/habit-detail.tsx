@@ -5,16 +5,17 @@ import { HabitIcon } from "@/components/habit-row"
 import { HabitForm } from "@/components/habit-form"
 import { Button } from "@/components/ui/button"
 import { useHabitStats, useLogWriter, useReminders, useSession, useStatuses, useYear } from "@/lib/data"
+import { goBack, navigate, switchTab } from "@/lib/router"
 import { addDays, colorOf, iso, percent, MONTHS, scheduleLabel, streakLabel, shiftMonth, weekday, WEEKDAYS, type Habit, type Status } from "@/lib/rules"
 import { cn } from "@/lib/utils"
 
 const CELL: Record<Status, string> = {
   done: "",
   failed: "text-rose-300 ring-1 ring-rose-500/40",
-  skipped: "bg-white/5 text-muted-foreground line-through",
+  skipped: "bg-white/10 text-muted-foreground line-through",
   pending: "ring-1 ring-primary/60",
   slipped: "text-amber-300 ring-1 ring-amber-400/40",
-  not_due: "text-muted-foreground/40",
+  not_due: "text-muted-foreground/60",
 }
 
 function monthDays(month: string): (string | null)[] {
@@ -24,7 +25,7 @@ function monthDays(month: string): (string | null)[] {
   return [...Array(weekday(first)).fill(null), ...Array.from({ length }, (_, i) => addDays(first, i))]
 }
 
-export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => void }) {
+export function HabitDetail({ habit, editing }: { habit: Habit; editing: boolean }) {
   const { today } = useSession()
   const statusOf = useStatuses()
   const writer = useLogWriter()
@@ -34,7 +35,6 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
   const monthView = useYear(year).data?.habits.find((h) => h.habit_id === habit.id)
   const monthly = monthView?.months.find((m) => m.month === month)
   const reminders = (useReminders(habit.id).data ?? []).filter((r) => r.enabled).map((r) => r.time_local.slice(0, 5))
-  const [editing, setEditing] = useState(false)
   const color = colorOf(habit)
 
   async function cycle(day: string) {
@@ -52,7 +52,7 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
   return (
     <motion.div initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="space-y-5">
       <header className="flex items-center gap-3 pt-2">
-        <Button variant="ghost" size="icon" className="rounded-full" onClick={onBack} aria-label="Volver">
+        <Button variant="ghost" size="icon" className="rounded-full" onClick={() => goBack("/habits")} aria-label="Volver">
           <ArrowLeft />
         </Button>
         <HabitIcon habit={habit} />
@@ -67,11 +67,11 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
             )}
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="ml-auto rounded-full" onClick={() => setEditing(true)} aria-label="Editar hábito">
+        <Button variant="ghost" size="icon" className="ml-auto rounded-full" onClick={() => navigate(`/habits/${habit.id}/edit`)} aria-label="Editar hábito">
           <Pencil />
         </Button>
       </header>
-      {editing && <HabitForm habit={habit} onClose={() => setEditing(false)} onArchived={onBack} />}
+      {editing && <HabitForm habit={habit} onClose={() => goBack(`/habits/${habit.id}`)} onArchived={() => switchTab("/habits")} />}
 
       <div className="grid grid-cols-2 gap-2">
         <StatCard icon={<Flame className="size-4 text-orange-400" />} label="Racha actual" value={overall ? streakLabel(habit.schedule, overall.current_streak) : "–"} />
@@ -80,7 +80,7 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
         <StatCard label={habit.kind === "limit" ? "Cumplidos · fallados" : "Hechos · fallados"} value={overall ? `${overall.done} · ${overall.failed}` : "–"} />
       </div>
 
-      <section className="rounded-3xl border border-white/5 bg-card/60 p-4">
+      <section className="rounded-3xl border border-white/10 bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
           <Button variant="ghost" size="icon-sm" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Mes anterior">
             <ChevronLeft />
@@ -120,7 +120,7 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
         <p className="mt-3 text-center text-[11px] text-muted-foreground">Toca un día pasado: {habit.kind === "limit" ? "lo hice" : "hecho"} → saltado → vacío</p>
       </section>
 
-      <section className="rounded-3xl border border-white/5 bg-card/60 p-4">
+      <section className="rounded-3xl border border-white/10 bg-card p-4">
         <p className="mb-3 text-sm font-medium">Últimos 6 meses</p>
         <div className="flex justify-between gap-[3px]">
           {heatmap.map((week, w) => (
@@ -130,7 +130,7 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
                 return (
                   <span
                     key={day}
-                    className={cn("aspect-square rounded-[3px]", st === "failed" ? "bg-white/15" : st === "done" ? "" : "bg-white/5")}
+                    className={cn("aspect-square rounded-[3px]", st === "failed" ? "bg-white/30" : st === "done" ? "" : "bg-white/10")}
                     style={st === "done" ? { background: color } : undefined}
                   />
                 )
@@ -145,14 +145,14 @@ export function HabitDetail({ habit, onBack }: { habit: Habit; onBack: () => voi
 
 function StatCard({ icon, label, value, accent, percentage }: { icon?: React.ReactNode; label: string; value: React.ReactNode; accent?: string; percentage?: number }) {
   return (
-    <div className="rounded-3xl border border-white/5 bg-card/60 p-4">
+    <div className="rounded-3xl border border-white/10 bg-card p-4">
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         {icon}
         {label}
       </p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
       {accent && (
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
           <div className="h-full rounded-full" style={{ width: `${percentage}%`, background: accent }} />
         </div>
       )}

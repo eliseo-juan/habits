@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { RotateCcw, Sparkles } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { DaySheet } from "@/components/day-sheet"
@@ -6,15 +5,20 @@ import { DayStrip } from "@/components/day-strip"
 import { HabitRow } from "@/components/habit-row"
 import { Button } from "@/components/ui/button"
 import { useDay, useSession, useStatuses } from "@/lib/data"
+import { goBack, navigate, useRoute } from "@/lib/router"
 import { dayTitle, MONTHS, parse, type DayEntry, type Habit } from "@/lib/rules"
 
 type Row = { habit: Habit; entry: DayEntry }
 
-export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
+export function TodayScreen() {
   const { today, habits } = useSession()
   const statusOf = useStatuses()
-  const [day, setDay] = useState(today)
-  const [openId, setOpenId] = useState<number | null>(null)
+  const { params } = useRoute()
+  const day = params.get("day") ?? today
+  const openId = Number(params.get("log"))
+  const dayPath = day === today ? "/" : `/?day=${day}`
+  const setDay = (next: string) => navigate(next === today ? "/" : `/?day=${next}`, { replace: true })
+  const openLog = (habit: Habit) => navigate(`${dayPath}${day === today ? "?" : "&"}log=${habit.id}`)
   const items = useDay(day).data?.items
 
   const due: Row[] = (items ?? []).flatMap((entry) => {
@@ -53,7 +57,7 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
 
       <DayStrip selected={day} onSelect={setDay} />
 
-      <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-primary/20 via-card/60 to-card/40 p-4">
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/20 via-card/60 to-card/40 p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">{day > today ? "Día futuro, solo consulta" : "Progreso del día"}</p>
@@ -70,7 +74,7 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
             )}
           </AnimatePresence>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15">
           <motion.div className="h-full rounded-full bg-primary" initial={false} animate={{ width: `${percentage}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
         </div>
       </div>
@@ -78,7 +82,7 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
       <div className="space-y-2">
         {items && toDo.length === 0 && <p className="py-10 text-center text-muted-foreground">Nada que hacer este día ✨</p>}
         {toDo.map(({ habit, entry }) => (
-          <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => setOpenId(habit.id)} />
+          <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => openLog(habit)} />
         ))}
       </div>
 
@@ -86,7 +90,7 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
         <section className="space-y-2">
           <h2 className="px-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">A evitar</h2>
           {avoid.map(({ habit, entry }) => (
-            <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => setOpenId(habit.id)} />
+            <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => openLog(habit)} />
           ))}
         </section>
       )}
@@ -95,23 +99,12 @@ export function TodayScreen({ onStats }: { onStats: (habit: Habit) => void }) {
         <section className="space-y-2">
           <h2 className="px-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">Objetivo cumplido este periodo</h2>
           {metThisPeriod.map(({ habit, entry }) => (
-            <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => setOpenId(habit.id)} dimmed />
+            <HabitRow key={habit.id} habit={habit} entry={entry} day={day} onOpen={() => openLog(habit)} dimmed />
           ))}
         </section>
       )}
 
-      {open && (
-        <DaySheet
-          habit={open.habit}
-          entry={open.entry}
-          day={day}
-          onClose={() => setOpenId(null)}
-          onStats={(habit) => {
-            setOpenId(null)
-            onStats(habit)
-          }}
-        />
-      )}
+      <AnimatePresence>{open && <DaySheet key={open.habit.id} habit={open.habit} entry={open.entry} day={day} onClose={() => goBack(dayPath)} />}</AnimatePresence>
     </div>
   )
 }

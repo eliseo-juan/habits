@@ -15,7 +15,7 @@ const TYPES = [
   { id: "times_per_period", label: "Por periodo" },
 ] as const
 
-const field = "h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-4 text-base outline-none focus:ring-2 focus:ring-primary/50"
+const field = "h-12 w-full rounded-2xl border border-white/10 bg-white/10 px-4 text-base outline-none focus:ring-2 focus:ring-primary/50"
 const segment = (active: boolean) => cn("h-12 rounded-xl px-2 text-sm font-medium transition-colors", active ? "bg-primary text-primary-foreground" : "text-muted-foreground")
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -88,8 +88,8 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
     try {
       await action()
       await queryClient.invalidateQueries()
-      after?.()
-      onClose()
+      const leave = after ?? onClose
+      leave()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo guardar")
     } finally {
@@ -120,7 +120,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
 
   return (
     <div className="fixed inset-0 z-50 mx-auto flex max-w-md flex-col bg-background">
-      <header className="flex items-center gap-2 border-b border-white/5 px-3 pt-[max(env(safe-area-inset-top),0.75rem)] pb-3">
+      <header className="flex items-center gap-2 border-b border-white/10 px-3 pt-[max(env(safe-area-inset-top),0.75rem)] pb-3">
         <Button variant="ghost" size="icon-lg" className="size-12 rounded-full" onClick={onClose} aria-label="Cerrar">
           <X className="size-6" />
         </Button>
@@ -133,7 +133,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
       <div className="flex-1 space-y-6 overflow-y-auto px-4 pt-5 pb-[max(env(safe-area-inset-bottom),2rem)]">
         {!habit && (
           <Section title="Tipo">
-            <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white/5 p-1">
+            <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white/10 p-1">
               <button type="button" className={segment(kind === "build")} onClick={() => setKind("build")}>
                 Hacer
               </button>
@@ -164,7 +164,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
         </Section>
 
         <Section title="Frecuencia">
-          <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-white/5 p-1">
+          <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-white/10 p-1">
             {TYPES.map((t) => (
               <button key={t.id} type="button" onClick={() => setType(t.id)} className={segment(schedule.type === t.id)}>
                 {t.label}
@@ -175,7 +175,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
           {schedule.type === "weekdays" && (
             <div className="grid grid-cols-7 gap-1.5">
               {WEEKDAYS.map((w, i) => (
-                <button key={w} type="button" onClick={() => toggleDay(i)} className={cn("h-12 rounded-xl text-sm capitalize", schedule.weekdays?.includes(i) ? "bg-primary text-primary-foreground" : "bg-white/5 text-muted-foreground")}>
+                <button key={w} type="button" onClick={() => toggleDay(i)} className={cn("h-12 rounded-xl text-sm capitalize", schedule.weekdays?.includes(i) ? "bg-primary text-primary-foreground" : "bg-white/10 text-muted-foreground")}>
                   {w.slice(0, 2)}
                 </button>
               ))}

@@ -45,7 +45,7 @@ export function HabitRing({ status, count, target, color, size = 44, className }
           r={radius}
           fill="none"
           strokeWidth={stroke}
-          className={status === "failed" ? "stroke-rose-500/40" : status === "slipped" ? "stroke-amber-400/50" : "stroke-white/10"}
+          className={status === "failed" ? "stroke-rose-500/40" : status === "slipped" ? "stroke-amber-400/50" : "stroke-white/20"}
         />
         <motion.circle
           cx={size / 2}

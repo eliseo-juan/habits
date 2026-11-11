@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { api, HttpError } from "@/lib/api"
 import { meQuery } from "@/lib/data"
 
-const FIELD = "w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 outline-none focus:border-primary/60"
+const FIELD = "w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 outline-none focus:border-primary/60"
 
 export function LoginScreen() {
   const client = useQueryClient()

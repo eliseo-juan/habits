@@ -25,7 +25,7 @@ export function SettingsScreen() {
         <h1 className="text-3xl font-semibold tracking-tight">Ajustes</h1>
       </header>
 
-      <section className="rounded-3xl border border-white/5 bg-card/60 p-4">
+      <section className="rounded-3xl border border-white/10 bg-card p-4">
         <div className="flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-2xl bg-primary/15 text-primary">
             <BellRing className="size-5" />
@@ -38,7 +38,7 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      <section className="divide-y divide-white/5 rounded-3xl border border-white/5 bg-card/60">
+      <section className="divide-y divide-white/10 rounded-3xl border border-white/10 bg-card">
         <Row icon={<Globe />} label="Zona horaria" value={me.timezone} />
         <Row icon={<Clock />} label="El día termina a las" value={me.day_cutoff.slice(0, 5)} />
         <Row icon={<KeyRound />} label="Tokens de acceso" value={tokens ? `${tokens.length} ${tokens.length === 1 ? "activo" : "activos"}` : "–"} onClick={() => setOpen(true)} />
