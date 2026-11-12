@@ -1,8 +1,9 @@
 import httpx
 import pytest
 
+from app.admin import _channel_target
 from app.db import get_sessionmaker
-from app.models import NotificationLog
+from app.models import NotificationChannel, NotificationLog
 from app.notifications import scheduler
 from app.services.users import create_user
 from tests.conftest import NOW
@@ -88,7 +89,13 @@ def test_secrets_never_show_up(client, admin, reminder):
         assert "argon2" not in page
         assert "secret-ntfy-token" not in page
         assert "alice-habits" not in page
-    assert "https://ntfy.sh" in pages[3]
+
+
+def test_channels_show_only_where_they_deliver():
+    ntfy = NotificationChannel(type="ntfy", config={"server": "https://ntfy.sh/", "topic": "t"})
+    expo = NotificationChannel(type="expo", config={"token": "ExponentPushToken[abcdefghijklmnop]"})
+    assert _channel_target(ntfy) == "https://ntfy.sh/"
+    assert _channel_target(expo) == "ExponentPushToken[abcdefghijkl…"
 
 
 def test_data_is_read_only(client, admin, reminder):
