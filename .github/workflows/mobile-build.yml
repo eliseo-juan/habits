@@ -3,16 +3,16 @@ name: 🚀 Mobile APK build
 # Manual only: Actions tab → "🚀 Mobile APK build" → Run workflow. Queues an Android build on EAS and links it in the
 # run summary; it does not wait for the build, so it costs almost no runner time. Uses the same secrets as the OTA
 # workflow (EXPO_TOKEN, EAS_PROJECT_ID) inside the `production` environment. The first build must be made once from a
-# terminal (`eas build --profile apk --platform android`) so EAS can create and store the signing keystore;
+# terminal (`eas build --profile production --platform android`) so EAS can create and store the signing keystore;
 # non-interactive builds cannot generate it.
 on:
   workflow_dispatch:
     inputs:
       profile:
-        description: EAS build profile (apk = production channel and environment, preview = preview)
+        description: EAS build profile (production or preview; both build an APK)
         type: choice
-        options: [apk, preview]
-        default: apk
+        options: [production, preview]
+        default: production
 
 permissions:
   contents: read

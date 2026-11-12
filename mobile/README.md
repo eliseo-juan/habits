@@ -100,12 +100,13 @@ Repeat for the `preview` and `development` environments if you use them, and cop
 | Profile | Output | Use |
 |---|---|---|
 | `development` | dev client | local development with widgets |
-| `apk` | APK, `production` environment and channel | sideloading on Android; receives the OTA updates CI publishes |
+| `production` | APK, `production` environment and channel | sideloading on Android; receives the OTA updates CI publishes |
 | `preview` | APK, `preview` channel | testing against another server or channel |
-| `production` | AAB / IPA | the stores (`eas submit`) |
+
+There is no store build yet: `production` builds an APK for internal distribution. Publishing to the stores needs `production` to drop `distribution` and `buildType` so it builds an AAB.
 
 ```sh
-npx eas-cli@latest build --profile apk --platform android
+npx eas-cli@latest build --profile production --platform android
 ```
 
 The first Android build offers to generate a keystore; accept and EAS keeps it. Losing it means new builds can't be installed over the existing app. When the build finishes, open its link on the phone and install the `.apk` (Android asks once to allow installs from the browser), or run `eas build:run --platform android --latest` with a device connected.
@@ -116,7 +117,7 @@ From GitHub: Actions → **🚀 Mobile APK build** → Run workflow. It queues t
 
 JavaScript changes ship over the air with `expo-updates`. **🚀 Mobile OTA update** publishes to the `production` channel, Android only, on every push to `main` that touches `mobile/`. For iOS or other channels, run `eas update --channel <channel> --environment <environment>` by hand.
 
-The `runtimeVersion` is a fingerprint of the native layer (native dependencies, config plugins, widgets, permissions), so an update only reaches binaries that have the same native code. When a change alters the fingerprint, the workflow looks for an `apk` build with that runtime and queues one if there is none; installing it is the only manual step. `fingerprint.config.js` leaves out `extra` (server, project id) so the environment does not change the hash, but `updates.url` counts, so `EAS_PROJECT_ID` must match locally, on EAS and on GitHub. To print the hash: `npx fingerprint fingerprint:generate --platform android`. Builds with OTA enabled have a "Buscar actualizaciones" (check for updates) button in Settings.
+The `runtimeVersion` is a fingerprint of the native layer (native dependencies, config plugins, widgets, permissions), so an update only reaches binaries that have the same native code. When a change alters the fingerprint, the workflow looks for a `production` build with that runtime and queues one if there is none; installing it is the only manual step. `fingerprint.config.js` leaves out `extra` (server, project id) so the environment does not change the hash, but `updates.url` counts, so `EAS_PROJECT_ID` must match locally, on EAS and on GitHub. To print the hash: `npx fingerprint fingerprint:generate --platform android`. Builds with OTA enabled have a "Buscar actualizaciones" (check for updates) button in Settings.
 
 ## Not done yet
 
