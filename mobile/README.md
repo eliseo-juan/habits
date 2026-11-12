@@ -1,6 +1,6 @@
 # SmartHabits mobile app
 
-Android and iOS app for SmartHabits, built with Expo (SDK 58) and expo-router. It has the same screens as the [web app](../web/README.md), plus home screen and lock screen widgets, an offline cache and local reminders. The UI is in Spanish.
+Android and iOS app for SmartHabits, built with Expo (SDK 58) and expo-router. It has the same screens as the [web app](../web/README.md), plus home screen and lock screen widgets, and an offline cache and push notifications. The UI is in Spanish.
 
 ## Run it
 
@@ -19,7 +19,7 @@ npm run lint
 npm run typecheck
 ```
 
-Expo Go is enough for the screens. Widgets and scheduled notifications need a development build: `npx expo run:ios|android`, or `eas build --profile development` (see [Builds](#builds-and-updates)).
+Expo Go is enough for the screens. Widgets and push notifications need a development build: `npx expo run:ios|android`, or `eas build --profile development` (see [Builds](#builds-and-updates)).
 
 ## How it works
 
@@ -32,7 +32,7 @@ app/                     routes (expo-router)
   tokens.tsx             list, create and revoke API tokens
   login.tsx
 src/
-  lib/                   API client, auth, queries (data.tsx), schedule rules, local reminders
+  lib/                   API client, auth, queries (data.tsx), schedule rules
   components/            week strip, rows, rings, toasts, shared UI
   widgets/               widget layouts and the code that feeds them
   theme.ts
@@ -50,7 +50,15 @@ The query cache is persisted to AsyncStorage for 24 hours, so the app opens at o
 
 ### Reminders
 
-Reminders are edited in the habit form and stored on the server, so ntfy delivers them too if it is set up. Settings → "Recordatorios en este móvil" mirrors them on this phone as repeating local notifications, daily or on given weekdays; tapping one opens that habit's day sheet.
+Reminders are edited in the habit form and stored on the server, which delivers them as native push notifications (FCM on Android, APNs on iOS, relayed by Expo's push service) and skips a habit that is already done that day. Settings → "Notificaciones" registers this phone's push token with the server (`PUT /push-devices`); tapping a notification opens that habit's day sheet. On Android the notification also has a "Hecho" button that marks the habit through a signed, single-use link even with the app closed; iOS only offers the tap. The app schedules no local notifications.
+
+Pushes need credentials in the build, a one-time setup:
+
+- **Android:** create a Firebase project, add an Android app with your `APP_BUNDLE_ID`, download `google-services.json` and point `GOOGLE_SERVICES_FILE` at it (an EAS file variable in CI). Then upload an FCM v1 service account key with `eas credentials`.
+- **iOS:** `eas build` creates the push key for you on the first build (requires a paid Apple developer account).
+- `EAS_PROJECT_ID` must be set, since the push token is issued per EAS project.
+
+Adding `expo-notifications` changes the native layer, so ship it as a new build, not an OTA update.
 
 ### Widgets
 
@@ -91,7 +99,7 @@ Repeat for the `preview` and `development` environments if you use them, and cop
 
 | Profile | Output | Use |
 |---|---|---|
-| `development` | dev client | local development with widgets and notifications |
+| `development` | dev client | local development with widgets |
 | `apk` | APK, `production` environment and channel | sideloading on Android; receives the OTA updates CI publishes |
 | `preview` | APK, `preview` channel | testing against another server or channel |
 | `production` | AAB / IPA | the stores (`eas submit`) |

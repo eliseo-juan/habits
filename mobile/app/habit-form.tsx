@@ -9,8 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useToast } from "@/components/toast"
 import { Button, Fab, SectionTitle } from "@/components/ui"
 import { api } from "@/lib/api"
-import { habitsQuery, useReminders, useSession, type Reminder } from "@/lib/data"
-import { remindersEnabled, syncReminders } from "@/lib/reminders"
+import { useReminders, useSession, type Reminder } from "@/lib/data"
 import { colorOf, parse, iso, WEEKDAYS, type Habit, type Schedule } from "@/lib/rules"
 import { colors, HABIT_COLORS, radius } from "@/theme"
 
@@ -218,7 +217,6 @@ export default function HabitFormScreen() {
         return old && JSON.stringify(reminderBody(old)) !== JSON.stringify(reminderBody(r)) ? api(`/reminders/${r.id}`, { method: "PATCH", body: reminderBody(r) }) : null
       }),
     ])
-    if (await remindersEnabled()) await syncReminders(await client.fetchQuery({ ...habitsQuery, staleTime: 0 })).catch(() => {})
   }
 
   const save = () =>

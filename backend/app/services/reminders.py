@@ -7,6 +7,7 @@ from app.schemas import (
     ChannelIn,
     ChannelOut,
     ChannelUpdate,
+    PushDeviceIn,
     ReminderIn,
     ReminderOut,
     ReminderUpdate,
@@ -86,14 +87,18 @@ def channel_out(channel: NotificationChannel) -> ChannelOut:
 
 def get_channel(db: Session, user: User, channel_id: int) -> NotificationChannel:
     channel = db.get(NotificationChannel, channel_id)
-    if channel is None or channel.user_id != user.id:
+    if channel is None or channel.user_id != user.id or channel.type != "ntfy":
         raise NotFound(f"channel {channel_id} not found")
     return channel
 
 
 def list_channels(db: Session, user: User) -> list[NotificationChannel]:
     return list(
-        db.scalars(select(NotificationChannel).where(NotificationChannel.user_id == user.id))
+        db.scalars(
+            select(NotificationChannel).where(
+                NotificationChannel.user_id == user.id, NotificationChannel.type == "ntfy"
+            )
+        )
     )
 
 
@@ -123,4 +128,38 @@ def update_channel(
 
 def delete_channel(db: Session, user: User, channel_id: int) -> None:
     db.delete(get_channel(db, user, channel_id))
+    db.commit()
+
+
+def _devices(db: Session, token: str) -> list[NotificationChannel]:
+    return [
+        c
+        for c in db.scalars(select(NotificationChannel).where(NotificationChannel.type == "expo"))
+        if c.config.get("token") == token
+    ]
+
+
+def register_push_device(db: Session, user: User, data: PushDeviceIn) -> None:
+    """Idempotent. A token belongs to one account: signing in elsewhere on the same phone moves it."""
+    mine = None
+    for channel in _devices(db, data.token):
+        if channel.user_id == user.id and mine is None:
+            mine = channel
+        else:
+            db.delete(channel)
+    if mine is None:
+        db.add(
+            NotificationChannel(
+                user_id=user.id, type="expo", config={"token": data.token}, enabled=True
+            )
+        )
+    else:
+        mine.enabled = True
+    db.commit()
+
+
+def unregister_push_device(db: Session, user: User, token: str) -> None:
+    for channel in _devices(db, token):
+        if channel.user_id == user.id:
+            db.delete(channel)
     db.commit()
