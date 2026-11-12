@@ -5,13 +5,15 @@ description = "Self-hosted habit tracker API with remote MCP and reminders"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.162.2",
-    "sqlalchemy>=2.1.8",
+    "sqlalchemy[asyncio]>=2.1.8",  # sqladmin imports sqlalchemy.ext.asyncio, which needs greenlet
     "alembic>=1.20.1",
     "pydantic>=2.14.3",
     "argon2-cffi>=25.1",
     "uvicorn>=0.54",
     "httpx>=0.28.1",
     "mcp>=2.3,<3",
+    "sqladmin>=0.32",
+    "itsdangerous>=2.2",
 ]
 
 [project.optional-dependencies]

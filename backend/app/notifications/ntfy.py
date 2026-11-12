@@ -7,7 +7,7 @@ import httpx
 class Notification:
     title: str
     message: str
-    done_url: str
+    done_url: str | None = None
     habit_id: int | None = None
 
 
@@ -20,7 +20,9 @@ def send_ntfy(config: dict, notification: Notification, client: httpx.Client | N
         "topic": config["topic"],
         "title": notification.title,
         "message": notification.message,
-        "actions": [
+    }
+    if notification.done_url:
+        body["actions"] = [
             {
                 "action": "http",
                 "label": "Hecho",
@@ -28,8 +30,7 @@ def send_ntfy(config: dict, notification: Notification, client: httpx.Client | N
                 "method": "POST",
                 "clear": True,
             }
-        ],
-    }
+        ]
     with client or httpx.Client(timeout=10) as http:
         http.post(
             str(config["server"]).rstrip("/") + "/", json=body, headers=headers
