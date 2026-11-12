@@ -5,8 +5,9 @@ export function pushWidget(props: WidgetProps) {
   try {
     const widget = require("@/widgets/HabitsWidget").default
     widget.updateSnapshot(props)
-  } catch {
-    // widgets unavailable on this runtime
+  } catch (error) {
+    // Widgets are unavailable in Expo Go and on the web, but a failure on a real build must not be invisible.
+    console.warn("[widget] could not update the snapshot", error)
   }
 }
 
