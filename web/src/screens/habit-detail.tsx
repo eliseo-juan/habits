@@ -37,8 +37,12 @@ export function HabitDetail({ habit, editing }: { habit: Habit; editing: boolean
   const reminders = (useReminders(habit.id).data ?? []).filter((r) => r.enabled).map((r) => r.time_local.slice(0, 5))
   const color = colorOf(habit)
 
+  const tracked = (day: string) => day >= habit.start_date && day <= today
+  const canGoBack = month > habit.start_date.slice(0, 7)
+  const canGoForward = month < today.slice(0, 7)
+
   async function cycle(day: string) {
-    if (day > today || day < habit.start_date) return
+    if (!tracked(day)) return
     const log = await writer.read(habit.id, day)
     const target = habit.schedule.times_per_day
     if (log.skipped) await writer.write(habit.id, day, { ...log, done_count: 0, skipped: false })
@@ -82,7 +86,7 @@ export function HabitDetail({ habit, editing }: { habit: Habit; editing: boolean
 
       <section className="rounded-3xl border border-white/10 bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <Button variant="ghost" size="icon-sm" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Mes anterior">
+          <Button variant="ghost" size="icon-sm" disabled={!canGoBack} onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Mes anterior">
             <ChevronLeft />
           </Button>
           <div className="text-center">
@@ -91,7 +95,7 @@ export function HabitDetail({ habit, editing }: { habit: Habit; editing: boolean
             </p>
             <p className="text-xs text-muted-foreground">{percent(monthly?.percentage)}% este mes</p>
           </div>
-          <Button variant="ghost" size="icon-sm" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Mes siguiente">
+          <Button variant="ghost" size="icon-sm" disabled={!canGoForward} onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Mes siguiente">
             <ChevronRight />
           </Button>
         </div>
@@ -103,13 +107,14 @@ export function HabitDetail({ habit, editing }: { habit: Habit; editing: boolean
           ))}
           {monthDays(month).map((day, i) => {
             if (!day) return <span key={`blank-${i}`} />
-            const st: Status = day > today ? "not_due" : (monthView?.days[day] ?? "not_due")
+            const st: Status = tracked(day) ? (monthView?.days[day] ?? "not_due") : "not_due"
             return (
               <motion.button
                 key={day}
                 whileTap={{ scale: 0.85 }}
+                disabled={!tracked(day)}
                 onClick={() => cycle(day)}
-                className={cn("grid aspect-square place-items-center rounded-xl text-sm tabular-nums", CELL[st], day === today && "font-bold")}
+                className={cn("grid aspect-square place-items-center rounded-xl text-sm tabular-nums disabled:opacity-30", CELL[st], day === today && "font-bold")}
                 style={st === "done" ? { background: color, color: "white" } : undefined}
               >
                 {+day.slice(8)}

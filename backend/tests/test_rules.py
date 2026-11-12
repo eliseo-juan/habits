@@ -246,3 +246,30 @@ def test_limit_per_week_stays_due_after_the_allowance_is_used():
 def test_limit_skipped_day_does_not_count():
     h = limit([daily()], {MON: SKIP}, start=MON)
     assert day_status(h, MON, today=MON + timedelta(days=1)) is DayStatus.SKIPPED
+
+
+def test_week_cut_short_by_the_start_does_not_fail_when_missed():
+    thursday = MON + timedelta(days=3)
+    next_monday = MON + timedelta(days=7)
+    logs = {thursday: done(), thursday + timedelta(days=1): done()}
+    logs |= {next_monday + timedelta(days=d): done() for d in range(4)}
+    h = timeline([per_week(4)], logs, start=thursday)
+    today = next_monday + timedelta(days=7)
+    stats = summarize(h, MON, today - timedelta(days=1), today=today)
+    assert (stats.done, stats.failed) == (1, 0)
+    assert stats.current_streak == 1
+
+
+def test_week_cut_short_by_the_stats_start_does_not_fail_when_missed():
+    thursday = MON + timedelta(days=3)
+    h = timeline([per_week(4)], {MON: done(), thursday: done()}, start=MON, stats_start=thursday)
+    stats = summarize(h, MON, MON + timedelta(days=6), today=MON + timedelta(days=7))
+    assert (stats.done, stats.failed) == (0, 0)
+
+
+def test_week_cut_short_still_counts_when_the_target_is_met():
+    thursday = MON + timedelta(days=3)
+    logs = {thursday + timedelta(days=d): done() for d in range(2)}
+    h = timeline([per_week(2)], logs, start=thursday)
+    stats = summarize(h, MON, MON + timedelta(days=6), today=MON + timedelta(days=7))
+    assert (stats.done, stats.failed) == (1, 0)
