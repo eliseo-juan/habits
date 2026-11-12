@@ -15,6 +15,7 @@ def send_expo(config: dict, notification, client: httpx.Client | None = None) ->
         "body": notification.message,
         "priority": "high",
         "channelId": "reminders",
+        "categoryId": "habit-reminder",  # gives the notification its "Hecho" button
         "data": {"habitId": notification.habit_id, "doneUrl": notification.done_url},
     }
     with client or httpx.Client(timeout=10) as http:

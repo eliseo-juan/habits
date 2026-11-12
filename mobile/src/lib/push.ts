@@ -1,5 +1,6 @@
 import { Platform } from "react-native"
 import * as Notifications from "expo-notifications"
+import * as TaskManager from "expo-task-manager"
 import { api } from "@/lib/api"
 import { storage } from "@/lib/storage"
 
@@ -10,6 +11,21 @@ Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldPlaySound: false, shouldSetBadge: false, shouldShowBanner: true, shouldShowList: true }),
 })
 
+const CATEGORY = "habit-reminder"
+const ACTION_TASK = "habits-notification-action"
+
+// Android runs this when the "Hecho" button is tapped, even with the app closed. It needs no login: the signed,
+// single-use link in the push is the credential, so a leaked notification never exposes a token.
+TaskManager.defineTask<Notifications.NotificationTaskPayload>(ACTION_TASK, async ({ data }) => {
+  if (!("actionIdentifier" in data) || data.actionIdentifier !== "done") return
+  const doneUrl = data.notification.request.content.data?.doneUrl
+  if (typeof doneUrl === "string") await fetch(doneUrl, { method: "POST" }).catch(() => {})
+})
+if (Platform.OS === "android") void Notifications.registerTaskAsync(ACTION_TASK).catch(() => {})
+
+const registerCategory = () =>
+  Notifications.setNotificationCategoryAsync(CATEGORY, [{ identifier: "done", buttonTitle: "Hecho", options: { opensAppToForeground: false } }])
+
 export const pushEnabled = async () => (await storage.get(FLAG)) === "1"
 
 // The server owns the reminders and sends them as native pushes (FCM / APNs through Expo's push service), skipping
@@ -19,6 +35,7 @@ async function currentToken(): Promise<string | null> {
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("reminders", { name: "Recordatorios", importance: Notifications.AndroidImportance.HIGH })
   }
+  await registerCategory()
   const current = await Notifications.getPermissionsAsync()
   const granted = current.granted || (await Notifications.requestPermissionsAsync()).granted
   if (!granted) return null

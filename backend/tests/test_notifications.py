@@ -227,3 +227,5 @@ def test_send_expo_payload():
     )
     assert TOKEN.encode() in seen["body"]
     assert b'"habitId":7' in seen["body"]
+    assert b'"categoryId":"habit-reminder"' in seen["body"]
+    assert b'"doneUrl":"https://h/d"' in seen["body"]

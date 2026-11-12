@@ -118,7 +118,7 @@ POST /channels                 {"config": {"topic": "...", "server": "https://nt
 POST /habits/{id}/reminders    {"time_local": "08:30", "weekdays": [0, 2, 4]}
 ```
 
-Within ten minutes of the local time, a habit still pending that day gets one notification (ntfy ones carry a "done" button). The button calls a signed, single-use link, so the notification never carries a token. If every channel fails, the next minute retries.
+Within ten minutes of the local time, a habit still pending that day gets one notification (ntfy and Android pushes carry a "done" button). The button calls a signed, single-use link, so the notification never carries a token. If every channel fails, the next minute retries.
 
 ### Webhooks
 
