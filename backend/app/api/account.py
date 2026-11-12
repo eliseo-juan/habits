@@ -15,6 +15,7 @@ from app.schemas import (
     LoginIn,
     MeOut,
     MeUpdate,
+    PushDeviceIn,
     TokenCreate,
     TokenCreated,
     TokenOut,
@@ -178,3 +179,13 @@ def subscribe_webhook(data: WebhookIn, response: Response, principal: Writer, db
 @router.delete("/webhooks/{webhook_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["webhooks"])
 def unsubscribe_webhook(webhook_id: int, principal: Writer, db: Db):
     webhooks.unsubscribe(db, principal.user, webhook_id)
+
+
+@router.put("/push-devices", status_code=status.HTTP_204_NO_CONTENT)
+def register_push_device(data: PushDeviceIn, principal: Writer, db: Db):
+    reminders.register_push_device(db, principal.user, data)
+
+
+@router.post("/push-devices/unregister", status_code=status.HTTP_204_NO_CONTENT)
+def unregister_push_device(data: PushDeviceIn, principal: Writer, db: Db):
+    reminders.unregister_push_device(db, principal.user, data.token)

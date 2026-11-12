@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Habit, NotificationChannel, NotificationLog, Reminder, User
 from app.notifications.actions import action_token
+from app.notifications.expo import DeviceNotRegistered, send_expo
 from app.notifications.ntfy import Notification, send_ntfy
 from app.services import rules
 from app.services.habits import timelines
@@ -18,6 +19,7 @@ log = logging.getLogger(__name__)
 
 GRACE = timedelta(minutes=10)
 Sender = Callable[[dict, Notification], None]
+SENDERS: dict[str, Sender] = {"ntfy": send_ntfy, "expo": send_expo}
 
 
 @dataclass(frozen=True)
@@ -65,7 +67,7 @@ def _claim(db: Session, reminder_id: int, day: date, now: datetime) -> bool:
 
 
 def send_due_reminders(
-    db: Session, now: datetime, secret_key: str, public_url: str, sender: Sender = send_ntfy
+    db: Session, now: datetime, secret_key: str, public_url: str, sender: Sender | None = None
 ) -> int:
     """Sends each due reminder at most once per day; a claim is released only if every channel failed."""
     sent = 0
@@ -85,12 +87,17 @@ def send_due_reminders(
             title=item.habit.name,
             message="Pendiente de hoy",
             done_url=f"{public_url}/notifications/actions/{token}/done",
+            habit_id=item.habit.id,
         )
         delivered = False
         for channel in channels:
             try:
-                sender(channel.config, notification)
+                (sender or SENDERS[channel.type])(channel.config, notification)
                 delivered = True
+            except DeviceNotRegistered:
+                log.info("reminder %s: dropping dead push device %s", item.reminder.id, channel.id)
+                db.delete(channel)
+                db.commit()
             except Exception:
                 log.exception("reminder %s: channel %s failed", item.reminder.id, channel.id)
         if delivered:

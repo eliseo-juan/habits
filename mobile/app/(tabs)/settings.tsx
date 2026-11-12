@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Alert, Pressable, Text, View } from "react-native"
+import { useEffect, useState } from "react"
+import { Alert, Pressable, Switch, Text, View } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import Constants from "expo-constants"
 import { router } from "expo-router"
@@ -8,11 +8,24 @@ import { Button, Card, Screen } from "@/components/ui"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/components/toast"
 import { useSession } from "@/lib/data"
+import { disablePush, enablePush, pushEnabled } from "@/lib/push"
 import { colors } from "@/theme"
 
 export default function SettingsScreen() {
   const { me } = useSession()
   const { toast } = useToast()
+  const [push, setPush] = useState(false)
+  useEffect(() => void pushEnabled().then(setPush), [])
+
+  async function togglePush(on: boolean) {
+    if (!on) {
+      await disablePush()
+      return setPush(false)
+    }
+    const ok = await enablePush().catch(() => false)
+    setPush(ok)
+    if (!ok) toast("No se pudieron activar", { description: "Permite las notificaciones en los ajustes del sistema y comprueba la conexión.", error: true })
+  }
   const [checking, setChecking] = useState(false)
   const { baseUrl, signOut } = useAuth()
 
@@ -31,14 +44,30 @@ export default function SettingsScreen() {
     }
   }
 
+  const signOutAndForget = async () => {
+    await disablePush()
+    await signOut()
+  }
+
   const confirmSignOut = () =>
     Alert.alert("¿Cerrar sesión?", "Se revocará el acceso de este dispositivo.", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Cerrar sesión", style: "destructive", onPress: () => void signOut() },
+      { text: "Cerrar sesión", style: "destructive", onPress: () => void signOutAndForget() },
     ])
 
   return (
     <Screen>
+      <Card style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={{ width: 40, height: 40, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(77,219,165,0.15)" }}>
+          <Ionicons name="notifications" size={20} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: "500", color: colors.foreground }}>Notificaciones</Text>
+          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Recordatorios del servidor; las horas se configuran en cada hábito</Text>
+        </View>
+        <Switch value={push} onValueChange={togglePush} trackColor={{ true: colors.primary, false: colors.muted }} />
+      </Card>
+
       <Card style={{ padding: 0 }}>
         <Row icon="person-outline" label="Cuenta" value={me.email} />
         <Row icon="globe-outline" label="Zona horaria" value={me.timezone} />

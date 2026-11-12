@@ -8,6 +8,7 @@ class Notification:
     title: str
     message: str
     done_url: str
+    habit_id: int | None = None
 
 
 def send_ntfy(config: dict, notification: Notification, client: httpx.Client | None = None) -> None:

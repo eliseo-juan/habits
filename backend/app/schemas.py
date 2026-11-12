@@ -176,6 +176,10 @@ class ChannelOut(BaseModel):
     enabled: bool
 
 
+class PushDeviceIn(BaseModel):
+    token: str = Field(pattern=r"^Expo(nent)?PushToken\[[^\]\s]+\]$", max_length=255)
+
+
 class WebhookIn(BaseModel):
     url: HttpUrl
 

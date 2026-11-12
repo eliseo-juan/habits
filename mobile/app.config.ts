@@ -3,6 +3,7 @@ import type { ConfigContext, ExpoConfig } from "expo/config"
 // Everything that identifies *your* deployment comes from the environment, never from this (public) repo:
 //   HABITS_SERVER_URL  default server shown on the login screen
 //   EAS_PROJECT_ID     EAS project, enables OTA updates (`eas init` / dashboard)
+//   GOOGLE_SERVICES_FILE  path (or EAS file env var) of Firebase's google-services.json, needed for Android pushes
 //   APP_BUNDLE_ID      iOS bundle id / Android package (defaults to a generic id)
 // In EAS they are environment variables (`eas env:create`, visibility "secret"); locally put them in `mobile/.env.local`
 // (git-ignored). Without them the app still builds, it just has no default server and no OTA updates.
@@ -25,6 +26,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: { supportsTablet: false, bundleIdentifier: bundleId, config: { usesNonExemptEncryption: false } },
     android: {
       package: bundleId,
+      // FCM credentials for native pushes: download google-services.json from your Firebase project (see README).
+      ...(process.env.GOOGLE_SERVICES_FILE ? { googleServicesFile: process.env.GOOGLE_SERVICES_FILE } : {}),
       adaptiveIcon: {
         backgroundColor: "#0b0d12",
         foregroundImage: "./assets/android-icon-foreground.png",
@@ -47,6 +50,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
     "expo-router",
     "expo-secure-store",
+    [
+      "expo-notifications",
+      {
+        "color": "#4ddba5"
+      }
+    ],
     [
       "expo-splash-screen",
       {

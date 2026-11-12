@@ -10,6 +10,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { ToastProvider } from "@/components/toast"
 import { Button, Loading } from "@/components/ui"
 import { HttpError } from "@/lib/api"
+import { NotificationOpener } from "@/components/notification-opener"
 import { AuthProvider, useAuth } from "@/lib/auth"
 import { habitsQuery, meQuery, SessionContext, todayQuery } from "@/lib/data"
 import { persistOptions, queryClient } from "@/lib/query"
@@ -51,6 +52,7 @@ function Gate() {
       {session && (
         <>
           <WidgetSync />
+          <NotificationOpener />
         </>
       )}
       <Stack screenOptions={{ ...headerOptions, headerShown: false, headerBackButtonDisplayMode: "minimal", contentStyle: { backgroundColor: colors.background } }}>

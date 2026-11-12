@@ -4,7 +4,7 @@ The FastAPI server behind every SmartHabits client. It owns the data and the rul
 
 - the REST API (OpenAPI docs at `/docs`) used by the web app, the mobile app and Home Assistant;
 - a remote MCP server at `/mcp` for Claude;
-- reminder delivery through ntfy, and webhooks that tell subscribers something changed;
+- reminder delivery through native push (Expo push service) or ntfy, and webhooks that tell subscribers something changed;
 - `GET /awtrix/today`, a compact summary for the AWTRIX clock;
 - the built web app at `/`, when `HABITS_WEB_DIR` points at it.
 
@@ -42,7 +42,7 @@ app/
   mcp/server.py   MCP tools: thin adapters over the same services
   services/       business logic; rules.py is pure (no DB, no clock)
   auth/           passwords, sessions, API tokens, OAuth for MCP
-  notifications/  ntfy delivery, signed "done" links, the scheduler loop
+  notifications/  push and ntfy delivery, signed "done" links, the scheduler loop
   models.py       SQLAlchemy models
   cli.py          the `habits` command
 migrations/       Alembic
@@ -110,14 +110,15 @@ Redirect URIs must be https or a loopback address, and `/authorize` only accepts
 
 ### Reminders
 
-Add an ntfy channel and reminders per habit:
+Reminders are stored per habit. Delivery goes to every enabled channel of the user: native push devices (the mobile app registers its token) and/or ntfy topics:
 
 ```sh
+PUT  /push-devices             {"token": "ExponentPushToken[...]"}   # POST /push-devices/unregister removes it
 POST /channels                 {"config": {"topic": "...", "server": "https://ntfy.sh", "access_token": null}}
 POST /habits/{id}/reminders    {"time_local": "08:30", "weekdays": [0, 2, 4]}
 ```
 
-Within ten minutes of the local time, a habit still pending that day gets one notification with a "done" button. The button calls a signed, single-use link, so the notification never carries a token. If every channel fails, the next minute retries.
+Within ten minutes of the local time, a habit still pending that day gets one notification (ntfy ones carry a "done" button). The button calls a signed, single-use link, so the notification never carries a token. If every channel fails, the next minute retries.
 
 ### Webhooks
 

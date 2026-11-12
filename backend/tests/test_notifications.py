@@ -4,6 +4,8 @@ import httpx
 import pytest
 
 from app.db import get_sessionmaker
+from app.models import NotificationChannel
+from app.notifications.expo import DeviceNotRegistered, send_expo
 from app.notifications.ntfy import Notification, send_ntfy
 from app.notifications.scheduler import send_due_reminders
 
@@ -139,3 +141,89 @@ def test_send_ntfy_payload():
     assert seen["auth"] == "Bearer tk"
     assert '"title":"Leer \\u00f1"' in seen["body"].decode() or "Leer ñ" in seen["body"].decode()
     assert b'"url":"https://h/done"' in seen["body"]
+
+
+TOKEN = "ExponentPushToken[abc123]"
+
+
+def test_push_device_registration_is_idempotent_and_hidden_from_channels(client, alice, bob):
+    for _ in range(2):
+        r = client.put("/push-devices", json={"token": TOKEN}, headers=alice.auth())
+        assert r.status_code == 204
+    # the same phone signing in as another user takes the token over
+    client.put("/push-devices", json={"token": TOKEN}, headers=bob.auth())
+    with get_sessionmaker()() as db:
+        owners = [c.user_id for c in db.query(NotificationChannel).filter_by(type="expo")]
+    assert len(owners) == 1
+    assert client.get("/channels", headers=bob.auth()).json() == []
+    client.post("/push-devices/unregister", json={"token": TOKEN}, headers=bob.auth())
+    with get_sessionmaker()() as db:
+        assert db.query(NotificationChannel).filter_by(type="expo").count() == 0
+
+
+def test_push_token_must_look_like_an_expo_token(client, alice):
+    r = client.put("/push-devices", json={"token": "nope"}, headers=alice.auth())
+    assert r.status_code == 422
+
+
+def test_reminder_goes_to_the_push_device_and_skips_done_habits(client, alice, reminder):
+    client.put("/push-devices", json={"token": TOKEN}, headers=alice.auth())
+    seen = []
+
+    def fake(config, notification):
+        seen.append((config, notification))
+
+    with get_sessionmaker()() as db:
+        from app.notifications import scheduler
+
+        old = scheduler.SENDERS.copy()
+        scheduler.SENDERS.update(ntfy=fake, expo=fake)
+        try:
+            assert send_due_reminders(db, at(7, 31), "test-secret", "https://habits.test") == 1
+        finally:
+            scheduler.SENDERS.update(old)
+    assert {c.get("token") for c, _ in seen} == {TOKEN, None}
+    assert all(n.habit_id == reminder["habit"]["id"] for _, n in seen)
+
+
+def test_dead_push_device_is_dropped(client, alice, reminder):
+    client.put("/push-devices", json={"token": TOKEN}, headers=alice.auth())
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json={"data": {"status": "error", "details": {"error": "DeviceNotRegistered"}}}
+        )
+
+    http = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(DeviceNotRegistered):
+        send_expo({"token": TOKEN}, Notification("t", "m", "u", 1), client=http)
+
+    from app.notifications import scheduler
+
+    def dead(config, notification):
+        raise DeviceNotRegistered(config["token"])
+
+    old = scheduler.SENDERS.copy()
+    scheduler.SENDERS.update(expo=dead, ntfy=lambda c, n: None)
+    try:
+        with get_sessionmaker()() as db:
+            send_due_reminders(db, at(7, 31), "test-secret", "https://habits.test")
+    finally:
+        scheduler.SENDERS.update(old)
+    with get_sessionmaker()() as db:
+        assert db.query(NotificationChannel).filter_by(type="expo").count() == 0
+
+
+def test_send_expo_payload():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = request.read()
+        return httpx.Response(200, json={"data": {"status": "ok"}})
+
+    http = httpx.Client(transport=httpx.MockTransport(handler))
+    send_expo(
+        {"token": TOKEN}, Notification("Leer", "Pendiente de hoy", "https://h/d", 7), client=http
+    )
+    assert TOKEN.encode() in seen["body"]
+    assert b'"habitId":7' in seen["body"]
