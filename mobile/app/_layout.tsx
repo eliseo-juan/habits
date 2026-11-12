@@ -63,6 +63,7 @@ function Gate() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="habit/[id]" options={{ headerShown: true, title: "" }} />
           <Stack.Screen name="tokens" options={{ headerShown: true, title: "Tokens de acceso" }} />
+          <Stack.Screen name="version" options={{ headerShown: true, title: "Versión" }} />
           <Stack.Screen name="habit-form" options={{ headerShown: true, presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
           <Stack.Screen
             name="log/[habitId]"

@@ -4,8 +4,8 @@ name: 🚀 Mobile OTA update
 # requests, so forks cannot reach the secrets) and inside the `production` GitHub environment, where you can
 # also require a manual approval. Needs the repo/environment secrets EXPO_TOKEN and EAS_PROJECT_ID.
 # Android only: there is no iOS build, so iOS updates would reach nobody.
-# When a change alters the native fingerprint, no installed APK can take the new update, so the job queues an `apk`
-# build for that runtime (unless one already exists or is in progress) and links it in the run summary.
+# When a change alters the native fingerprint, no installed APK can take the new update, so the job queues a
+# `production` build for that runtime (unless one already exists or is in progress) and links it in the run summary.
 on:
   push:
     branches: [main]
@@ -57,14 +57,14 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
         run: |
-          eas build:list --platform android --build-profile apk --runtime-version "$RUNTIME" --limit 20 --json --non-interactive \
+          eas build:list --platform android --build-profile production --runtime-version "$RUNTIME" --limit 20 --json --non-interactive \
             > "$RUNNER_TEMP/builds.json"
           usable=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).filter(b => !["ERRORED", "CANCELED"].includes(b.status)).length' "$RUNNER_TEMP/builds.json")
           if [ "$usable" -gt 0 ]; then
             echo "Runtime \`$RUNTIME\` already has an APK build; the update reaches it." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          eas build --platform android --profile apk --non-interactive --no-wait --json > "$RUNNER_TEMP/build.json"
+          eas build --platform android --profile production --non-interactive --no-wait --json > "$RUNNER_TEMP/build.json"
           url=$(node -p 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); (Array.isArray(b) ? b[0] : b).buildDetailsPageUrl ?? ""' "$RUNNER_TEMP/build.json")
           {
             echo "### Native change: APK build queued"
