@@ -1,6 +1,6 @@
 # SmartHabits mobile app
 
-Android and iOS app for SmartHabits, built with Expo (SDK 58) and expo-router. It has the same screens as the [web app](../web/README.md), plus home screen and lock screen widgets, an offline cache and local reminders. The UI is in Spanish.
+Android and iOS app for SmartHabits, built with Expo (SDK 58) and expo-router. It has the same screens as the [web app](../web/README.md), plus home screen and lock screen widgets, and an offline cache. The UI is in Spanish.
 
 ## Run it
 
@@ -19,7 +19,7 @@ npm run lint
 npm run typecheck
 ```
 
-Expo Go is enough for the screens. Widgets and scheduled notifications need a development build: `npx expo run:ios|android`, or `eas build --profile development` (see [Builds](#builds-and-updates)).
+Expo Go is enough for the screens. Widgets need a development build: `npx expo run:ios|android`, or `eas build --profile development` (see [Builds](#builds-and-updates)).
 
 ## How it works
 
@@ -32,7 +32,7 @@ app/                     routes (expo-router)
   tokens.tsx             list, create and revoke API tokens
   login.tsx
 src/
-  lib/                   API client, auth, queries (data.tsx), schedule rules, local reminders
+  lib/                   API client, auth, queries (data.tsx), schedule rules
   components/            week strip, rows, rings, toasts, shared UI
   widgets/               widget layouts and the code that feeds them
   theme.ts
@@ -50,7 +50,7 @@ The query cache is persisted to AsyncStorage for 24 hours, so the app opens at o
 
 ### Reminders
 
-Reminders are edited in the habit form and stored on the server, so ntfy delivers them too if it is set up. Settings → "Recordatorios en este móvil" mirrors them on this phone as repeating local notifications, daily or on given weekdays; tapping one opens that habit's day sheet.
+Reminders are edited in the habit form and stored on the server, which delivers them as push notifications through ntfy (install the ntfy app and add a channel). The server skips a reminder when the habit is already done for the day, so the app schedules no local notifications.
 
 ### Widgets
 
@@ -91,7 +91,7 @@ Repeat for the `preview` and `development` environments if you use them, and cop
 
 | Profile | Output | Use |
 |---|---|---|
-| `development` | dev client | local development with widgets and notifications |
+| `development` | dev client | local development with widgets |
 | `apk` | APK, `production` environment and channel | sideloading on Android; receives the OTA updates CI publishes |
 | `preview` | APK, `preview` channel | testing against another server or channel |
 | `production` | AAB / IPA | the stores (`eas submit`) |

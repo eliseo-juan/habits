@@ -48,12 +48,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     "expo-router",
     "expo-secure-store",
     [
-      "expo-notifications",
-      {
-        "color": "#4ddba5"
-      }
-    ],
-    [
       "expo-splash-screen",
       {
         "backgroundColor": "#0b0d12",

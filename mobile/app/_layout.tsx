@@ -13,7 +13,6 @@ import { HttpError } from "@/lib/api"
 import { AuthProvider, useAuth } from "@/lib/auth"
 import { habitsQuery, meQuery, SessionContext, todayQuery } from "@/lib/data"
 import { persistOptions, queryClient } from "@/lib/query"
-import { RemindersSync } from "@/components/reminders-sync"
 import { WidgetSync } from "@/widgets/widget-sync"
 import "@/widgets/background"
 import { colors, headerOptions } from "@/theme"
@@ -52,7 +51,6 @@ function Gate() {
       {session && (
         <>
           <WidgetSync />
-          <RemindersSync />
         </>
       )}
       <Stack screenOptions={{ ...headerOptions, headerShown: false, headerBackButtonDisplayMode: "minimal", contentStyle: { backgroundColor: colors.background } }}>
