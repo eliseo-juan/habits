@@ -114,6 +114,19 @@ export function Fab({ icon, label, busy, disabled, style, ...props }: FabProps) 
   )
 }
 
+export function Row({ icon, label, value, last, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; last?: boolean; onPress?: () => void }) {
+  return (
+    <Pressable disabled={!onPress} onPress={onPress} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.border }}>
+      <Ionicons name={icon} size={16} color={colors.mutedForeground} />
+      <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{label}</Text>
+      <Text numberOfLines={1} style={{ flexShrink: 1, maxWidth: "55%", fontSize: 14, color: colors.mutedForeground }}>
+        {value}
+      </Text>
+      {onPress && <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />}
+    </Pressable>
+  )
+}
+
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "transparent" },
   glow: { position: "absolute", top: 0, left: 0, right: 0, height: 288 },
