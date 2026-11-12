@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Route
 from starlette.staticfiles import StaticFiles
 
+from app.admin import mount_admin
 from app.api import account, habits, views
 from app.auth import oauth
 from app.auth.deps import Db, Now
@@ -123,6 +124,8 @@ def create_app() -> FastAPI:
     )
     def notification_done(token: str, db: Db, now: Now):
         use_action_token(db, get_settings().secret_key, token, now)
+
+    mount_admin(app)
 
     if web_dir := get_settings().web_dir:
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")

@@ -120,6 +120,17 @@ POST /habits/{id}/reminders    {"time_local": "08:30", "weekdays": [0, 2, 4]}
 
 Within ten minutes of the local time, a habit still pending that day gets one notification (ntfy and Android pushes carry a "done" button). The button calls a signed, single-use link, so the notification never carries a token. If every channel fails, the next minute retries.
 
+### Back office
+
+`/admin` is a read-only back office ([SQLAdmin](https://github.com/aminalaee/sqladmin)) for accounts created with `--admin`. It signs in with the same email and password as the web app and lists users, habits, schedules, logs, reminders, sent reminders, channels, webhooks and API tokens, with search, sorting and CSV/JSON export. Password and token hashes and channel secrets (ntfy topics and access tokens, push tokens) are never shown. Nothing can be edited there, so domain rules stay with the app.
+
+Two actions help check delivery:
+
+- **Channels → Send test notification** sends a plain notification, without a "done" button, to the selected channels. It can be repeated.
+- **Reminders → Send now** delivers today's reminder to every enabled channel of its user, with a working "done" button. It counts as that day's reminder, so it goes out once per day.
+
+Each shows, per channel, whether it was sent or the error the push service returned.
+
 ### Webhooks
 
 `POST /webhooks` with `{"url": "..."}` and a write token subscribes a URL; posting the same URL again returns the existing subscription. Whenever the account's habits or logs change, every subscribed URL gets an empty `POST`, sent in the background with a 5-second timeout and no retries, so subscribers should also poll. The request carries no data: subscribers fetch what they need with their own token. `GET /webhooks` lists them and `DELETE /webhooks/{id}` removes one; ten per account at most.
@@ -167,6 +178,6 @@ habits.example.com {
 }
 ```
 
-`HABITS_PUBLIC_URL` must be that public address: it is the OAuth issuer and the base of the reminder links. The web app works on any hostname that reaches the container, since its session cookie is host-only.
+`HABITS_PUBLIC_URL` must be that public address: it is the OAuth issuer and the base of the reminder links. The web app works on any hostname that reaches the container, since its session cookie is host-only. The back office at `/admin` stays off that list: reach it on the private network.
 
 The login page is public, so the account needs a strong password. An access proxy with its own login (Cloudflare Access and similar) can't sit in front of `/mcp`: claude.ai can't pass it.

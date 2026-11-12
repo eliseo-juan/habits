@@ -66,43 +66,81 @@ def _claim(db: Session, reminder_id: int, day: date, now: datetime) -> bool:
     return True
 
 
+@dataclass(frozen=True)
+class Delivery:
+    channel: NotificationChannel
+    error: str | None = None
+
+
+def enabled_channels(db: Session, user_id: int) -> list[NotificationChannel]:
+    return list(
+        db.scalars(
+            select(NotificationChannel).where(
+                NotificationChannel.user_id == user_id, NotificationChannel.enabled.is_(True)
+            )
+        )
+    )
+
+
+def deliver(
+    db: Session,
+    channels: list[NotificationChannel],
+    notification: Notification,
+    sender: Sender | None = None,
+) -> list[Delivery]:
+    """Sends to every channel and drops push devices the push service no longer knows."""
+    results = []
+    for channel in channels:
+        try:
+            (sender or SENDERS[channel.type])(channel.config, notification)
+            results.append(Delivery(channel))
+        except DeviceNotRegistered:
+            log.info("dropping dead push device %s", channel.id)
+            db.delete(channel)
+            db.commit()
+            results.append(Delivery(channel, "device is no longer registered and was removed"))
+        except Exception as error:
+            log.exception("channel %s failed", channel.id)
+            results.append(Delivery(channel, str(error) or type(error).__name__))
+    return results
+
+
+def send_reminder(
+    db: Session,
+    item: DueReminder,
+    now: datetime,
+    secret_key: str,
+    public_url: str,
+    sender: Sender | None = None,
+) -> list[Delivery] | None:
+    """None when nothing was sent: the user has no channel or the reminder already went out that day.
+
+    The day's claim is released only if every channel failed, so the next run retries.
+    """
+    channels = enabled_channels(db, item.user.id)
+    if not channels or not _claim(db, item.reminder.id, item.day, now):
+        return None
+    token = action_token(secret_key, item.reminder.id, item.day)
+    notification = Notification(
+        title=item.habit.name,
+        message="Pendiente de hoy",
+        done_url=f"{public_url}/notifications/actions/{token}/done",
+        habit_id=item.habit.id,
+    )
+    results = deliver(db, channels, notification, sender)
+    if all(result.error for result in results):
+        db.delete(db.get(NotificationLog, (item.reminder.id, item.day)))
+        db.commit()
+    return results
+
+
 def send_due_reminders(
     db: Session, now: datetime, secret_key: str, public_url: str, sender: Sender | None = None
 ) -> int:
-    """Sends each due reminder at most once per day; a claim is released only if every channel failed."""
+    """Sends each due reminder at most once per day."""
     sent = 0
     for item in due_reminders(db, now):
-        channels = list(
-            db.scalars(
-                select(NotificationChannel).where(
-                    NotificationChannel.user_id == item.user.id,
-                    NotificationChannel.enabled.is_(True),
-                )
-            )
-        )
-        if not channels or not _claim(db, item.reminder.id, item.day, now):
-            continue
-        token = action_token(secret_key, item.reminder.id, item.day)
-        notification = Notification(
-            title=item.habit.name,
-            message="Pendiente de hoy",
-            done_url=f"{public_url}/notifications/actions/{token}/done",
-            habit_id=item.habit.id,
-        )
-        delivered = False
-        for channel in channels:
-            try:
-                (sender or SENDERS[channel.type])(channel.config, notification)
-                delivered = True
-            except DeviceNotRegistered:
-                log.info("reminder %s: dropping dead push device %s", item.reminder.id, channel.id)
-                db.delete(channel)
-                db.commit()
-            except Exception:
-                log.exception("reminder %s: channel %s failed", item.reminder.id, channel.id)
-        if delivered:
+        results = send_reminder(db, item, now, secret_key, public_url, sender)
+        if results and any(result.error is None for result in results):
             sent += 1
-        else:
-            db.delete(db.get(NotificationLog, (item.reminder.id, item.day)))
-            db.commit()
     return sent

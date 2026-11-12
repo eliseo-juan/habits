@@ -31,7 +31,7 @@ class Clock:
 def clock(monkeypatch) -> Clock:
     fake = Clock(NOW)
     monkeypatch.setattr(clock_module, "utcnow", fake)
-    for module in ("app.mcp.server", "app.main", "app.cli"):
+    for module in ("app.mcp.server", "app.main", "app.cli", "app.admin"):
         monkeypatch.setattr(f"{module}.utcnow", fake)
     return fake
 

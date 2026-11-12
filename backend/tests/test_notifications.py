@@ -229,3 +229,20 @@ def test_send_expo_payload():
     assert b'"habitId":7' in seen["body"]
     assert b'"categoryId":"habit-reminder"' in seen["body"]
     assert b'"doneUrl":"https://h/d"' in seen["body"]
+
+
+def test_notifications_without_a_done_link_have_no_button():
+    bodies = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(request.read())
+        return httpx.Response(200, json={"data": {"status": "ok"}})
+
+    def http() -> httpx.Client:
+        return httpx.Client(transport=httpx.MockTransport(handler))
+
+    plain = Notification("SmartHabits", "Test notification")
+    send_ntfy({"server": "https://ntfy.example/", "topic": "t"}, plain, client=http())
+    send_expo({"token": TOKEN}, plain, client=http())
+    assert b'"actions"' not in bodies[0]
+    assert b'"categoryId"' not in bodies[1]
