@@ -109,7 +109,8 @@ jobs:
   publish:
     name: 🚀 Publish image
     needs: [changes, ci-ok]
-    if: github.event_name == 'push' && needs.changes.outputs.image == 'true'
+    # !cancelled(): a skipped component job upstream of ci-ok would otherwise skip this job on every partial run.
+    if: ${{ !cancelled() && needs.ci-ok.result == 'success' && github.event_name == 'push' && needs.changes.outputs.image == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
