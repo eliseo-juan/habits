@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import Habit, NotificationChannel, NotificationLog, Reminder, User
 from app.notifications.actions import action_token
 from app.notifications.expo import DeviceNotRegistered, send_expo
-from app.notifications.ntfy import Notification, send_ntfy
+from app.notifications.message import Notification
 from app.services import rules
 from app.services.habits import timelines
 
@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 GRACE = timedelta(minutes=10)
 Sender = Callable[[dict, Notification], None]
-SENDERS: dict[str, Sender] = {"ntfy": send_ntfy, "expo": send_expo}
+SENDERS: dict[str, Sender] = {"expo": send_expo}
 
 
 @dataclass(frozen=True)

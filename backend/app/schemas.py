@@ -150,32 +150,6 @@ class ReminderOut(BaseModel):
     enabled: bool
 
 
-class NtfyConfig(BaseModel):
-    server: HttpUrl = HttpUrl("https://ntfy.sh")
-    topic: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
-    access_token: str | None = None
-
-
-class ChannelIn(BaseModel):
-    type: Literal["ntfy"] = "ntfy"
-    config: NtfyConfig
-    enabled: bool = True
-
-
-class ChannelUpdate(BaseModel):
-    config: NtfyConfig | None = None
-    enabled: bool | None = None
-
-
-class ChannelOut(BaseModel):
-    id: int
-    type: str
-    server: str
-    topic: str
-    has_access_token: bool
-    enabled: bool
-
-
 class PushDeviceIn(BaseModel):
     token: str = Field(pattern=r"^Expo(nent)?PushToken\[[^\]\s]+\]$", max_length=255)
 

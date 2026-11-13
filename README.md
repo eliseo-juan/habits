@@ -11,7 +11,7 @@ Mark a habit from a widget, a notification, a Home Assistant to-do list or just 
 - **Mark in one tap, anywhere.** An installable web app, a native mobile app with home screen and lock screen widgets, an actionable "done" button on reminders, Home Assistant to-do lists, and an AWTRIX pixel clock on the wall.
 - **Ask Claude.** SmartHabits is a remote MCP server: ask how your month went, log yesterday's workout, or create a new habit in plain language from claude.ai, Claude Desktop, the Claude mobile apps or Claude Code.
 - **See honest stats.** Streaks, monthly and yearly completion, per-habit history, and a calendar of done, skipped and missed days.
-- **Get reminded.** Push reminders through [ntfy](https://ntfy.sh) and local notifications on your phone, only for habits still pending that day.
+- **Get reminded.** Native push reminders on your phone with done, skip and snooze buttons, only for habits still pending that day.
 
 ## What makes it different
 

@@ -22,7 +22,6 @@ class Outbox:
 @pytest.fixture
 def outbox(monkeypatch) -> Outbox:
     box = Outbox()
-    monkeypatch.setitem(scheduler.SENDERS, "ntfy", box)
     monkeypatch.setitem(scheduler.SENDERS, "expo", box)
     return box
 
@@ -44,9 +43,9 @@ def reminder(client, alice):
         json={"name": "Meditate", "start_date": "2026-11-01", "schedule": {"type": "daily"}},
         headers=alice.auth(),
     ).json()
-    client.post(
-        "/channels",
-        json={"config": {"topic": "alice-habits", "access_token": "secret-ntfy-token"}},
+    client.put(
+        "/push-devices",
+        json={"token": "ExponentPushToken[abcdefghijklmnopqrstSECRETTAIL]"},
         headers=alice.auth(),
     )
     return client.post(
@@ -87,14 +86,11 @@ def test_secrets_never_show_up(client, admin, reminder):
     ]
     for page in pages:
         assert "argon2" not in page
-        assert "secret-ntfy-token" not in page
-        assert "alice-habits" not in page
+        assert "SECRETTAIL" not in page
 
 
 def test_channels_show_only_where_they_deliver():
-    ntfy = NotificationChannel(type="ntfy", config={"server": "https://ntfy.sh/", "topic": "t"})
     expo = NotificationChannel(type="expo", config={"token": "ExponentPushToken[abcdefghijklmnop]"})
-    assert _channel_target(ntfy) == "https://ntfy.sh/"
     assert _channel_target(expo) == "ExponentPushToken[abcdefghijkl…"
 
 
@@ -111,9 +107,9 @@ def test_test_notification_reaches_the_channel_without_a_done_button(
     login(client, "root@example.com", PASSWORD)
     r = client.get("/admin/notification-channel/action/send-test?pks=1")
     assert r.status_code == 200
-    assert "Test → ntfy #1: sent" in r.text
+    assert "Test → expo #1: sent" in r.text
     config, notification = outbox.sent[0]
-    assert config["topic"] == "alice-habits"
+    assert config["token"] == "ExponentPushToken[abcdefghijklmnopqrstSECRETTAIL]"
     assert notification.done_url is None
 
 

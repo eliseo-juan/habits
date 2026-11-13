@@ -8,9 +8,6 @@ from app.config import get_settings
 from app.errors import NotFound
 from app.models import ApiToken, User
 from app.schemas import (
-    ChannelIn,
-    ChannelOut,
-    ChannelUpdate,
     DeviceLoginIn,
     LoginIn,
     MeOut,
@@ -134,26 +131,6 @@ def revoke_token(token_id: int, principal: TokenManager, db: Db, now: Now):
 def delete_token(token_id: int, principal: TokenManager, db: Db):
     db.delete(_get_token(db, principal.user, token_id))
     db.commit()
-
-
-@router.get("/channels", response_model=list[ChannelOut])
-def list_channels(principal: Reader, db: Db):
-    return [reminders.channel_out(c) for c in reminders.list_channels(db, principal.user)]
-
-
-@router.post("/channels", response_model=ChannelOut, status_code=status.HTTP_201_CREATED)
-def create_channel(data: ChannelIn, principal: Writer, db: Db):
-    return reminders.channel_out(reminders.create_channel(db, principal.user, data))
-
-
-@router.patch("/channels/{channel_id}", response_model=ChannelOut)
-def update_channel(channel_id: int, data: ChannelUpdate, principal: Writer, db: Db):
-    return reminders.channel_out(reminders.update_channel(db, principal.user, channel_id, data))
-
-
-@router.delete("/channels/{channel_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_channel(channel_id: int, principal: Writer, db: Db):
-    reminders.delete_channel(db, principal.user, channel_id)
 
 
 @router.get("/webhooks", response_model=list[WebhookOut], tags=["webhooks"])

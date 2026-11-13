@@ -25,7 +25,7 @@ from app.models import (
     User,
     Webhook,
 )
-from app.notifications.ntfy import Notification
+from app.notifications.message import Notification
 from app.notifications.scheduler import Delivery, DueReminder, deliver, send_reminder
 from app.services import rules
 
@@ -124,9 +124,7 @@ def _flash_deliveries(request: Request, label: str, deliveries: list[Delivery]) 
 
 
 def _channel_target(channel: NotificationChannel) -> str:
-    if channel.type == "expo":
-        return str(channel.config.get("token", ""))[:30] + "…"
-    return str(channel.config.get("server", ""))
+    return str(channel.config.get("token", ""))[:30] + "…"
 
 
 class UserView(ReadOnlyView, model=User):

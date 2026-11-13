@@ -314,23 +314,10 @@ def test_update_me_timezone(client, alice):
     assert me["timezone"] == "America/New_York"
 
 
-def test_channels_hide_access_token(client, alice):
-    created = client.post(
-        "/channels",
-        json={"config": {"topic": "alice-habits", "access_token": "tk_secret"}},
-        headers=alice.auth(),
-    ).json()
-    assert created["has_access_token"] is True
-    assert "tk_secret" not in str(client.get("/channels", headers=alice.auth()).json())
-
-
 def test_other_users_resources_are_not_found(client, alice, bob):
     habit = create_habit(client, alice)
     reminder = client.post(
         f"/habits/{habit['id']}/reminders", json={"time_local": "08:00"}, headers=alice.auth()
-    ).json()
-    channel = client.post(
-        "/channels", json={"config": {"topic": "alice"}}, headers=alice.auth()
     ).json()
     h = f"/habits/{habit['id']}"
     attempts = [
@@ -346,8 +333,6 @@ def test_other_users_resources_are_not_found(client, alice, bob):
         ("post", f"{h}/reminders", {"time_local": "09:00"}),
         ("patch", f"/reminders/{reminder['id']}", {"enabled": False}),
         ("delete", f"/reminders/{reminder['id']}", None),
-        ("patch", f"/channels/{channel['id']}", {"enabled": False}),
-        ("delete", f"/channels/{channel['id']}", None),
     ]
     for method, url, body in attempts:
         response = client.request(method, url, json=body, headers=bob.auth())
@@ -355,7 +340,6 @@ def test_other_users_resources_are_not_found(client, alice, bob):
     assert client.get("/habits", headers=bob.auth()).json() == []
     assert client.get("/today", headers=bob.auth()).json()["items"] == []
     assert client.get("/stats/month?month=2026-11", headers=bob.auth()).json()["habits"] == []
-    assert client.get("/channels", headers=bob.auth()).json() == []
     assert client.get(h, headers=alice.auth()).json()["name"] == "Meditate"
 
 

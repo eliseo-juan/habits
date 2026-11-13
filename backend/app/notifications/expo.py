@@ -1,5 +1,7 @@
 import httpx
 
+from app.notifications.message import Notification
+
 PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
 
@@ -7,7 +9,7 @@ class DeviceNotRegistered(Exception):
     """The push service says the token is dead (app uninstalled or token rotated)."""
 
 
-def send_expo(config: dict, notification, client: httpx.Client | None = None) -> None:
+def send_expo(config: dict, notification: Notification, client: httpx.Client | None = None) -> None:
     """Sends a native push through Expo's push service, which relays to FCM / APNs."""
     body = {
         "to": config["token"],
