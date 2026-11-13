@@ -26,7 +26,11 @@ if (Platform.OS === "android") void Notifications.registerTaskAsync(ACTION_TASK)
 const registerCategory = () =>
   Notifications.setNotificationCategoryAsync(CATEGORY, [{ identifier: "done", buttonTitle: "Hecho", options: { opensAppToForeground: false } }])
 
-export const pushEnabled = async () => (await storage.get(FLAG)) === "1"
+// Register the buttons on every launch, not only when pushes are enabled: the category is what gives a push its
+// "Hecho" button, and it must exist before a notification arrives.
+if (Platform.OS !== "web") void registerCategory().catch(() => {})
+
+export const pushEnabled =async () => (await storage.get(FLAG)) === "1"
 
 // The server owns the reminders and sends them as native pushes (FCM / APNs through Expo's push service), skipping
 // habits already done. This only gives the server a token for this phone.

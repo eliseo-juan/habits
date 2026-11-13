@@ -50,7 +50,7 @@ The query cache is persisted to AsyncStorage for 24 hours, so the app opens at o
 
 ### Reminders
 
-Reminders are edited in the habit form and stored on the server, which delivers them as native push notifications (FCM on Android, APNs on iOS, relayed by Expo's push service) and skips a habit that is already done that day. Settings → "Notificaciones" registers this phone's push token with the server (`PUT /push-devices`); tapping a notification opens that habit's day sheet. On Android the notification also has a "Hecho" button that marks the habit through a signed, single-use link even with the app closed; iOS only offers the tap. The app schedules no local notifications.
+Reminders are edited in the habit form and stored on the server, which delivers them as native push notifications (FCM on Android, APNs on iOS, relayed by Expo's push service) and skips a habit that is already done that day. Settings → "Notificaciones" registers this phone's push token with the server (`PUT /push-devices`); tapping a notification opens that habit's day sheet. On Android the notification also has a "Hecho" button that marks the habit through a signed, single-use link even with the app closed; iOS only offers the tap. The notification title starts with the habit's emoji, and its small status-bar icon is `assets/notification-icon.png` (white on transparent, as Android requires). The app schedules no local notifications.
 
 Pushes need credentials in the build, a one-time setup:
 

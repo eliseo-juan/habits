@@ -122,7 +122,7 @@ def send_reminder(
         return None
     token = action_token(secret_key, item.reminder.id, item.day)
     notification = Notification(
-        title=item.habit.name,
+        title=f"{item.habit.icon} {item.habit.name}" if item.habit.icon else item.habit.name,
         message="Pendiente de hoy",
         done_url=f"{public_url}/notifications/actions/{token}/done",
         habit_id=item.habit.id,

@@ -60,6 +60,13 @@ def test_sends_once_within_grace_window(reminder):
     assert notification.done_url.startswith("https://habits.test/notifications/actions/")
 
 
+def test_title_starts_with_the_habit_icon(client, alice, reminder):
+    client.patch(f"/habits/{reminder['habit']['id']}", json={"icon": "🧘"}, headers=alice.auth())
+    outbox = Outbox()
+    assert run(at(7, 31), outbox) == 1
+    assert outbox.sent[0][1].title == "🧘 Meditate"
+
+
 def test_skips_habits_already_done_or_skipped(client, alice, reminder):
     habit_id = reminder["habit"]["id"]
     client.post(f"/habits/{habit_id}/logs/2026-11-09/done", headers=alice.auth())
