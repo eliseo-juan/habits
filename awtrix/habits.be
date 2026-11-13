@@ -110,6 +110,7 @@ class Habits
     var url = store.get("url") + "/awtrix/today"
     if !secret.allows('token', url)
       self.failed = true
+      self.ticks = 30                     # the key may be entered any moment
       return
     end
     self.busy = true
