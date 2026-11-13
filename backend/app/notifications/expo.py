@@ -12,13 +12,21 @@ def send_expo(config: dict, notification, client: httpx.Client | None = None) ->
     body = {
         "to": config["token"],
         "title": notification.title,
-        "body": notification.message,
         "priority": "high",
         "channelId": "reminders",
-        "data": {"habitId": notification.habit_id, "doneUrl": notification.done_url},
+        "data": {
+            "habitId": notification.habit_id,
+            "doneUrl": notification.done_url,
+            "skipUrl": notification.skip_url,
+            "snoozeUrl": notification.snooze_url,
+        },
     }
+    if notification.message:
+        body["body"] = notification.message
     if notification.done_url:
-        body["categoryId"] = "habit-reminder"  # gives the notification its "Hecho" button
+        body["categoryId"] = (
+            "habit-reminder"  # gives the notification its Hecho / Ignorar / Posponer buttons
+        )
     with client or httpx.Client(timeout=10) as http:
         response = http.post(PUSH_URL, json=body, headers={"Accept": "application/json"})
         response.raise_for_status()

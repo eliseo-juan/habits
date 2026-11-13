@@ -6,9 +6,11 @@ import httpx
 @dataclass(frozen=True)
 class Notification:
     title: str
-    message: str
+    message: str = ""
     done_url: str | None = None
     habit_id: int | None = None
+    skip_url: str | None = None
+    snooze_url: str | None = None
 
 
 def send_ntfy(config: dict, notification: Notification, client: httpx.Client | None = None) -> None:
@@ -21,16 +23,17 @@ def send_ntfy(config: dict, notification: Notification, client: httpx.Client | N
         "title": notification.title,
         "message": notification.message,
     }
-    if notification.done_url:
-        body["actions"] = [
-            {
-                "action": "http",
-                "label": "Hecho",
-                "url": notification.done_url,
-                "method": "POST",
-                "clear": True,
-            }
-        ]
+    buttons = (
+        ("Hecho", notification.done_url),
+        ("Ignorar", notification.skip_url),
+        ("Posponer", notification.snooze_url),
+    )
+    if actions := [
+        {"action": "http", "label": label, "url": url, "method": "POST", "clear": True}
+        for label, url in buttons
+        if url
+    ]:
+        body["actions"] = actions
     with client or httpx.Client(timeout=10) as http:
         http.post(
             str(config["server"]).rstrip("/") + "/", json=body, headers=headers

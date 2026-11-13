@@ -129,6 +129,32 @@ def test_done_link_is_single_use_and_marks_the_day(client, alice, reminder):
     assert client.post(tampered).status_code == 404
 
 
+def _sent_path(outbox, url_field):
+    return getattr(outbox.sent[0][1], url_field).removeprefix("https://habits.test")
+
+
+def test_skip_link_skips_the_day_and_shares_the_single_use(client, alice, reminder):
+    outbox = Outbox()
+    run(at(7, 30), outbox)
+    assert outbox.sent[0][1].message == ""
+    assert client.post(_sent_path(outbox, "skip_url")).status_code == 204
+    assert client.post(_sent_path(outbox, "done_url")).status_code == 404
+    assert client.get("/today", headers=alice.auth()).json()["items"][0]["status"] == "skipped"
+
+
+def test_snooze_link_reminds_again_in_an_hour_with_fresh_buttons(client, clock, alice, reminder):
+    outbox = Outbox()
+    run(at(7, 30), outbox)
+    clock.now = at(7, 31)
+    assert client.post(_sent_path(outbox, "snooze_url")).status_code == 204
+    assert run(at(8, 30), outbox) == 0
+    assert run(at(8, 31), outbox) == 1
+    assert run(at(8, 35), outbox) == 0
+    clock.now = at(8, 32)
+    assert client.post(_sent_path(outbox, "done_url")).status_code == 204
+    assert run(at(9, 30), outbox) == 0
+
+
 def test_send_ntfy_payload():
     seen = {}
 

@@ -14,23 +14,30 @@ Notifications.setNotificationHandler({
 const CATEGORY = "habit-reminder"
 const ACTION_TASK = "habits-notification-action"
 
-// Android runs this when the "Hecho" button is tapped, even with the app closed. It needs no login: the signed,
+// Android runs this when a notification button is tapped, even with the app closed. It needs no login: the signed,
 // single-use link in the push is the credential, so a leaked notification never exposes a token.
+const ACTION_URLS: Record<string, string> = { done: "doneUrl", skip: "skipUrl", snooze: "snoozeUrl" }
+
 TaskManager.defineTask<Notifications.NotificationTaskPayload>(ACTION_TASK, async ({ data }) => {
-  if (!("actionIdentifier" in data) || data.actionIdentifier !== "done") return
-  const doneUrl = data.notification.request.content.data?.doneUrl
-  if (typeof doneUrl === "string") await fetch(doneUrl, { method: "POST" }).catch(() => {})
+  if (!("actionIdentifier" in data)) return
+  const key = ACTION_URLS[data.actionIdentifier]
+  const url = key ? data.notification.request.content.data?.[key] : undefined
+  if (typeof url === "string") await fetch(url, { method: "POST" }).catch(() => {})
 })
 if (Platform.OS === "android") void Notifications.registerTaskAsync(ACTION_TASK).catch(() => {})
 
 const registerCategory = () =>
-  Notifications.setNotificationCategoryAsync(CATEGORY, [{ identifier: "done", buttonTitle: "Hecho", options: { opensAppToForeground: false } }])
+  Notifications.setNotificationCategoryAsync(CATEGORY, [
+    { identifier: "done", buttonTitle: "Hecho", options: { opensAppToForeground: false } },
+    { identifier: "skip", buttonTitle: "Ignorar", options: { opensAppToForeground: false } },
+    { identifier: "snooze", buttonTitle: "Posponer", options: { opensAppToForeground: false } },
+  ])
 
 // Register the buttons on every launch, not only when pushes are enabled: the category is what gives a push its
-// "Hecho" button, and it must exist before a notification arrives.
+// buttons, and it must exist before a notification arrives.
 if (Platform.OS !== "web") void registerCategory().catch(() => {})
 
-export const pushEnabled =async () => (await storage.get(FLAG)) === "1"
+export const pushEnabled = async () => (await storage.get(FLAG)) === "1"
 
 // The server owns the reminders and sends them as native pushes (FCM / APNs through Expo's push service), skipping
 // habits already done. This only gives the server a token for this phone.
