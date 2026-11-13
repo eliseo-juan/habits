@@ -6,8 +6,10 @@ import pytest
 from app.db import get_sessionmaker
 from app.models import NotificationChannel
 from app.notifications.expo import DeviceNotRegistered, send_expo
-from app.notifications.ntfy import Notification, send_ntfy
+from app.notifications.message import Notification
 from app.notifications.scheduler import send_due_reminders
+
+TOKEN = "ExponentPushToken[abc123]"
 
 
 class Outbox:
@@ -37,11 +39,7 @@ def reminder(client, alice):
         json={"name": "Meditate", "start_date": "2026-11-01", "schedule": {"type": "daily"}},
         headers=alice.auth(),
     ).json()
-    client.post(
-        "/channels",
-        json={"config": {"topic": "alice-habits", "access_token": "tk"}},
-        headers=alice.auth(),
-    )
+    client.put("/push-devices", json={"token": TOKEN}, headers=alice.auth())
     created = client.post(
         f"/habits/{habit['id']}/reminders", json={"time_local": "08:30"}, headers=alice.auth()
     ).json()
@@ -55,9 +53,16 @@ def test_sends_once_within_grace_window(reminder):
     assert run(at(7, 35), outbox) == 0
     assert run(at(7, 40), outbox) == 0
     config, notification = outbox.sent[0]
-    assert config == {"server": "https://ntfy.sh/", "topic": "alice-habits", "access_token": "tk"}
+    assert config == {"token": TOKEN}
     assert notification.title == "Meditate"
     assert notification.done_url.startswith("https://habits.test/notifications/actions/")
+
+
+def test_title_starts_with_the_habit_icon(client, alice, reminder):
+    client.patch(f"/habits/{reminder['habit']['id']}", json={"icon": "🧘"}, headers=alice.auth())
+    outbox = Outbox()
+    assert run(at(7, 31), outbox) == 1
+    assert outbox.sent[0][1].title == "🧘 Meditate"
 
 
 def test_skips_habits_already_done_or_skipped(client, alice, reminder):
@@ -76,7 +81,7 @@ def test_limit_habits_are_never_reminded(client, alice):
         json={"name": "Sugar", "kind": "limit", "schedule": {"type": "daily"}},
         headers=alice.auth(),
     ).json()
-    client.post("/channels", json={"config": {"topic": "alice-habits"}}, headers=alice.auth())
+    client.put("/push-devices", json={"token": TOKEN}, headers=alice.auth())
     client.post(
         f"/habits/{habit['id']}/reminders", json={"time_local": "08:30"}, headers=alice.auth()
     )
@@ -104,9 +109,8 @@ def test_failed_delivery_is_retried(reminder):
     assert run(at(7, 31), outbox) == 1
 
 
-def test_no_channel_sends_nothing(client, alice, reminder):
-    channel_id = client.get("/channels", headers=alice.auth()).json()[0]["id"]
-    client.patch(f"/channels/{channel_id}", json={"enabled": False}, headers=alice.auth())
+def test_no_push_device_sends_nothing(client, alice, reminder):
+    client.post("/push-devices/unregister", json={"token": TOKEN}, headers=alice.auth())
     assert run(at(7, 30), Outbox()) == 0
 
 
@@ -122,31 +126,33 @@ def test_done_link_is_single_use_and_marks_the_day(client, alice, reminder):
     assert client.post(tampered).status_code == 404
 
 
-def test_send_ntfy_payload():
-    seen = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["url"] = str(request.url)
-        seen["auth"] = request.headers.get("authorization")
-        seen["body"] = request.read()
-        return httpx.Response(200)
-
-    client = httpx.Client(transport=httpx.MockTransport(handler))
-    send_ntfy(
-        {"server": "https://ntfy.example/", "topic": "t", "access_token": "tk"},
-        Notification("Leer ñ", "Pendiente de hoy", "https://h/done"),
-        client=client,
-    )
-    assert seen["url"] == "https://ntfy.example/"
-    assert seen["auth"] == "Bearer tk"
-    assert '"title":"Leer \\u00f1"' in seen["body"].decode() or "Leer ñ" in seen["body"].decode()
-    assert b'"url":"https://h/done"' in seen["body"]
+def _sent_path(outbox, url_field):
+    return getattr(outbox.sent[0][1], url_field).removeprefix("https://habits.test")
 
 
-TOKEN = "ExponentPushToken[abc123]"
+def test_skip_link_skips_the_day_and_shares_the_single_use(client, alice, reminder):
+    outbox = Outbox()
+    run(at(7, 30), outbox)
+    assert outbox.sent[0][1].message == ""
+    assert client.post(_sent_path(outbox, "skip_url")).status_code == 204
+    assert client.post(_sent_path(outbox, "done_url")).status_code == 404
+    assert client.get("/today", headers=alice.auth()).json()["items"][0]["status"] == "skipped"
 
 
-def test_push_device_registration_is_idempotent_and_hidden_from_channels(client, alice, bob):
+def test_snooze_link_reminds_again_in_an_hour_with_fresh_buttons(client, clock, alice, reminder):
+    outbox = Outbox()
+    run(at(7, 30), outbox)
+    clock.now = at(7, 31)
+    assert client.post(_sent_path(outbox, "snooze_url")).status_code == 204
+    assert run(at(8, 30), outbox) == 0
+    assert run(at(8, 31), outbox) == 1
+    assert run(at(8, 35), outbox) == 0
+    clock.now = at(8, 32)
+    assert client.post(_sent_path(outbox, "done_url")).status_code == 204
+    assert run(at(9, 30), outbox) == 0
+
+
+def test_push_device_registration_is_idempotent(client, alice, bob):
     for _ in range(2):
         r = client.put("/push-devices", json={"token": TOKEN}, headers=alice.auth())
         assert r.status_code == 204
@@ -155,7 +161,6 @@ def test_push_device_registration_is_idempotent_and_hidden_from_channels(client,
     with get_sessionmaker()() as db:
         owners = [c.user_id for c in db.query(NotificationChannel).filter_by(type="expo")]
     assert len(owners) == 1
-    assert client.get("/channels", headers=bob.auth()).json() == []
     client.post("/push-devices/unregister", json={"token": TOKEN}, headers=bob.auth())
     with get_sessionmaker()() as db:
         assert db.query(NotificationChannel).filter_by(type="expo").count() == 0
@@ -177,12 +182,12 @@ def test_reminder_goes_to_the_push_device_and_skips_done_habits(client, alice, r
         from app.notifications import scheduler
 
         old = scheduler.SENDERS.copy()
-        scheduler.SENDERS.update(ntfy=fake, expo=fake)
+        scheduler.SENDERS.update(expo=fake)
         try:
             assert send_due_reminders(db, at(7, 31), "test-secret", "https://habits.test") == 1
         finally:
             scheduler.SENDERS.update(old)
-    assert {c.get("token") for c, _ in seen} == {TOKEN, None}
+    assert {c.get("token") for c, _ in seen} == {TOKEN}
     assert all(n.habit_id == reminder["habit"]["id"] for _, n in seen)
 
 
@@ -204,7 +209,7 @@ def test_dead_push_device_is_dropped(client, alice, reminder):
         raise DeviceNotRegistered(config["token"])
 
     old = scheduler.SENDERS.copy()
-    scheduler.SENDERS.update(expo=dead, ntfy=lambda c, n: None)
+    scheduler.SENDERS.update(expo=dead)
     try:
         with get_sessionmaker()() as db:
             send_due_reminders(db, at(7, 31), "test-secret", "https://habits.test")
@@ -242,7 +247,5 @@ def test_notifications_without_a_done_link_have_no_button():
         return httpx.Client(transport=httpx.MockTransport(handler))
 
     plain = Notification("SmartHabits", "Test notification")
-    send_ntfy({"server": "https://ntfy.example/", "topic": "t"}, plain, client=http())
     send_expo({"token": TOKEN}, plain, client=http())
-    assert b'"actions"' not in bodies[0]
-    assert b'"categoryId"' not in bodies[1]
+    assert b'"categoryId"' not in bodies[0]

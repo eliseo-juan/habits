@@ -4,9 +4,6 @@ from sqlalchemy.orm import Session
 from app.errors import NotFound
 from app.models import Habit, NotificationChannel, Reminder, User
 from app.schemas import (
-    ChannelIn,
-    ChannelOut,
-    ChannelUpdate,
     PushDeviceIn,
     ReminderIn,
     ReminderOut,
@@ -71,63 +68,6 @@ def update_reminder(db: Session, user: User, reminder_id: int, data: ReminderUpd
 
 def delete_reminder(db: Session, user: User, reminder_id: int) -> None:
     db.delete(get_reminder(db, user, reminder_id))
-    db.commit()
-
-
-def channel_out(channel: NotificationChannel) -> ChannelOut:
-    return ChannelOut(
-        id=channel.id,
-        type=channel.type,
-        server=channel.config["server"],
-        topic=channel.config["topic"],
-        has_access_token=bool(channel.config.get("access_token")),
-        enabled=channel.enabled,
-    )
-
-
-def get_channel(db: Session, user: User, channel_id: int) -> NotificationChannel:
-    channel = db.get(NotificationChannel, channel_id)
-    if channel is None or channel.user_id != user.id or channel.type != "ntfy":
-        raise NotFound(f"channel {channel_id} not found")
-    return channel
-
-
-def list_channels(db: Session, user: User) -> list[NotificationChannel]:
-    return list(
-        db.scalars(
-            select(NotificationChannel).where(
-                NotificationChannel.user_id == user.id, NotificationChannel.type == "ntfy"
-            )
-        )
-    )
-
-
-def create_channel(db: Session, user: User, data: ChannelIn) -> NotificationChannel:
-    channel = NotificationChannel(
-        user_id=user.id,
-        type=data.type,
-        config=data.config.model_dump(mode="json"),
-        enabled=data.enabled,
-    )
-    db.add(channel)
-    db.commit()
-    return channel
-
-
-def update_channel(
-    db: Session, user: User, channel_id: int, data: ChannelUpdate
-) -> NotificationChannel:
-    channel = get_channel(db, user, channel_id)
-    if data.config is not None:
-        channel.config = data.config.model_dump(mode="json")
-    if data.enabled is not None:
-        channel.enabled = data.enabled
-    db.commit()
-    return channel
-
-
-def delete_channel(db: Session, user: User, channel_id: int) -> None:
-    db.delete(get_channel(db, user, channel_id))
     db.commit()
 
 

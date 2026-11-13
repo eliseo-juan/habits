@@ -4,7 +4,7 @@ The FastAPI server behind every SmartHabits client. It owns the data and the rul
 
 - the REST API (OpenAPI docs at `/docs`) used by the web app, the mobile app and Home Assistant;
 - a remote MCP server at `/mcp` for Claude;
-- reminder delivery through native push (Expo push service) or ntfy, and webhooks that tell subscribers something changed;
+- reminder delivery through native push (Expo push service), and webhooks that tell subscribers something changed;
 - `GET /awtrix/today`, a compact summary for the AWTRIX clock;
 - the built web app at `/`, when `HABITS_WEB_DIR` points at it.
 
@@ -42,7 +42,7 @@ app/
   mcp/server.py   MCP tools: thin adapters over the same services
   services/       business logic; rules.py is pure (no DB, no clock)
   auth/           passwords, sessions, API tokens, OAuth for MCP
-  notifications/  push and ntfy delivery, signed "done" links, the scheduler loop
+  notifications/  push delivery, signed button links, the scheduler loop
   models.py       SQLAlchemy models
   cli.py          the `habits` command
 migrations/       Alembic
@@ -110,24 +110,23 @@ Redirect URIs must be https or a loopback address, and `/authorize` only accepts
 
 ### Reminders
 
-Reminders are stored per habit. Delivery goes to every enabled channel of the user: native push devices (the mobile app registers its token) and/or ntfy topics:
+Reminders are stored per habit. Delivery goes to the native push devices of the user (the mobile app registers its token):
 
 ```sh
 PUT  /push-devices             {"token": "ExponentPushToken[...]"}   # POST /push-devices/unregister removes it
-POST /channels                 {"config": {"topic": "...", "server": "https://ntfy.sh", "access_token": null}}
 POST /habits/{id}/reminders    {"time_local": "08:30", "weekdays": [0, 2, 4]}
 ```
 
-Within ten minutes of the local time, a habit still pending that day gets one notification (ntfy and Android pushes carry a "done" button). The button calls a signed, single-use link, so the notification never carries a token. If every channel fails, the next minute retries.
+Within ten minutes of the local time, a habit still pending that day gets one notification (Android pushes carry no body and three buttons: Hecho, Ignorar to skip the day and Posponer to be reminded again an hour later). The buttons call signed, single-use links (`POST /notifications/actions/{token}/done|skip|snooze`), so the notification never carries a token and the first button tapped uses them all up. If every device fails, the next minute retries.
 
 ### Back office
 
-`/admin` is a read-only back office ([SQLAdmin](https://github.com/aminalaee/sqladmin)) for accounts created with `--admin`. It signs in with the same email and password as the web app and lists users, habits, schedules, logs, reminders, sent reminders, channels, webhooks and API tokens, with search, sorting and CSV/JSON export. Password and token hashes and channel secrets (ntfy topics and access tokens, push tokens) are never shown. Nothing can be edited there, so domain rules stay with the app.
+`/admin` is a read-only back office ([SQLAdmin](https://github.com/aminalaee/sqladmin)) for accounts created with `--admin`. It signs in with the same email and password as the web app and lists users, habits, schedules, logs, reminders, sent reminders, channels, webhooks and API tokens, with search, sorting and CSV/JSON export. Password and token hashes and push tokens are never shown. Nothing can be edited there, so domain rules stay with the app.
 
 Two actions help check delivery:
 
-- **Channels → Send test notification** sends a plain notification, without a "done" button, to the selected channels. It can be repeated.
-- **Reminders → Send now** delivers today's reminder to every enabled channel of its user, with a working "done" button. It counts as that day's reminder, so it goes out once per day.
+- **Channels → Send test notification** sends a plain notification, without buttons, to the selected channels. It can be repeated.
+- **Reminders → Send now** delivers today's reminder to every enabled channel of its user, with working buttons. It counts as that day's reminder, so it goes out once per day.
 
 Each shows, per channel, whether it was sent or the error the push service returned.
 

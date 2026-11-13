@@ -97,6 +97,7 @@ class NotificationLog(Base):
     date: Mapped[date] = mapped_column(Date, primary_key=True)
     sent_at: Mapped[datetime] = mapped_column(UTCDateTime)
     action_used_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    snoozed_until: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class NotificationChannel(Base):

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import Habit, NotificationChannel, NotificationLog, Reminder, User
 from app.notifications.actions import action_token
 from app.notifications.expo import DeviceNotRegistered, send_expo
-from app.notifications.ntfy import Notification, send_ntfy
+from app.notifications.message import Notification
 from app.services import rules
 from app.services.habits import timelines
 
@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 GRACE = timedelta(minutes=10)
 Sender = Callable[[dict, Notification], None]
-SENDERS: dict[str, Sender] = {"ntfy": send_ntfy, "expo": send_expo}
+SENDERS: dict[str, Sender] = {"expo": send_expo}
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,7 @@ class DueReminder:
     habit: Habit
     user: User
     day: date
+    snoozed_until: datetime | None = None
 
 
 def due_reminders(db: Session, now: datetime) -> list[DueReminder]:
@@ -41,18 +42,26 @@ def due_reminders(db: Session, now: datetime) -> list[DueReminder]:
     for reminder, habit, user in rows:
         zone = ZoneInfo(user.timezone)
         fire_at = datetime.combine(now.astimezone(zone).date(), reminder.time_local, tzinfo=zone)
-        if not fire_at <= now < fire_at + GRACE:
-            continue
         day = rules.logical_date(now, user.timezone, user.day_cutoff)
         if reminder.weekdays is not None and not reminder.weekdays & (1 << day.weekday()):
             continue
-        if db.get(NotificationLog, (reminder.id, day)) is not None:
+        sent = db.get(NotificationLog, (reminder.id, day))
+        snoozed_until = None
+        if sent is not None:
+            # a snoozed reminder comes back once, in its own grace window
+            if (
+                sent.snoozed_until is None
+                or not sent.snoozed_until <= now < sent.snoozed_until + GRACE
+            ):
+                continue
+            snoozed_until = sent.snoozed_until
+        elif not fire_at <= now < fire_at + GRACE:
             continue
         if habit.kind == "limit":
             continue
         entry = rules.today_entry(timelines(db, [habit])[habit.id], day)
         if entry.due and entry.status is rules.DayStatus.PENDING:
-            due.append(DueReminder(reminder, habit, user, day))
+            due.append(DueReminder(reminder, habit, user, day, snoozed_until))
     return due
 
 
@@ -118,18 +127,33 @@ def send_reminder(
     The day's claim is released only if every channel failed, so the next run retries.
     """
     channels = enabled_channels(db, item.user.id)
-    if not channels or not _claim(db, item.reminder.id, item.day, now):
+    if not channels:
         return None
+    if item.snoozed_until is None:
+        if not _claim(db, item.reminder.id, item.day, now):
+            return None
+    else:
+        # the snoozed notification is sent again with fresh, usable buttons
+        entry = db.get(NotificationLog, (item.reminder.id, item.day))
+        entry.snoozed_until = None
+        entry.action_used_at = None
+        db.commit()
     token = action_token(secret_key, item.reminder.id, item.day)
+    base = f"{public_url}/notifications/actions/{token}"
     notification = Notification(
-        title=item.habit.name,
-        message="Pendiente de hoy",
-        done_url=f"{public_url}/notifications/actions/{token}/done",
+        title=f"{item.habit.icon} {item.habit.name}" if item.habit.icon else item.habit.name,
+        done_url=f"{base}/done",
+        skip_url=f"{base}/skip",
+        snooze_url=f"{base}/snooze",
         habit_id=item.habit.id,
     )
     results = deliver(db, channels, notification, sender)
     if all(result.error for result in results):
-        db.delete(db.get(NotificationLog, (item.reminder.id, item.day)))
+        entry = db.get(NotificationLog, (item.reminder.id, item.day))
+        if item.snoozed_until is None:
+            db.delete(entry)
+        else:
+            entry.snoozed_until = item.snoozed_until
         db.commit()
     return results
 

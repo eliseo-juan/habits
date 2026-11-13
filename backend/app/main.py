@@ -116,14 +116,23 @@ def create_app() -> FastAPI:
         db.execute(text("SELECT 1"))
         return {"status": "ok"}
 
-    @app.post(
-        "/notifications/actions/{token}/done",
-        status_code=status.HTTP_204_NO_CONTENT,
-        tags=["notifications"],
-        summary="Single-use 'done' link sent with a reminder",
-    )
-    def notification_done(token: str, db: Db, now: Now):
-        use_action_token(db, get_settings().secret_key, token, now)
+    for action, summary in (
+        ("done", "Single-use 'done' link sent with a reminder"),
+        ("skip", "Single-use 'skip today' link sent with a reminder"),
+        ("snooze", "Single-use 'remind me in an hour' link sent with a reminder"),
+    ):
+
+        def notification_action(token: str, db: Db, now: Now, action: str = action):
+            use_action_token(db, get_settings().secret_key, token, now, action)
+
+        app.add_api_route(
+            f"/notifications/actions/{{token}}/{action}",
+            notification_action,
+            methods=["POST"],
+            status_code=status.HTTP_204_NO_CONTENT,
+            tags=["notifications"],
+            summary=summary,
+        )
 
     mount_admin(app)
 
