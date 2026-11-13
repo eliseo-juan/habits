@@ -238,18 +238,23 @@ def _units(habit: HabitTimeline, last: date, today: date) -> list[Unit]:
             if _scheduled_weekday(schedule, day):
                 units.append(Unit(day, day, day_status(habit, day, today)))
             continue
-        assert schedule.period_target is not None
+        assert schedule.period_target is not None and schedule.period_unit is not None
         period = _period_days(habit, schedule, day)
         if period in seen_periods:
             continue
         seen_periods.add(period)
-        counted = _days_done(habit, max(period[0], first), period[1], schedule)
+        counted_from = max(period[0], first)
+        counted = _days_done(habit, counted_from, period[1], schedule)
+        full = period_bounds(schedule.period_unit, day)
+        cut_short = (counted_from, period[1]) != full
         if habit.kind == "limit":
             outcome = _limit_period_outcome(counted, schedule.period_target, period[1], today)
         elif counted >= schedule.period_target:
             outcome = DayStatus.DONE
         elif period[1] < today:
-            outcome = DayStatus.FAILED
+            # A period cut short by the habit's start or end, the stats start or a schedule
+            # change had fewer days to reach the target, so missing it is not held against you.
+            outcome = DayStatus.NOT_DUE if cut_short else DayStatus.FAILED
         else:
             outcome = DayStatus.PENDING
         units.append(Unit(period[0], period[1], outcome))

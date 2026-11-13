@@ -57,7 +57,7 @@ The REST API and the MCP tools call the same services, so they always agree. A b
 - Weeks start on Monday; months are calendar months.
 - Schedules are `daily`, `weekdays` or `times_per_period` (per week or month), with `times_per_day` for repeats. They are versioned by `effective_from`, so changing frequency never rewrites the past.
 - Failures are computed, never stored. Skipped days count neither for nor against. Today is `pending` until it ends.
-- `times_per_period` counts days completed in the week or month; a period is credited to the stats range holding its last day.
+- `times_per_period` counts days completed in the week or month; a period is credited to the stats range holding its last day. A period cut short by the habit's start or end, the stats start or a schedule change counts as done when it reaches the target and is left out otherwise.
 - A habit's `kind` is `build` (success is doing it) or `limit` (success is not doing it), fixed at creation. On a limit habit a logged day is a slip: `daily` means never, `weekdays` never on those days, and `times_per_period` at most `period_target` slip days per week or month. A period fails as soon as it goes over; slips within the allowance show as `slipped`. Limit habits are never reminded and never count as to-do on the clock or in Home Assistant.
 - Another user's resources answer 404.
 

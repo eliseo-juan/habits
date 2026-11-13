@@ -50,6 +50,8 @@ function Detail({ habit }: { habit: Habit }) {
   const statusOf = useStatuses()
   const writer = useLogWriter()
   const [month, setMonth] = useState(today.slice(0, 7))
+  const canGoBack = month > habit.start_date.slice(0, 7)
+  const canGoForward = month < today.slice(0, 7)
   const [year, monthNumber] = month.split("-").map(Number)
   const overall = useHabitStats(habit.id).data
   const monthView = useYear(year).data?.habits.find((h) => h.habit_id === habit.id)
@@ -57,8 +59,10 @@ function Detail({ habit }: { habit: Habit }) {
   const reminders = (useReminders(habit.id).data ?? []).filter((r) => r.enabled).map((r) => r.time_local.slice(0, 5))
   const color = colorOf(habit)
 
+  const tracked = (day: string) => day >= habit.start_date && day <= today
+
   async function cycle(day: string) {
-    if (day > today || day < habit.start_date) return
+    if (!tracked(day)) return
     const log = await writer.read(habit.id, day)
     const target = habit.schedule.times_per_day
     if (log.skipped) await writer.write(habit.id, day, { ...log, done_count: 0, skipped: false })
@@ -106,7 +110,7 @@ function Detail({ habit }: { habit: Habit }) {
 
       <Card style={{ gap: 12 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Pressable hitSlop={10} onPress={() => setMonth(shiftMonth(month, -1))} accessibilityLabel="Mes anterior">
+          <Pressable hitSlop={10} disabled={!canGoBack} onPress={() => setMonth(shiftMonth(month, -1))} accessibilityLabel="Mes anterior" style={{ opacity: canGoBack ? 1 : 0.25 }}>
             <Ionicons name="chevron-back" size={22} color={colors.mutedForeground} />
           </Pressable>
           <View style={{ alignItems: "center" }}>
@@ -115,7 +119,7 @@ function Detail({ habit }: { habit: Habit }) {
             </Text>
             <Text style={{ fontSize: 12, color: colors.mutedForeground }}>{percent(monthly?.percentage)}% este mes</Text>
           </View>
-          <Pressable hitSlop={10} onPress={() => setMonth(shiftMonth(month, 1))} accessibilityLabel="Mes siguiente">
+          <Pressable hitSlop={10} disabled={!canGoForward} onPress={() => setMonth(shiftMonth(month, 1))} accessibilityLabel="Mes siguiente" style={{ opacity: canGoForward ? 1 : 0.25 }}>
             <Ionicons name="chevron-forward" size={22} color={colors.mutedForeground} />
           </Pressable>
         </View>
@@ -131,14 +135,16 @@ function Detail({ habit }: { habit: Habit }) {
             <View key={w} style={{ flexDirection: "row", gap: 4 }}>
               {week.map((day, d) => {
                 if (!day) return <View key={`blank-${d}`} style={{ flex: 1 }} />
-                const st: Status = day > today ? "not_due" : (monthView?.days[day] ?? "not_due")
+                const st: Status = tracked(day) ? (monthView?.days[day] ?? "not_due") : "not_due"
                 const style = st === "done" ? null : CELL[st]
                 return (
                   <Pressable
                     key={day}
+                    disabled={!tracked(day)}
                     onPress={() => cycle(day)}
                     style={({ pressed }) => [
                       { flex: 1, aspectRatio: 1, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+                      !tracked(day) && { opacity: 0.3 },
                       st === "done" ? { backgroundColor: color } : style?.box,
                       pressed && { transform: [{ scale: 0.88 }] },
                     ]}
