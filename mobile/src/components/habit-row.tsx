@@ -7,7 +7,7 @@ import { HabitRing } from "@/components/habit-ring"
 import { useToast } from "@/components/toast"
 import { Chip, chipTextStyle } from "@/components/ui"
 import { useHabitStats, useLogWriter, useReminders, useSession } from "@/lib/data"
-import { colorOf, emojiOf, scheduleLabel, type DayEntry, type Habit, type Look } from "@/lib/rules"
+import { colorOf, emojiOf, PRIORITIES, scheduleLabel, type DayEntry, type Habit, type Look } from "@/lib/rules"
 import { colors, motion, radius } from "@/theme"
 
 export function HabitIcon({ habit, size = "md" }: { habit: Look; size?: "md" | "lg" }) {
@@ -23,6 +23,12 @@ export function HabitIcon({ habit, size = "md" }: { habit: Look; size?: "md" | "
       <Text style={{ fontSize: size === "md" ? 20 : 28, fontWeight: "600", color }}>{emojiOf(habit)}</Text>
     </LinearGradient>
   )
+}
+
+export function PriorityFlag({ priority }: { priority: Habit["priority"] }) {
+  const color = PRIORITIES[priority].color
+  if (!color) return null
+  return <Ionicons name="flag" size={14} color={color} style={{ alignSelf: "center" }} accessibilityLabel={`Prioridad ${PRIORITIES[priority].label.toLowerCase()}`} />
 }
 
 function periodLabel(habit: Habit, entry: DayEntry): string {
@@ -76,6 +82,7 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: Props) {
             {habit.name}
           </Text>
           <View style={styles.chips}>
+            <PriorityFlag priority={habit.priority} />
             <Chip>{habit.schedule.type === "times_per_period" ? periodLabel(habit, entry) : scheduleLabel(habit)}</Chip>
             <RemindersChip habitId={habit.id} />
             {streak > 1 && (

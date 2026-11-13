@@ -1,9 +1,9 @@
-import { Bell, Flame } from "lucide-react"
+import { Bell, Flag, Flame } from "lucide-react"
 import { motion } from "motion/react"
 import { toast } from "sonner"
 import { HabitRing } from "@/components/habit-ring"
 import { useHabitStats, useLogWriter, useReminders, useSession } from "@/lib/data"
-import { colorOf, emojiOf, scheduleLabel, type DayEntry, type Habit, type Look } from "@/lib/rules"
+import { colorOf, emojiOf, PRIORITIES, scheduleLabel, type DayEntry, type Habit, type Look } from "@/lib/rules"
 import { cn } from "@/lib/utils"
 
 export function Chip({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -24,6 +24,12 @@ export function HabitIcon({ habit, size = "md" }: { habit: Look; size?: "md" | "
       {emojiOf(habit)}
     </span>
   )
+}
+
+export function PriorityFlag({ priority }: { priority: Habit["priority"] }) {
+  const level = PRIORITIES[priority]
+  if (!level.color) return null
+  return <Flag className="size-4 self-center" style={{ color: level.color }} fill="currentColor" aria-label={`Prioridad ${level.label.toLowerCase()}`} />
 }
 
 function periodLabel(habit: Habit, entry: DayEntry): string {
@@ -68,6 +74,7 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: { habit: Habit; 
             {habit.name}
           </span>
           <span className="mt-1 flex flex-wrap gap-1">
+            <PriorityFlag priority={habit.priority} />
             <Chip>{habit.schedule.type === "times_per_period" ? periodLabel(habit, entry) : scheduleLabel(habit)}</Chip>
             {reminders.length > 0 && (
               <Chip>

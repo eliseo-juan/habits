@@ -9,12 +9,15 @@ export type Schedule = {
   period_target: number | null
 }
 
+export type Priority = 0 | 1 | 2 | 3
+
 export type Habit = {
   id: number
   name: string
   kind: Kind
   color: string | null
   icon: string | null
+  priority: Priority
   start_date: string
   end_date: string | null
   stats_start_date: string | null
@@ -68,6 +71,14 @@ export function streakLabel(schedule: Schedule, streak: number): string {
   const unit = schedule.type !== "times_per_period" ? ["día", "días"] : schedule.period_unit === "week" ? ["semana", "semanas"] : ["mes", "meses"]
   return `${streak} ${streak === 1 ? unit[0] : unit[1]}`
 }
+
+// Colored flags: 0 is no flag.
+export const PRIORITIES = [
+  { id: 0, label: "Ninguna", color: null },
+  { id: 1, label: "Baja", color: "#3b82f6" },
+  { id: 2, label: "Media", color: "#eab308" },
+  { id: 3, label: "Alta", color: "#ef4444" },
+] as const
 
 export const colorOf = (look: Look) => look.color ?? "#10b981"
 

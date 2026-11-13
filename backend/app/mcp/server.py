@@ -59,6 +59,7 @@ def _habit_line(habit, today: date) -> dict[str, Any]:
         "id": out.id,
         "name": out.name,
         "kind": out.kind,
+        "priority": out.priority,
         "schedule": out.schedule.model_dump(exclude_none=True),
     }
 
@@ -85,6 +86,7 @@ def today(day: str | None = None) -> dict[str, Any]:
                     "id": i.habit_id,
                     "name": i.name,
                     "kind": i.kind,
+                    "priority": i.priority,
                     "status": i.status.value,
                     "done": f"{i.done_count}/{i.times_per_day}",
                     **({"period": f"{i.period_done}/{i.period_target}"} if i.period_target else {}),
@@ -155,11 +157,13 @@ def create_habit(
     start_date: str | None = None,
     icon: str | None = None,
     color: str | None = None,
+    priority: int = 0,
 ) -> dict[str, Any]:
     """Create a habit. weekdays: 0 = Monday … 6 = Sunday. times_per_period needs period_unit and period_target.
 
     kind 'limit' is for things to avoid: daily = never, weekdays = never on those days,
     times_per_period = at most period_target days per week or month. Kind cannot change later.
+    priority is a colored flag: 0 none, 1 low (blue), 2 medium (yellow), 3 high (red).
     """
     with _session(write=True) as (db, principal):
         data = HabitCreate(
@@ -167,6 +171,7 @@ def create_habit(
             kind=kind,
             icon=icon,
             color=color,
+            priority=priority,
             start_date=date.fromisoformat(start_date) if start_date else None,
             schedule=ScheduleIn(
                 type=schedule_type,
@@ -186,15 +191,20 @@ def update_habit(
     name: str | None = None,
     icon: str | None = None,
     color: str | None = None,
+    priority: int | None = None,
     end_date: str | None = None,
     stats_start_date: str | None = None,
     archived: bool | None = None,
 ) -> dict[str, Any]:
-    """Edit a habit's details. Only the arguments given change. Use change_schedule for frequency."""
+    """Edit a habit's details. Only the arguments given change. Use change_schedule for frequency.
+
+    priority is a colored flag: 0 none, 1 low (blue), 2 medium (yellow), 3 high (red).
+    """
     given = {
         "name": name,
         "icon": icon,
         "color": color,
+        "priority": priority,
         "end_date": date.fromisoformat(end_date) if end_date else None,
         "stats_start_date": date.fromisoformat(stats_start_date) if stats_start_date else None,
         "archived": archived,

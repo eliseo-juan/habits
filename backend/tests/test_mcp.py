@@ -50,7 +50,14 @@ def test_mcp_habit_flow(client, alice):
     today = call(client, alice, "today", scope="read")
     assert today["date"] == "2026-11-09"
     assert today["items"] == [
-        {"id": habit["id"], "name": "Stretch", "kind": "build", "status": "pending", "done": "0/1"}
+        {
+            "id": habit["id"],
+            "name": "Stretch",
+            "kind": "build",
+            "priority": 0,
+            "status": "pending",
+            "done": "0/1",
+        }
     ]
 
     month = call(client, alice, "month_stats", scope="read", month="2026-11")["habits"][0]
@@ -123,3 +130,12 @@ def test_mcp_limit_habit_counts_slips_against_the_allowance(client, alice):
 
     today = call(client, alice, "today", scope="read")["items"][0]
     assert (today["kind"], today["status"], today["period"]) == ("limit", "pending", "0/1")
+
+
+def test_mcp_priority_flag(client, alice):
+    habit = call(client, alice, "create_habit", name="Stretch", priority=1)
+    assert habit["priority"] == 1
+    updated = call(client, alice, "update_habit", habit_id=habit["id"], priority=3)
+    assert updated["priority"] == 3
+    cleared = call(client, alice, "update_habit", habit_id=habit["id"], priority=0)
+    assert cleared["priority"] == 0
