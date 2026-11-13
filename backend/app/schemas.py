@@ -62,7 +62,9 @@ class HabitCreate(BaseModel):
     )
     color: str | None = Field(None, max_length=16)
     icon: str | None = Field(None, max_length=64)
-    priority: int = Field(0, ge=0, le=2)
+    priority: int = Field(
+        0, ge=0, le=3, description="Flag: 0 none, 1 low (blue), 2 medium (yellow), 3 high (red)"
+    )
     start_date: date | None = Field(None, description="Defaults to the user's today")
     end_date: date | None = None
     stats_start_date: date | None = None
@@ -80,7 +82,7 @@ class HabitUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=120)
     color: str | None = Field(None, max_length=16)
     icon: str | None = Field(None, max_length=64)
-    priority: int | None = Field(None, ge=0, le=2)
+    priority: int | None = Field(None, ge=0, le=3)
     start_date: date | None = None
     end_date: date | None = None
     stats_start_date: date | None = None

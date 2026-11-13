@@ -390,3 +390,31 @@ def test_awtrix_does_not_count_limit_habits_as_to_do(client, alice):
     create_habit(client, alice, name="Sugar", kind="limit")
     summary = client.get("/awtrix/today", headers=alice.auth("read")).json()
     assert (summary["pending"], summary["done"], summary["total"]) == (0, 0, 0)
+
+
+def test_priority_defaults_to_none_and_can_be_changed(client, alice):
+    habit = create_habit(client, alice)
+    assert habit["priority"] == 0
+
+    flagged = create_habit(client, alice, name="Run", priority=3)
+    assert flagged["priority"] == 3
+
+    response = client.patch(f"/habits/{habit['id']}", json={"priority": 2}, headers=alice.auth())
+    assert response.status_code == 200
+    assert response.json()["priority"] == 2
+
+    response = client.patch(f"/habits/{habit['id']}", json={"priority": 0}, headers=alice.auth())
+    assert response.json()["priority"] == 0
+
+    today = client.get("/today", headers=alice.auth("read")).json()
+    assert {i["name"]: i["priority"] for i in today["items"]}["Run"] == 3
+
+
+def test_priority_out_of_range_is_422(client, alice):
+    body = {"name": "x", "priority": 4, "schedule": DAILY}
+    assert client.post("/habits", json=body, headers=alice.auth()).status_code == 422
+    habit = create_habit(client, alice)
+    response = client.patch(f"/habits/{habit['id']}", json={"priority": -1}, headers=alice.auth())
+    assert response.status_code == 422
+    response = client.patch(f"/habits/{habit['id']}", json={"priority": None}, headers=alice.auth())
+    assert response.status_code == 422

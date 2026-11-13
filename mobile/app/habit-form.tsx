@@ -10,7 +10,7 @@ import { useToast } from "@/components/toast"
 import { Button, Fab, SectionTitle } from "@/components/ui"
 import { api } from "@/lib/api"
 import { useReminders, useSession, type Reminder } from "@/lib/data"
-import { colorOf, parse, iso, WEEKDAYS, type Habit, type Schedule } from "@/lib/rules"
+import { colorOf, parse, iso, PRIORITIES, WEEKDAYS, type Habit, type Schedule } from "@/lib/rules"
 import { colors, HABIT_COLORS, radius } from "@/theme"
 
 const MONDAY = 1
@@ -160,6 +160,7 @@ export default function HabitFormScreen() {
   const [name, setName] = useState(habit?.name ?? "")
   const [icon, setIcon] = useState(habit?.icon ?? "")
   const [color, setColor] = useState(habit ? colorOf(habit) : HABIT_COLORS[0])
+  const [priority, setPriority] = useState<Habit["priority"]>(habit?.priority ?? 0)
   const [startDate, setStartDate] = useState(habit?.start_date ?? today)
   const [endDate, setEndDate] = useState(habit?.end_date ?? "")
   const [schedule, setSchedule] = useState<Schedule>(habit?.schedule ?? { type: "daily", times_per_day: 1, weekdays: null, period_unit: null, period_target: null })
@@ -221,7 +222,7 @@ export default function HabitFormScreen() {
 
   const save = () =>
     run(async () => {
-      const look = { name: name.trim(), icon: icon.trim() || null, color, start_date: startDate, end_date: endDate || null }
+      const look = { name: name.trim(), icon: icon.trim() || null, color, priority, start_date: startDate, end_date: endDate || null }
       if (!habit) {
         const created = await api<Habit>("/habits", { method: "POST", body: { ...look, kind, schedule: scheduleBody } })
         if (kind === "build") await saveReminders(created.id)
@@ -277,6 +278,18 @@ export default function HabitFormScreen() {
           <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8, paddingTop: 4 }}>
             {HABIT_COLORS.map((c) => (
               <Pressable key={c} onPress={() => setColor(c)} accessibilityLabel={c} style={[{ width: 36, height: 36, borderRadius: 18, backgroundColor: c }, color === c && { borderWidth: 2, borderColor: "#fff" }]} />
+            ))}
+          </View>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <SectionTitle>Prioridad</SectionTitle>
+          <View style={styles.segments}>
+            {PRIORITIES.map((p) => (
+              <Pressable key={p.id} onPress={() => setPriority(p.id)} accessibilityLabel={`Prioridad ${p.label.toLowerCase()}`} style={[styles.segment, { flexDirection: "row", gap: 4 }, priority === p.id && { backgroundColor: colors.primary }]}>
+                {p.color && <Ionicons name="flag" size={14} color={priority === p.id ? colors.primaryForeground : p.color} />}
+                <Text style={{ fontSize: 14, fontWeight: "500", color: priority === p.id ? colors.primaryForeground : colors.mutedForeground }}>{p.label}</Text>
+              </Pressable>
             ))}
           </View>
         </View>

@@ -59,6 +59,7 @@ The REST API and the MCP tools call the same services, so they always agree. A b
 - Failures are computed, never stored. Skipped days count neither for nor against. Today is `pending` until it ends.
 - `times_per_period` counts days completed in the week or month; a period is credited to the stats range holding its last day. A period cut short by the habit's start or end, the stats start or a schedule change counts as done when it reaches the target and is left out otherwise.
 - A habit's `kind` is `build` (success is doing it) or `limit` (success is not doing it), fixed at creation. On a limit habit a logged day is a slip: `daily` means never, `weekdays` never on those days, and `times_per_period` at most `period_target` slip days per week or month. A period fails as soon as it goes over; slips within the allowance show as `slipped`. Limit habits are never reminded and never count as to-do on the clock or in Home Assistant.
+- A habit's `priority` is a colored flag: 0 none (the default), 1 low (blue), 2 medium (yellow), 3 high (red). It only labels the habit; it never affects stats or reminders.
 - Another user's resources answer 404.
 
 ### Accounts and tokens

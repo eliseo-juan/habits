@@ -1,11 +1,11 @@
 import { useState } from "react"
-import { Archive, RotateCcw, X } from "lucide-react"
+import { Archive, Flag, RotateCcw, X } from "lucide-react"
 import { AlertDialog } from "radix-ui"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { queryClient, useSession } from "@/lib/data"
-import { colorOf, WEEKDAYS, type Habit, type Schedule } from "@/lib/rules"
+import { colorOf, PRIORITIES, WEEKDAYS, type Habit, type Schedule } from "@/lib/rules"
 import { cn } from "@/lib/utils"
 
 const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316", "#eab308", "#14b8a6"]
@@ -60,6 +60,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
   const [name, setName] = useState(habit?.name ?? "")
   const [icon, setIcon] = useState(habit?.icon ?? "")
   const [color, setColor] = useState(habit ? colorOf(habit) : COLORS[0])
+  const [priority, setPriority] = useState<Habit["priority"]>(habit?.priority ?? 0)
   const [startDate, setStartDate] = useState(habit?.start_date ?? today)
   const [endDate, setEndDate] = useState(habit?.end_date ?? "")
   const [schedule, setSchedule] = useState<Schedule>(
@@ -107,7 +108,7 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
 
   const save = () =>
     run(async () => {
-      const look = { name: name.trim(), icon: icon.trim() || null, color, start_date: startDate, end_date: endDate || null }
+      const look = { name: name.trim(), icon: icon.trim() || null, color, priority, start_date: startDate, end_date: endDate || null }
       if (!habit) {
         await api("/habits", { method: "POST", body: { ...look, kind, schedule: scheduleBody } })
         return
@@ -159,6 +160,17 @@ export function HabitForm({ habit, onClose, onArchived }: { habit?: Habit; onClo
                 className={cn("size-9 rounded-full ring-offset-2 ring-offset-background", color === c && "ring-2 ring-white")}
                 style={{ background: c }}
               />
+            ))}
+          </div>
+        </Section>
+
+        <Section title="Prioridad">
+          <div className="grid grid-cols-4 gap-1.5 rounded-2xl bg-white/10 p-1">
+            {PRIORITIES.map((p) => (
+              <button key={p.id} type="button" aria-pressed={priority === p.id} onClick={() => setPriority(p.id)} className={cn(segment(priority === p.id), "flex items-center justify-center gap-1")}>
+                {p.color && <Flag className="size-3.5" style={{ color: priority === p.id ? undefined : p.color }} fill="currentColor" />}
+                {p.label}
+              </button>
             ))}
           </div>
         </Section>
