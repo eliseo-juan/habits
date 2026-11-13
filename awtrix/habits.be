@@ -15,8 +15,9 @@
 # The app only takes its turn in the rotation while something is pending.
 #
 # While the app is shown, any button brings up a cursor on the first pending habit: left and right
-# move it, a short press on select marks the habit done or not done. Each press keeps the app on
-# screen for another 30 s. The cursor is gone the next time the app appears.
+# move it, and one press past either end hides it. A short press on select marks the habit done or
+# not done. Each press keeps the app on screen for another 30 s. The cursor is gone the next time
+# the app appears.
 
 import json
 import secret
@@ -311,10 +312,23 @@ class Habits
     rotation.pause()
   end
 
-  def move(btn)
-    var n = size(self.cols)
-    var d = btn == "right" ? 1 : -1
-    self.cursor = (self.cursor + d + n) % n
+  def release()
+    if self.awake
+      self.awake = false
+      rotation.resume()
+    end
+  end
+
+  # A press past either end hides the cursor and lets the rotation go on; holding stops at the end.
+  def move(btn, held)
+    var c = self.cursor + (btn == "right" ? 1 : -1)
+    if c >= 0 && c < size(self.cols)
+      self.cursor = c
+    elif !held
+      self.cursor = -1
+      self.armed = false
+      self.release()
+    end
   end
 
   # Optimistic: the square flips at once, and goes back with a red blink if the server says no.
@@ -367,7 +381,7 @@ class Habits
       end
       self.armed = true
       if btn != "select"
-        self.move(btn)
+        self.move(btn, false)
       end
       return true
     end
@@ -376,7 +390,7 @@ class Habits
     end
     if event == "repeat"
       self.keep_awake()
-      self.move(btn)
+      self.move(btn, true)
     elif event == "release" && btn == "select"
       self.toggle(self.cursor)
     end
@@ -394,10 +408,7 @@ class Habits
   def on_hide()
     self.cursor = -1
     self.armed = false
-    if self.awake
-      self.awake = false
-      rotation.resume()
-    end
+    self.release()
   end
 
   # Nothing pending (or nothing received yet): the rotation skips this app.
