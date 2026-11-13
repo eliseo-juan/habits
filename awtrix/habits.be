@@ -428,7 +428,7 @@ class Habits
           end
         end
       end
-      if self.cursor >= 0 && self.cursor < n && (t % 800) < 550
+      if self.cursor >= 0 && self.cursor < n
         var cx = self.ox + (self.cursor % self.cn) * self.pitch
         var cy = self.oy + (self.cursor / self.cn) * self.pitch
         rect(cx - 1, cy - 1, self.inner + 2, self.inner + 2, 0xFFFFFF)

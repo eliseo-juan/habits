@@ -33,7 +33,7 @@ The clock verifies the server's HTTPS certificate, so the server needs one the c
 
 While the app is on screen, it takes the three buttons, so left and right no longer switch apps there:
 
-- Any button brings up a blinking cursor on the first pending habit.
+- Any button brings up a cursor, a white outline, on the first pending habit.
 - Left and right move it, and keep moving while held.
 - A short press on select marks the habit done, or not done if it already was. Holding select still opens the clock's menu.
 - Each press keeps the app on screen for another 30 s. Once it leaves, the cursor is gone the next time it appears.
