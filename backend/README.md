@@ -90,7 +90,7 @@ In the Docker image, pass the same arguments to the entrypoint: `docker compose 
 
 Streamable HTTP at `<HABITS_PUBLIC_URL>/mcp`, stateless, JSON responses (no SSE, so nothing to tune for proxy buffering). Tools: `list_habits`, `today`, `mark_done`, `set_day`, `skip`, `clear_day`, `create_habit`, `update_habit`, `change_schedule`, `month_stats`, `year_stats`, `habit_stats`. A read token can only use the read tools.
 
-**claude.ai, Claude Desktop and the Claude mobile apps** use OAuth. Clients are registered from the terminal only; the public `/register` endpoint is off, so nobody else can create a client that sends codes to their own site.
+**claude.ai, Claude Desktop and the Claude mobile apps** use OAuth. Clients are registered from the terminal, or by the client itself through dynamic registration (`POST /register`, RFC 7591; needed by clients such as OpenClaw). Dynamic registration only accepts `https` redirect URIs and loopback ones (`http://127.0.0.1:<port>/…`, `http://localhost:<port>/…`, any port), is rate-limited, and PKCE (S256) is always required. The login page shows where the code will be sent, so check it before you sign in.
 
 ```sh
 habits create-oauth-client Claude --redirect-uri https://claude.ai/api/mcp/auth_callback --redirect-uri https://claude.com/api/mcp/auth_callback
@@ -170,7 +170,7 @@ The web app and the REST API can stay on a private network. Only claude.ai (OAut
 
 ```caddyfile
 habits.example.com {
-    @allowed path /mcp /authorize /token /oauth/* /.well-known/oauth-* /notifications/actions/*
+    @allowed path /mcp /authorize /token /register /oauth/* /.well-known/oauth-* /notifications/actions/*
     handle @allowed {
         reverse_proxy <app-host>:8000
     }

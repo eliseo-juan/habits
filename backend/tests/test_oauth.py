@@ -90,8 +90,13 @@ def test_unauthenticated_mcp_points_to_resource_metadata(client):
     assert resource["authorization_servers"] == ["http://localhost:8000/"]
 
     server = client.get("/.well-known/oauth-authorization-server").json()
-    assert "registration_endpoint" not in server
+    assert server["registration_endpoint"] == "http://localhost:8000/register"
     assert server["code_challenge_methods_supported"] == ["S256"]
+    assert server["token_endpoint_auth_methods_supported"] == [
+        "none",
+        "client_secret_post",
+        "client_secret_basic",
+    ]
 
 
 def test_oauth_flow_gives_a_working_mcp_token(client, alice, capsys):
@@ -193,12 +198,159 @@ def test_repeated_failed_logins_are_throttled(client, alice, capsys):
     assert api.status_code == 429
 
 
-def test_clients_can_only_be_registered_from_the_terminal(client):
-    response = client.post(
-        "/register",
-        json={"redirect_uris": ["https://evil.example/callback"], "client_name": "Claude"},
+def dcr(client, **overrides):
+    body = {
+        "client_name": "OpenClaw",
+        "redirect_uris": ["http://127.0.0.1:8976/callback"],
+        "grant_types": ["authorization_code"],
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "none",
+    } | overrides
+    return client.post("/register", json=body)
+
+
+def test_dynamic_registration_of_a_public_loopback_client(client):
+    response = dcr(client)
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["client_id"] and body["client_id_issued_at"]
+    assert "client_secret" not in body
+    assert body["redirect_uris"] == ["http://127.0.0.1:8976/callback"]
+    assert body["client_name"] == "OpenClaw"
+    assert body["token_endpoint_auth_method"] == "none"
+
+
+def test_confidential_dynamic_client_gets_a_secret(client):
+    body = dcr(client, token_endpoint_auth_method="client_secret_post").json()
+    assert body["client_secret"]
+    assert body["client_secret_expires_at"] == 0
+
+
+def test_dynamic_client_completes_authorization_code_with_pkce(client, alice):
+    registered = dcr(client).json()
+    redirect = "http://127.0.0.1:8976/callback"
+    verifier, challenge = pkce()
+    response = client.get(
+        "/authorize",
+        params={
+            "response_type": "code",
+            "client_id": registered["client_id"],
+            "redirect_uri": redirect,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "state": "xyz",
+        },
+        follow_redirects=False,
     )
-    assert response.status_code == 404
+    assert response.status_code == 302, response.text
+    request_id = parse_qs(urlparse(response.headers["location"]).query)["request"][0]
+    page = client.get("/oauth/login", params={"request": request_id})
+    assert "127.0.0.1:8976" in page.text
+
+    done = login(client, request_id, alice.email, "secret-password")
+    location = urlparse(done.headers["location"])
+    assert location.netloc == "127.0.0.1:8976"
+    code = parse_qs(location.query)["code"][0]
+    token = client.post(
+        "/token",
+        data={
+            "grant_type": "authorization_code",
+            "client_id": registered["client_id"],
+            "code": code,
+            "redirect_uri": redirect,
+            "code_verifier": verifier,
+        },
+    )
+    assert token.status_code == 200, token.text
+    assert tools_list(client, token.json()["access_token"]).status_code == 200
+
+
+def test_loopback_client_may_use_another_port_but_not_another_path_or_host(client):
+    registered = dcr(client).json()
+    _, challenge = pkce()
+
+    def status(uri):
+        return client.get(
+            "/authorize",
+            params={
+                "response_type": "code",
+                "client_id": registered["client_id"],
+                "redirect_uri": uri,
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+            },
+            follow_redirects=False,
+        ).status_code
+
+    assert status("http://127.0.0.1:51234/callback") == 302
+    assert status("http://127.0.0.1:8976/other") == 400
+    assert status("http://localhost:8976/callback") == 400
+    assert status("https://evil.example/callback") == 400
+
+
+def test_public_client_must_use_pkce(client):
+    registered = dcr(client).json()
+    response = client.get(
+        "/authorize",
+        params={
+            "response_type": "code",
+            "client_id": registered["client_id"],
+            "redirect_uri": "http://127.0.0.1:8976/callback",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    location = response.headers["location"]
+    assert "error=invalid_request" in location and "/oauth/login" not in location
+
+
+def test_dynamic_registration_rejects_unsafe_redirect_uris(client):
+    for uri in (
+        "http://evil.example/callback",
+        "http://localhost.evil.example/callback",
+        "ftp://claude.ai/x",
+        "https://app.example/cb#frag",
+        "com.evil.app:/callback",
+    ):
+        response = dcr(client, redirect_uris=[uri])
+        assert response.status_code == 400, uri
+    assert dcr(client, redirect_uris=[]).status_code == 400
+    accepted = ["https://app.example/cb", "http://localhost:3118/cb", "http://[::1]:3118/cb"]
+    assert dcr(client, redirect_uris=accepted).status_code == 201
+
+
+def test_dynamic_clients_are_stored_and_survive_restarts(client):
+    from app.db import get_sessionmaker
+    from app.models import OAuthClient
+
+    client_id = dcr(client).json()["client_id"]
+    with get_sessionmaker()() as db:
+        assert db.get(OAuthClient, client_id) is not None
+
+
+def test_registration_is_rate_limited(client):
+    statuses = [dcr(client).status_code for _ in range(12)]
+    assert statuses[:10] == [201] * 10
+    assert statuses[10:] == [429, 429]
+
+
+def test_registration_limit_resets_after_the_window(client, clock):
+    from datetime import timedelta
+
+    for _ in range(10):
+        dcr(client)
+    assert dcr(client).status_code == 429
+    clock.now += timedelta(hours=1, minutes=1)
+    assert dcr(client).status_code == 201
+
+
+def test_terminal_registered_clients_still_work_next_to_dynamic_ones(client, alice, capsys):
+    dcr(client)
+    registered = register(capsys)
+    verifier, challenge = pkce()
+    request_id = authorize(client, registered["client_id"], challenge)
+    code = code_from(login(client, request_id, alice.email, "secret-password"))
+    assert exchange(client, registered["client_id"], code, verifier).status_code == 200
 
 
 def test_unknown_redirect_uri_is_rejected(client, alice, capsys):
