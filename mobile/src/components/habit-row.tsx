@@ -37,12 +37,12 @@ function periodLabel(habit: Habit, entry: DayEntry): string {
 }
 
 export function RemindersChip({ habitId }: { habitId: number }) {
-  const times = (useReminders(habitId).data ?? []).filter((r) => r.enabled).map((r) => r.time_local.slice(0, 5))
-  if (!times.length) return null
+  const count = (useReminders(habitId).data ?? []).filter((r) => r.enabled).length
+  if (!count) return null
   return (
     <Chip>
       <Ionicons name="notifications-outline" size={11} color={colors.mutedForeground} />
-      <Text style={chipTextStyle()}>{times.join(" · ")}</Text>
+      <Text style={chipTextStyle()}>{count}</Text>
     </Chip>
   )
 }

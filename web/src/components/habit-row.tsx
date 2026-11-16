@@ -41,7 +41,7 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: { habit: Habit; 
   const { today } = useSession()
   const writer = useLogWriter()
   const streak = useHabitStats(habit.id).data?.current_streak ?? 0
-  const reminders = (useReminders(habit.id).data ?? []).filter((r) => r.enabled).map((r) => r.time_local.slice(0, 5))
+  const reminders = (useReminders(habit.id).data ?? []).filter((r) => r.enabled).length
   const isFuture = day > today
   const target = entry.times_per_day
 
@@ -76,10 +76,10 @@ export function HabitRow({ habit, entry, day, onOpen, dimmed }: { habit: Habit; 
           <span className="mt-1 flex flex-wrap gap-1">
             <PriorityFlag priority={habit.priority} />
             <Chip>{habit.schedule.type === "times_per_period" ? periodLabel(habit, entry) : scheduleLabel(habit)}</Chip>
-            {reminders.length > 0 && (
+            {reminders > 0 && (
               <Chip>
                 <Bell className="size-3" />
-                {reminders.join(" · ")}
+                {reminders}
               </Chip>
             )}
             {streak > 1 && (
