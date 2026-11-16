@@ -4,21 +4,23 @@
 
 ## Install
 
-1. Create a read token for the clock:
+1. Create a write token for the clock, so it can mark habits:
 
    ```sh
-   docker compose exec habits ./docker-entrypoint.sh create-token me@example.com --name awtrix --scope read
+   docker compose exec habits ./docker-entrypoint.sh create-token me@example.com --name awtrix --scope write
    ```
 
-2. Install the script. In the clock's web UI: **Scripts** → **+**, name it `Habits`, paste `habits.be`, **Save**. Or:
+2. Put your server's host in the `# @secret` line of `habits.be`, replacing `habits.example.com`. The clock only sends the token to the hosts listed there, and changing that line later erases the stored token.
+
+3. Install the script. In the clock's web UI: **Scripts** → **+**, name it `Habits`, paste `habits.be`, **Save**. Or:
 
    ```sh
    curl -X PUT http://<clock-ip>/api/v1/apps/script/Habits -H 'Content-Type: text/plain' --data-binary @habits.be
    ```
 
-3. **Apps** tab → ⚙ on the `Habits` row: set the server address and paste the token. You can also change the refresh interval (default 2 min) and the hour the day starts (default 7). Saving restarts the app.
+4. **Apps** tab → ⚙ on the `Habits` row: set the server address, and paste the token under **API keys**. You can also change the refresh interval (default 2 min) and the hour the day starts (default 7). Saving restarts the app.
 
-The clock verifies the server's HTTPS certificate, so the server needs one the clock trusts. The token is stored as a clock setting, which anyone on the network can read unless authentication is turned on in the clock, so always use a read-only token.
+The clock verifies the server's HTTPS certificate, so the server needs one the clock trusts. The token is an API key of the app: nobody can read it back from the clock, and it only goes to the hosts in the `# @secret` line. Other scripts installed on the clock could still use it, so install only scripts you trust, and turn on the clock's web login so nobody on the network can change the script. The script needs a TC002 (the `secret` module).
 
 ## What it shows
 
@@ -27,9 +29,20 @@ The clock verifies the server's HTTPS certificate, so the server needs one the c
 - A dim pixel in the top-right corner when the last refresh failed or the data is old.
 - The app only takes its turn in the clock's rotation while something is still pending.
 
+## Marking habits from the clock
+
+While the app is on screen, it takes the three buttons, so left and right no longer switch apps there:
+
+- Any button brings up a cursor, a white outline, on the first pending habit.
+- Left and right move it, and keep moving while held. One more press past either end hides it and lets the rotation go on.
+- A short press on select marks the habit done, or not done if it already was. Holding select still opens the clock's menu.
+- Each press keeps the app on screen for another 30 s. Once it leaves, the cursor is gone the next time it appears.
+
+A square flips at once. If the server refuses the mark, it flips back and blinks red. A habit done several times a day gets one more each press and stays pending until it reaches its count; marking a done habit not done clears the day.
+
 ## How it works
 
-Every few minutes, and whenever the app comes back on screen with data older than 30 s, the script calls `GET /awtrix/today`. The server already leaves out limit habits and returns the pending and done habits with their colors, so the script only draws. A habit marked anywhere (web app, mobile app, Claude, a reminder, Home Assistant) appears on the clock at the next refresh.
+Every few minutes, after each mark, and whenever the app comes back on screen with data older than 30 s, the script calls `GET /awtrix/today`. The server already leaves out limit habits and returns the pending and done habits with their colors, so the script only draws. A mark is `POST /habits/{id}/logs/{date}/done` or `DELETE /habits/{id}/logs/{date}`, with the date the server sent, so the clock never works out the user's day itself. A habit marked anywhere (web app, mobile app, Claude, a reminder, Home Assistant) appears on the clock at the next refresh.
 
 Settings are declared in the `# @config` header of `habits.be`; bump `# @version` when changing the script.
 
