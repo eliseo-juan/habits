@@ -3,7 +3,7 @@ import Animated, { FadeIn } from "react-native-reanimated"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { HabitIcon } from "@/components/habit-row"
+import { HabitIcon, PriorityFlag } from "@/components/habit-row"
 import { Card, Chip, chipTextStyle, Fab, Screen } from "@/components/ui"
 import { useHabitStats, useSession, useStatuses } from "@/lib/data"
 import { addDays, colorOf, percent, scheduleLabel, streakLabel, weekday, WEEKDAYS, type Habit, type Status } from "@/lib/rules"
@@ -59,6 +59,7 @@ function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOp
             </Text>
             <Text style={{ fontSize: 12, color: colors.mutedForeground }}>{scheduleLabel(habit)}</Text>
           </View>
+          <PriorityFlag priority={habit.priority} />
           <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>

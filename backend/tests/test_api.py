@@ -410,6 +410,20 @@ def test_priority_defaults_to_none_and_can_be_changed(client, alice):
     assert {i["name"]: i["priority"] for i in today["items"]}["Run"] == 3
 
 
+def test_habits_are_ordered_by_priority_then_sort_order(client, alice):
+    create_habit(client, alice, name="Plain")
+    create_habit(client, alice, name="Low", priority=1)
+    create_habit(client, alice, name="High B", priority=3, sort_order=2)
+    create_habit(client, alice, name="High A", priority=3, sort_order=1)
+    create_habit(client, alice, name="Medium", priority=2)
+    expected = ["High A", "High B", "Medium", "Low", "Plain"]
+
+    listed = client.get("/habits", headers=alice.auth("read")).json()
+    assert [h["name"] for h in listed] == expected
+    today = client.get("/today", headers=alice.auth("read")).json()
+    assert [i["name"] for i in today["items"]] == expected
+
+
 def test_priority_out_of_range_is_422(client, alice):
     body = {"name": "x", "priority": 4, "schedule": DAILY}
     assert client.post("/habits", json=body, headers=alice.auth()).status_code == 422

@@ -34,7 +34,8 @@ def list_habits(db: Session, user: User, include_archived: bool = False) -> list
     query = select(Habit).where(Habit.user_id == user.id)
     if not include_archived:
         query = query.where(Habit.archived.is_(False))
-    return list(db.scalars(query.order_by(Habit.sort_order, Habit.id)))
+    # Highest priority first, then the user's manual order.
+    return list(db.scalars(query.order_by(Habit.priority.desc(), Habit.sort_order, Habit.id)))
 
 
 def _check_dates(start: date, end: date | None) -> None:

@@ -1,6 +1,6 @@
 import { ChevronRight, Flame, Plus, Target } from "lucide-react"
 import { motion } from "motion/react"
-import { Chip, HabitIcon } from "@/components/habit-row"
+import { Chip, HabitIcon, PriorityFlag } from "@/components/habit-row"
 import { useHabitStats, useSession, useStatuses } from "@/lib/data"
 import { HabitForm } from "@/components/habit-form"
 import { goBack, navigate } from "@/lib/router"
@@ -67,6 +67,7 @@ function HabitCard({ habit, index, onOpen }: { habit: Habit; index: number; onOp
           <p className="truncate font-medium">{habit.name}</p>
           <p className="text-xs text-muted-foreground">{scheduleLabel(habit)}</p>
         </div>
+        <PriorityFlag priority={habit.priority} />
         <ChevronRight className="size-5 text-muted-foreground" />
       </div>
       <div className="mt-4 grid grid-cols-7 gap-1.5">
