@@ -14,7 +14,9 @@ type Row = { habit: Habit; entry: DayEntry }
 export default function TodayScreen() {
   const { today, habits } = useSession()
   const statusOf = useStatuses()
-  const [day, setDay] = useState(today)
+  // null follows "today", so a stale cached date refreshed on launch moves the screen with it.
+  const [picked, setDay] = useState<string | null>(null)
+  const day = picked ?? today
   const items = useDay(day).data?.items
   const open = (habit: Habit) => router.push({ pathname: "/log/[habitId]", params: { habitId: String(habit.id), day } })
 
@@ -42,7 +44,7 @@ export default function TodayScreen() {
           headerRight:
             day !== today
               ? () => (
-                  <Pressable onPress={() => setDay(today)} hitSlop={10} accessibilityLabel="Ir a hoy" style={({ pressed }) => [{ marginRight: 16 }, pressed && { opacity: 0.6 }]}>
+                  <Pressable onPress={() => setDay(null)} hitSlop={10} accessibilityLabel="Ir a hoy" style={({ pressed }) => [{ marginRight: 16 }, pressed && { opacity: 0.6 }]}>
                     <Ionicons name="today-outline" size={24} color={colors.foreground} />
                   </Pressable>
                 )
@@ -50,7 +52,7 @@ export default function TodayScreen() {
         }}
       />
       <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-        <DayStrip selected={day} onSelect={setDay} />
+        <DayStrip selected={day} onSelect={(next) => setDay(next === today ? null : next)} />
       </View>
 
       <Screen refreshable contentStyle={{ paddingTop: 8 }}>
