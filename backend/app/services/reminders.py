@@ -81,6 +81,9 @@ def _devices(db: Session, token: str) -> list[NotificationChannel]:
 
 def register_push_device(db: Session, user: User, data: PushDeviceIn) -> None:
     """Idempotent. A token belongs to one account: signing in elsewhere on the same phone moves it."""
+    config = {"token": data.token}
+    if data.platform:
+        config["platform"] = data.platform
     mine = None
     for channel in _devices(db, data.token):
         if channel.user_id == user.id and mine is None:
@@ -88,13 +91,10 @@ def register_push_device(db: Session, user: User, data: PushDeviceIn) -> None:
         else:
             db.delete(channel)
     if mine is None:
-        db.add(
-            NotificationChannel(
-                user_id=user.id, type="expo", config={"token": data.token}, enabled=True
-            )
-        )
+        db.add(NotificationChannel(user_id=user.id, type="expo", config=config, enabled=True))
     else:
         mine.enabled = True
+        mine.config = {**mine.config, **config}
     db.commit()
 
 

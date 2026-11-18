@@ -154,6 +154,7 @@ class ReminderOut(BaseModel):
 
 class PushDeviceIn(BaseModel):
     token: str = Field(pattern=r"^Expo(nent)?PushToken\[[^\]\s]+\]$", max_length=255)
+    platform: Literal["android", "ios"] | None = None
 
 
 class WebhookIn(BaseModel):

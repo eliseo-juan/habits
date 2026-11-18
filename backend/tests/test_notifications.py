@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 
 import httpx
@@ -249,3 +250,33 @@ def test_notifications_without_a_done_link_have_no_button():
     plain = Notification("SmartHabits", "Test notification")
     send_expo({"token": TOKEN}, plain, client=http())
     assert b'"categoryId"' not in bodies[0]
+
+
+def test_android_reminders_are_data_only_so_the_app_can_add_the_buttons():
+    bodies = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.read()))
+        return httpx.Response(200, json={"data": {"status": "ok"}})
+
+    def http() -> httpx.Client:
+        return httpx.Client(transport=httpx.MockTransport(handler))
+
+    notification = Notification("Leer", "", "https://h/d", 7, "https://h/s", "https://h/z")
+    send_expo({"token": TOKEN, "platform": "android"}, notification, client=http())
+    send_expo({"token": TOKEN, "platform": "ios"}, notification, client=http())
+    android, ios = bodies
+    assert "title" not in android and "body" not in android and "categoryId" not in android
+    assert android["data"]["title"] == "Leer"
+    assert android["data"]["doneUrl"] == "https://h/d"
+    assert ios["title"] == "Leer" and ios["categoryId"] == "habit-reminder"
+
+
+def test_push_device_remembers_its_platform(client, alice):
+    client.put("/push-devices", json={"token": TOKEN}, headers=alice.auth())
+    client.put("/push-devices", json={"token": TOKEN, "platform": "android"}, headers=alice.auth())
+    with get_sessionmaker()() as db:
+        (channel,) = db.query(NotificationChannel).filter_by(type="expo")
+        assert channel.config == {"token": TOKEN, "platform": "android"}
+    r = client.put("/push-devices", json={"token": TOKEN, "platform": "web"}, headers=alice.auth())
+    assert r.status_code == 422
