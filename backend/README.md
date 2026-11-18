@@ -120,6 +120,8 @@ POST /habits/{id}/reminders    {"time_local": "08:30", "weekdays": [0, 2, 4]}
 
 Within ten minutes of the local time, a habit still pending that day gets one notification (Android pushes carry no body and three buttons: Hecho, Ignorar to skip the day and Posponer to be reminded again an hour later). The buttons call signed, single-use links (`POST /notifications/actions/{token}/done|skip|snooze`), so the notification never carries a token and the first button tapped uses them all up. If every device fails, the next minute retries.
 
+Android devices report their platform when they register and get the reminder as a data-only push (title and message inside `data`, no `notification` block). Android displays a push that carries a title and body by itself while the app is in the background, which leaves no chance to add buttons; the app receives the data-only push and shows it itself, buttons included. iOS gets a regular alert with `categoryId`.
+
 ### Back office
 
 `/admin` is a read-only back office ([SQLAdmin](https://github.com/aminalaee/sqladmin)) for accounts created with `--admin`. It signs in with the same email and password as the web app and lists users, habits, schedules, logs, reminders, sent reminders, channels, webhooks and API tokens, with search, sorting and CSV/JSON export. Password and token hashes and push tokens are never shown. Nothing can be edited there, so domain rules stay with the app.

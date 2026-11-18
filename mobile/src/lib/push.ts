@@ -19,10 +19,26 @@ const ACTION_TASK = "habits-notification-action"
 const ACTION_URLS: Record<string, string> = { done: "doneUrl", skip: "skipUrl", snooze: "snoozeUrl" }
 
 TaskManager.defineTask<Notifications.NotificationTaskPayload>(ACTION_TASK, async ({ data }) => {
-  if (!("actionIdentifier" in data)) return
-  const key = ACTION_URLS[data.actionIdentifier]
-  const url = key ? data.notification.request.content.data?.[key] : undefined
-  if (typeof url === "string") await fetch(url, { method: "POST" }).catch(() => {})
+  if ("actionIdentifier" in data) {
+    const key = ACTION_URLS[data.actionIdentifier]
+    const url = key ? data.notification.request.content.data?.[key] : undefined
+    if (typeof url === "string") await fetch(url, { method: "POST" }).catch(() => {})
+    return
+  }
+  // Android shows a push with a title and body by itself when the app is in the background, without the buttons. So
+  // the server sends reminders to Android as data only, and this shows them, with the buttons, whatever the app's state.
+  const raw = (data.data as { dataString?: string } | undefined)?.dataString
+  let payload: { title?: string; message?: string; doneUrl?: string } | undefined
+  try {
+    payload = raw ? JSON.parse(raw) : undefined
+  } catch {
+    return
+  }
+  if (!payload?.title || !payload.doneUrl) return
+  await Notifications.scheduleNotificationAsync({
+    content: { title: payload.title, body: payload.message || undefined, data: payload, categoryIdentifier: CATEGORY },
+    trigger: { channelId: "reminders" },
+  }).catch(() => {})
 })
 if (Platform.OS === "android") void Notifications.registerTaskAsync(ACTION_TASK).catch(() => {})
 
@@ -56,7 +72,7 @@ async function currentToken(): Promise<string | null> {
 export async function enablePush(): Promise<boolean> {
   const token = await currentToken()
   if (!token) return false
-  await api("/push-devices", { method: "PUT", body: { token } })
+  await api("/push-devices", { method: "PUT", body: { token, platform: Platform.OS } })
   await storage.set(TOKEN, token)
   await storage.set(FLAG, "1")
   return true
