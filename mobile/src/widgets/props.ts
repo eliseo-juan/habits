@@ -14,7 +14,7 @@ export function buildWidgetProps(date: string, habits: Habit[], items: DayEntry[
       icon: emojiOf(habit),
       color: colorOf(habit),
       done: entry.status === "done",
-      progress: entry.times_per_day > 1 ? `${entry.done_count}/${entry.times_per_day}` : null,
+      progress: entry.times_per_day > 1 ? `${entry.done_count}/${entry.times_per_day}` : "",
     }))
     .sort((a, b) => Number(a.done) - Number(b.done))
   return { signedIn: true, date, done: list.filter((h) => h.done).length, total: list.length, habits: list.slice(0, 8) }

@@ -5,6 +5,7 @@ import { useToast } from "@/components/toast"
 import { Card, Row, Screen, SectionTitle } from "@/components/ui"
 import { appVersion, buildNumber, dateTime, shortHash } from "@/lib/version"
 import { colors } from "@/theme"
+import { resendWidget, widgetStatus } from "@/widgets/sync"
 
 const CHECK_LABELS: Record<Updates.UpdatesCheckAutomaticallyValue, string> = {
   [Updates.UpdatesCheckAutomaticallyValue.ON_LOAD]: "Al abrir la app",
@@ -32,6 +33,9 @@ export default function VersionScreen() {
     }
   }
 
+  const [widget, setWidget] = useState(widgetStatus())
+  const widgetLabel = !widget ? "Sin envíos todavía" : widget.ok ? `Enviado ${widget.done}/${widget.total}` : `Error: ${widget.error}`
+
   return (
     <Screen>
       <SectionTitle>App</SectionTitle>
@@ -40,6 +44,11 @@ export default function VersionScreen() {
         <Row icon="construct-outline" label="Build" value={buildNumber ?? "–"} />
         <Row icon="git-branch-outline" label="Canal" value={currentlyRunning.channel ?? "–"} />
         <Row icon="finger-print-outline" label="Runtime" value={shortHash(currentlyRunning.runtimeVersion)} last />
+      </Card>
+
+      <SectionTitle>Widget</SectionTitle>
+      <Card style={{ padding: 0 }}>
+        <Row icon="apps-outline" label={widgetLabel} value={widget ? dateTime(new Date(widget.at)) : ""} onPress={() => setWidget(resendWidget())} last />
       </Card>
 
       {Updates.isEnabled ? (

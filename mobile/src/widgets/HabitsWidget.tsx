@@ -69,7 +69,7 @@ const HabitsWidget = (props: WidgetProps, environment: WidgetEnvironment) => {
             <Text modifiers={[font({ size: 14 })]}>{habit.icon}</Text>
             <Text modifiers={[font({ size: 14 }), foregroundStyle(habit.done ? muted : "#fafafa"), lineLimit(1)]}>{habit.name}</Text>
             <Spacer />
-            <Text modifiers={[font({ size: 12 }), foregroundStyle(habit.done ? primary : muted)]}>{habit.done ? "✓" : (habit.progress ?? "○")}</Text>
+            <Text modifiers={[font({ size: 12 }), foregroundStyle(habit.done ? primary : muted)]}>{habit.done ? "✓" : (habit.progress || "○")}</Text>
           </HStack>
         ))}
       </VStack>
