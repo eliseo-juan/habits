@@ -67,7 +67,7 @@ Built with [`expo-widgets`](https://docs.expo.dev/versions/v58.0.0/sdk/widgets/)
 - iOS (SwiftUI, `src/widgets/HabitsWidget.tsx`): small, medium, large and lock screen (circular, rectangular, inline). Needs an App Group, which the config plugin sets up and which requires a paid Apple developer account.
 - Android (Jetpack Compose, `src/widgets/HabitsWidget.android.tsx`): 3×2, resizable. Colors come from the device's Material You palette (wallpaper-derived on Android 12+, Material 3 baseline below), so it follows light/dark mode and the wallpaper.
 
-Widgets run in an isolated runtime with no hooks or network, so they receive data already prepared. `widget-sync.tsx` pushes it whenever today's data changes, and a background task (`expo-background-task`, at most every ~15 minutes, as the OS decides) refreshes it while the app is closed, reading the token from secure storage. Signing out clears them. Tapping a widget opens the app; it cannot mark habits yet.
+Widgets run in an isolated runtime with no hooks or network, so they receive data already prepared. `widget-sync.tsx` pushes it whenever today's data changes, and a background task (`expo-background-task`, at most every ~15 minutes, as the OS decides) refreshes it while the app is closed, reading the token from secure storage. Signing out clears them. Settings → Versión has a Widget row with the result of the last push (or its error) and resends it when tapped, which tells a widget that never receives data apart from one that fails to draw it. Tapping a widget opens the app; it cannot mark habits yet.
 
 ## Builds and updates
 

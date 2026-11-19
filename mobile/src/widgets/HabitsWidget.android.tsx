@@ -60,7 +60,7 @@ const HabitsWidget = (props: WidgetProps) => {
             {habit.name}
           </Text>
           <Text color={habit.done ? c.primary : c.onSurfaceVariant} style={{ fontSize: 12, fontWeight: "600" }}>
-            {habit.done ? "✓" : (habit.progress ?? "○")}
+            {habit.done ? "✓" : (habit.progress || "○")}
           </Text>
         </Row>
       ))}
