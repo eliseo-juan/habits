@@ -1,4 +1,4 @@
-import { Platform } from "react-native"
+import { Platform, ToastAndroid } from "react-native"
 import * as Notifications from "expo-notifications"
 import * as TaskManager from "expo-task-manager"
 import { api } from "@/lib/api"
@@ -17,12 +17,29 @@ const ACTION_TASK = "habits-notification-action"
 // Android runs this when a notification button is tapped, even with the app closed. It needs no login: the signed,
 // single-use link in the push is the credential, so a leaked notification never exposes a token.
 const ACTION_URLS: Record<string, string> = { done: "doneUrl", skip: "skipUrl", snooze: "snoozeUrl" }
+const ACTION_DONE: Record<string, string> = { done: "marcado como hecho", skip: "ignorado hoy", snooze: "pospuesto una hora" }
+
+// In a background task the notification arrives as the raw native bundle: its data is a JSON string in `dataString`,
+// not the parsed `data` object the app sees.
+const contentData = (content: { data?: Record<string, unknown>; dataString?: string }): Record<string, unknown> => {
+  if (content.data) return content.data
+  try {
+    return content.dataString ? JSON.parse(content.dataString) : {}
+  } catch {
+    return {}
+  }
+}
 
 TaskManager.defineTask<Notifications.NotificationTaskPayload>(ACTION_TASK, async ({ data }) => {
   if ("actionIdentifier" in data) {
     const key = ACTION_URLS[data.actionIdentifier]
-    const url = key ? data.notification.request.content.data?.[key] : undefined
-    if (typeof url === "string") await fetch(url, { method: "POST" }).catch(() => {})
+    const content = data.notification.request.content as { title?: string | null; data?: Record<string, unknown>; dataString?: string }
+    const url = key ? contentData(content)[key] : undefined
+    if (typeof url !== "string") return
+    const ok = await fetch(url, { method: "POST" }).then((r) => r.ok, () => false)
+    void Notifications.dismissNotificationAsync(data.notification.request.identifier).catch(() => {})
+    const name = content.title ?? "Recordatorio"
+    ToastAndroid.show(ok ? `${name}: ${ACTION_DONE[data.actionIdentifier]}` : "No se pudo registrar, abre la app", ToastAndroid.LONG)
     return
   }
   // Android shows a push with a title and body by itself when the app is in the background, without the buttons. So
