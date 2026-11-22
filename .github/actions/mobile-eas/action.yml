@@ -1,0 +1,57 @@
+name: Mobile EAS setup
+description: >
+  Installs the Expo app and EAS CLI, restores google-services.json and prints the runtime version (native fingerprint)
+  of the checkout. The runtime is computed here with the same command EAS uses, from the same inputs, so a build queued
+  from this runner always matches the one the EAS builder computes.
+
+inputs:
+  google-services-json-base64:
+    description: Base64 of google-services.json (its contents are part of the fingerprint). Empty when not used.
+    required: false
+    default: ""
+  expo-token:
+    description: Expo access token (EAS CLI needs it even to compute the fingerprint).
+    required: true
+  eas-project-id:
+    description: EAS project id (enables expo-updates, so it is part of the fingerprint).
+    required: true
+
+outputs:
+  runtime:
+    description: Android runtime version (fingerprint hash) of this checkout.
+    value: ${{ steps.fingerprint.outputs.runtime }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: lts/*
+        cache: npm
+        cache-dependency-path: mobile/package-lock.json
+    - run: npm ci
+      shell: bash
+      working-directory: mobile
+    - run: npm install --global eas-cli@27.7.2
+      shell: bash
+    - name: Restore google-services.json
+      shell: bash
+      env:
+        GOOGLE_SERVICES_JSON_BASE64: ${{ inputs.google-services-json-base64 }}
+      run: |
+        if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > "$RUNNER_TEMP/google-services.json"
+          echo "GOOGLE_SERVICES_FILE=$RUNNER_TEMP/google-services.json" >> "$GITHUB_ENV"
+        fi
+    - name: Compute the runtime version
+      id: fingerprint
+      shell: bash
+      working-directory: mobile
+      env:
+        EXPO_TOKEN: ${{ inputs.expo-token }}
+        EAS_PROJECT_ID: ${{ inputs.eas-project-id }}
+      run: |
+        eas fingerprint:generate --platform android --json --non-interactive > "$RUNNER_TEMP/fingerprint.json"
+        runtime=$(node -p 'const s = require("fs").readFileSync(process.argv[1], "utf8"); JSON.parse(s.slice(s.indexOf("{"))).hash' "$RUNNER_TEMP/fingerprint.json")
+        echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
+        echo "Runtime version: \`$runtime\`" >> "$GITHUB_STEP_SUMMARY"

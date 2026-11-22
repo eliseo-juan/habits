@@ -4,8 +4,9 @@ name: 🚀 Mobile OTA update
 # requests, so forks cannot reach the secrets) and inside the `production` GitHub environment, where you can
 # also require a manual approval. Needs the repo/environment secrets EXPO_TOKEN and EAS_PROJECT_ID.
 # Android only: there is no iOS build, so iOS updates would reach nobody.
-# When a change alters the native fingerprint, no installed APK can take the new update, so the job queues a
+# When a change alters the native fingerprint, no installed APK can take the new update, so the job first queues a
 # `production` build for that runtime (unless one already exists or is in progress) and links it in the run summary.
+# The runtime is computed by `eas fingerprint:generate` (see .github/actions/mobile-eas), the same code EAS runs.
 on:
   push:
     branches: [main]
@@ -32,53 +33,32 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: ./.github/actions/mobile-eas
+        id: eas
         with:
-          node-version: lts/*
-          cache: npm
-          cache-dependency-path: mobile/package-lock.json
-      - run: npm ci
+          google-services-json-base64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          expo-token: ${{ secrets.EXPO_TOKEN }}
+          eas-project-id: ${{ secrets.EAS_PROJECT_ID }}
       - run: npm run typecheck
-      - run: npm install --global eas-cli@27.7.2
-      - name: Restore google-services.json
-        # Its contents are part of the runtime fingerprint, so this runner needs the same file EAS has.
+      - name: Queue an APK build if no build has this runtime
+        # Before publishing: if this runner's runtime ever differed from the EAS builder's, the build fails here
+        # ("Runtime version mismatch") instead of after an update nobody can receive.
         env:
-          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
-        run: |
-          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > "$RUNNER_TEMP/google-services.json"
-            echo "GOOGLE_SERVICES_FILE=$RUNNER_TEMP/google-services.json" >> "$GITHUB_ENV"
-          fi
+          RUNTIME: ${{ steps.eas.outputs.runtime }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+        run: ../.github/scripts/ensure-android-build.sh production "$RUNTIME"
       - name: Publish the update
-        id: update
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message || github.sha }}
+          RUNTIME: ${{ steps.eas.outputs.runtime }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
         run: |
           eas update --channel production --environment production --platform android --non-interactive --json \
             --message "$COMMIT_MESSAGE" > "$RUNNER_TEMP/update.json"
-          runtime=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))[0].runtimeVersion' "$RUNNER_TEMP/update.json")
-          echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
-      - name: Queue an APK build if no build has this runtime
-        env:
-          RUNTIME: ${{ steps.update.outputs.runtime }}
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
-        run: |
-          eas build:list --platform android --build-profile production --runtime-version "$RUNTIME" --limit 20 --json --non-interactive \
-            > "$RUNNER_TEMP/builds.json"
-          usable=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).filter(b => !["ERRORED", "CANCELED"].includes(b.status)).length' "$RUNNER_TEMP/builds.json")
-          if [ "$usable" -gt 0 ]; then
-            echo "Runtime \`$RUNTIME\` already has an APK build; the update reaches it." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+          published=$(node -p 'const s = require("fs").readFileSync(process.argv[1], "utf8"); JSON.parse(s.slice(s.search(/[\[{]/)))[0].runtimeVersion' "$RUNNER_TEMP/update.json")
+          if [ "$published" != "$RUNTIME" ]; then
+            echo "::error::The update was published for runtime $published but this runner computed $RUNTIME"
+            exit 1
           fi
-          eas build --platform android --profile production --non-interactive --no-wait --json > "$RUNNER_TEMP/build.json"
-          url=$(node -p 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); (Array.isArray(b) ? b[0] : b).buildDetailsPageUrl ?? ""' "$RUNNER_TEMP/build.json")
-          {
-            echo "### Native change: APK build queued"
-            echo
-            echo "Runtime \`$RUNTIME\` had no APK build, so installed apps cannot take this update until you install the new one."
-            echo
-            echo "${url:-See expo.dev → Builds}"
-          } >> "$GITHUB_STEP_SUMMARY"
