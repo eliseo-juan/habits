@@ -1,6 +1,6 @@
 // Android widget (Jetpack Compose / Glance). Same constraints as the iOS one: pure function, no outer references.
 // Colors come from the device's Material You palette (wallpaper-derived on Android 12+, Material 3 baseline below).
-import { Box, Button, CircularProgressIndicator, Column, LazyColumn, Row, Spacer, Text, getMaterialColors } from "@expo/ui/jetpack-compose"
+import { Box, Button, CircularProgressIndicator, Column, Image, LazyColumn, Row, Spacer, Text, getMaterialColors } from "@expo/ui/jetpack-compose"
 import { background, cornerRadius, fillMaxSize, fillMaxWidth, height, padding, size, width } from "@expo/ui/jetpack-compose/modifiers"
 import { createWidget } from "expo-widgets"
 import { EMPTY_WIDGET, type WidgetProps } from "./types"
@@ -8,76 +8,87 @@ import { EMPTY_WIDGET, type WidgetProps } from "./types"
 const HabitsWidget = (props: WidgetProps) => {
   "widget"
   const c = getMaterialColors()
-  const frame = [fillMaxSize(), padding(10, 10, 10, 4), background(c.surfaceContainer), cornerRadius(28)]
+  const frame = [fillMaxSize(), padding(12, 12, 12, 4), background(c.surfaceContainer), cornerRadius(28)]
   // Same colors as the app's priority flags (none, low, medium, high).
   const flags = ["", "#3b82f6", "#eab308", "#ef4444"]
+  // No weight in the widget runtime, so text cannot be bounded by what sits next to it: cut long text by length
+  // (sized for a 4-cell wide widget) instead of letting it run under the reminder chip.
+  const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max - 1) + "…" : text)
 
   if (!props.signedIn || (props.habits.length === 0 && props.avoid.length === 0)) {
     return (
       <Button modifiers={[fillMaxSize()]} {...{ target: "open:" }} colors={{ containerColor: c.surfaceContainer }} onClick={() => undefined}>
-        <Column modifiers={frame} verticalArrangement="center">
-          <Text color={c.onSurface} style={{ fontSize: 18, fontWeight: "600" }}>{props.signedIn ? "Nada que hacer hoy ✨" : "Hábitos"}</Text>
-          <Text color={c.onSurfaceVariant} style={{ fontSize: 14 }}>{props.signedIn ? "Toca para abrir la app" : "Abre la app para sincronizar"}</Text>
+        <Column modifiers={frame} verticalArrangement="center" horizontalAlignment="center">
+          <Text color={c.onSurface} style={{ fontSize: 17, fontWeight: "600" }}>{props.signedIn ? "Nada que hacer hoy" : "Hábitos"}</Text>
+          <Spacer modifiers={[height(4)]} />
+          <Text color={c.onSurfaceVariant} style={{ fontSize: 13 }}>{props.signedIn ? "Toca para abrir la app" : "Abre la app para sincronizar"}</Text>
         </Column>
       </Button>
     )
   }
 
-  // No weight in the widget runtime, so text cannot be bounded by the ring next to it: cut long text by length
-  // (sized for a 4-cell wide widget) instead of letting it run under the ring.
-  const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max - 1) + "…" : text)
-
-  // Like the app's Today rows: icon tile, name over its schedule, progress ring on the right. The widget has no
-  // weight/space-between, so the two sides are stacked boxes aligned to the start and to the end of the row.
+  // A plain list on the widget surface (no card per row). Left: the habit's icon in a tinted circle with its progress
+  // ring around it, filled with a check once done. Middle: name and a quiet second line. Right: the next reminder
+  // still to go out today, as a chip. Left and right are stacked boxes, since the runtime has no space-between.
   const row = (habit: (typeof props.habits)[number]) => (
-    <Column key={habit.id} modifiers={[fillMaxWidth()]}>
-      <Button
-        {...{ target: "open:log/" + habit.id }}
-        onClick={() => undefined}
-        modifiers={[fillMaxWidth(), cornerRadius(18)]}
-        colors={{ containerColor: c.surfaceContainerHigh, contentColor: c.onSurface }}
-      >
-        <Box modifiers={[fillMaxWidth(), padding(8, 6, 12, 6)]}>
-          <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerStart">
-            <Row verticalAlignment="center">
-              <Box modifiers={[size(40, 40), cornerRadius(12), background(habit.color + "2E")]} contentAlignment="center">
-                <Text style={{ fontSize: 19 }}>{habit.icon}</Text>
-              </Box>
-              <Spacer modifiers={[width(10)]} />
-              <Column>
-                <Text
-                  color={habit.done ? c.onSurfaceVariant : c.onSurface}
-                  maxLines={1}
-                  overflow="ellipsis"
-                  style={{ fontSize: 16, fontWeight: "600", textDecoration: habit.done ? "lineThrough" : "none" }}
-                >
-                  {cut(habit.name, 20)}
-                </Text>
-                <Row verticalAlignment="center">
-                  {habit.priority ? <Text color={flags[habit.priority]} style={{ fontSize: 12 }}>{"⚑\u00A0"}</Text> : null}
-                  <Text color={c.onSurfaceVariant} maxLines={1} overflow="ellipsis" style={{ fontSize: 12 }}>{cut(habit.subtitle, habit.reminder ? 24 : 26)}</Text>
-                  {habit.reminder ? <Text color={c.primary} style={{ fontSize: 12, fontWeight: "600" }}>{"\u00A0\u00A0🔔\u00A0" + habit.reminder}</Text> : null}
-                </Row>
-              </Column>
-            </Row>
-          </Box>
-          <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
+    <Button
+      key={habit.id}
+      {...{ target: "open:log/" + habit.id }}
+      onClick={() => undefined}
+      modifiers={[fillMaxWidth(), cornerRadius(16)]}
+      colors={{ containerColor: c.surfaceContainer, contentColor: c.onSurface }}
+    >
+      <Box modifiers={[fillMaxWidth(), padding(4, 6, 4, 6)]}>
+        <Box modifiers={[fillMaxWidth(), height(44)]} contentAlignment="centerStart">
+          <Row verticalAlignment="center">
             {habit.done ? (
-              <Box modifiers={[size(40, 40), cornerRadius(20), background(habit.color)]} contentAlignment="center">
-                <Text color="#FFFFFF" style={{ fontSize: 18, fontWeight: "700" }}>✓</Text>
+              <Box modifiers={[size(44, 44), cornerRadius(22), background(habit.color)]} contentAlignment="center">
+                <Image source={{ uri: "widget_check" }} tint="#FFFFFF" modifiers={[size(24, 24)]} />
               </Box>
             ) : (
-              <Box modifiers={[size(40, 40)]} contentAlignment="center">
-                <CircularProgressIndicator progress={habit.fraction} color={habit.color} trackColor={c.outlineVariant} strokeWidth={4} modifiers={[size(40, 40)]} />
-                {/* Only how many so far ("1" of "1/2"): the arc shows the fraction and the subtitle says how many times a day. */}
-                <Text color={c.onSurface} style={{ fontSize: 15, fontWeight: "700" }}>{habit.progress.split("/")[0]}</Text>
+              <Box modifiers={[size(44, 44)]} contentAlignment="center">
+                {/* At 0 the arc would still draw its round cap as a dot: paint it in the track color. */}
+                <CircularProgressIndicator progress={habit.fraction} color={habit.fraction > 0 ? habit.color : habit.color + "33"} trackColor={habit.color + "33"} strokeWidth={3} modifiers={[size(44, 44)]} />
+                <Box modifiers={[size(34, 34), cornerRadius(17), background(habit.color + "29")]} contentAlignment="center">
+                  <Text style={{ fontSize: 17 }}>{habit.icon}</Text>
+                </Box>
               </Box>
             )}
-          </Box>
+            <Spacer modifiers={[width(12)]} />
+            <Column>
+              <Text
+                color={habit.done ? c.onSurfaceVariant : c.onSurface}
+                maxLines={1}
+                style={{ fontSize: 15, fontWeight: "600", textDecoration: habit.done ? "lineThrough" : "none" }}
+              >
+                {cut(habit.name, habit.reminder ? 18 : 26)}
+              </Text>
+              <Spacer modifiers={[height(2)]} />
+              <Row verticalAlignment="center">
+                {habit.priority ? (
+                  <Row verticalAlignment="center">
+                    <Image source={{ uri: "widget_flag" }} tint={flags[habit.priority]} modifiers={[size(13, 13)]} />
+                    <Spacer modifiers={[width(4)]} />
+                  </Row>
+                ) : null}
+                <Text color={c.onSurfaceVariant} maxLines={1} style={{ fontSize: 12 }}>
+                  {cut(habit.subtitle, habit.reminder ? 22 : 30)}
+                </Text>
+              </Row>
+            </Column>
+          </Row>
         </Box>
-      </Button>
-      <Spacer modifiers={[height(4)]} />
-    </Column>
+        {habit.reminder ? (
+          <Box modifiers={[fillMaxWidth(), height(44)]} contentAlignment="centerEnd">
+            <Row modifiers={[background(c.secondaryContainer), cornerRadius(12), padding(8, 4, 10, 4)]} verticalAlignment="center">
+              <Image source={{ uri: "widget_bell" }} tint={c.onSecondaryContainer} modifiers={[size(14, 14)]} />
+              <Spacer modifiers={[width(4)]} />
+              <Text color={c.onSecondaryContainer} style={{ fontSize: 12, fontWeight: "600" }}>{habit.reminder}</Text>
+            </Row>
+          </Box>
+        ) : null}
+      </Box>
+    </Button>
   )
 
   return (
@@ -85,7 +96,7 @@ const HabitsWidget = (props: WidgetProps) => {
       <LazyColumn modifiers={[fillMaxSize()]}>
         {props.habits.map(row)}
         {props.avoid.length ? (
-          <Text color={c.onSurfaceVariant} style={{ fontSize: 12, fontWeight: "600" }} modifiers={[padding(8, 6, 0, 6)]}>A EVITAR</Text>
+          <Text color={c.primary} style={{ fontSize: 13, fontWeight: "600" }} modifiers={[padding(6, 10, 0, 4)]}>A evitar</Text>
         ) : null}
         {props.avoid.map(row)}
       </LazyColumn>

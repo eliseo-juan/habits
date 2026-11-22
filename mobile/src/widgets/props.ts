@@ -39,13 +39,22 @@ export function buildWidgetProps(date: string, habits: Habit[], items: DayEntry[
         color: colorOf(habit),
         priority: habit.priority,
         done: entry.status === "done",
-        // Same line the app shows under the name: the period progress for "N days a week" habits, else the schedule.
+        // Line under the name: the period progress for "N days a week" habits, today's count for several-times-a-day
+        // ones, else the schedule.
         subtitle:
           habit.schedule.type === "times_per_period" && entry.period_target !== null
-            ? `${entry.period_done}/${entry.period_target} ${habit.schedule.period_unit === "week" ? "esta semana" : "este mes"}`
-            : scheduleLabel(habit),
+            ? `${entry.period_done} de ${entry.period_target} ${habit.schedule.period_unit === "week" ? "esta semana" : "este mes"}`
+            : entry.times_per_day > 1
+              ? `${entry.done_count} de ${entry.times_per_day} hoy`
+              : scheduleLabel(habit),
         reminder: entry.status === "done" ? "" : nextReminder(reminders[habit.id], date, now),
-        fraction: entry.status === "done" ? 1 : Math.min(1, entry.done_count / entry.times_per_day),
+        // The ring around the icon: the week's (or month's) progress for period habits, today's count otherwise.
+        fraction:
+          entry.status === "done"
+            ? 1
+            : entry.period_target
+              ? Math.min(1, (entry.period_done ?? 0) / entry.period_target)
+              : Math.min(1, entry.done_count / entry.times_per_day),
         progress: entry.times_per_day > 1 ? `${entry.done_count}/${entry.times_per_day}` : "",
       }))
       .sort((a, b) => b.priority - a.priority)
