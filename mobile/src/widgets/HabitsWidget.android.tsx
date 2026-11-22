@@ -1,15 +1,14 @@
 // Android widget (Jetpack Compose / Glance). Same constraints as the iOS one: pure function, no outer references.
 // Colors come from the device's Material You palette (wallpaper-derived on Android 12+, Material 3 baseline below).
-import { Box, Button, Column, Row, Spacer, Text, getMaterialColors } from "@expo/ui/jetpack-compose"
-import { background, cornerRadius, fillMaxSize, fillMaxWidth, padding, size, width } from "@expo/ui/jetpack-compose/modifiers"
+import { Box, Button, CircularProgressIndicator, Column, LazyColumn, Row, Spacer, Text, getMaterialColors } from "@expo/ui/jetpack-compose"
+import { background, cornerRadius, fillMaxSize, fillMaxWidth, height, padding, size, width } from "@expo/ui/jetpack-compose/modifiers"
 import { createWidget } from "expo-widgets"
 import { EMPTY_WIDGET, type WidgetProps } from "./types"
 
 const HabitsWidget = (props: WidgetProps) => {
   "widget"
   const c = getMaterialColors()
-  // Plain list on the widget's own surface, no header and no per-habit cards, like the app's Today screen.
-  const frame = [fillMaxSize(), padding(10, 8, 10, 8), background(c.surfaceContainer), cornerRadius(28)]
+  const frame = [fillMaxSize(), padding(10, 10, 10, 4), background(c.surfaceContainer), cornerRadius(28)]
   // Same colors as the app's priority flags (none, low, medium, high).
   const flags = ["", "#3b82f6", "#eab308", "#ef4444"]
 
@@ -24,55 +23,63 @@ const HabitsWidget = (props: WidgetProps) => {
     )
   }
 
-  // Props arrive sorted (pending first, then by priority). Seven lines fit a 4x3 widget; the label counts as one.
-  const max = 7
-  const buildShown = props.habits.slice(0, props.avoid.length ? max - 2 : max)
-  const room = max - buildShown.length
-  const avoidShown = props.avoid.length && room >= 2 ? props.avoid.slice(0, room - 1) : []
-  const hidden = props.habits.length + props.avoid.length - buildShown.length - avoidShown.length
+  // Like the app's Today rows: icon tile, name over its schedule, progress ring on the right. The widget has no
+  // weight/space-between, so the two sides are stacked boxes aligned to the start and to the end of the row.
   const row = (habit: (typeof props.habits)[number]) => (
-    <Button
-      key={habit.id}
-      {...{ target: "open:log/" + habit.id }}
-      onClick={() => undefined}
-      modifiers={[fillMaxWidth()]}
-      colors={{ containerColor: c.surfaceContainer, contentColor: c.onSurface }}
-    >
-      <Row modifiers={[fillMaxWidth(), padding(2, 7, 2, 7)]} horizontalArrangement="spaceBetween" verticalAlignment="center">
-        <Row verticalAlignment="center">
-          <Box modifiers={[size(4, 24), cornerRadius(2), background(flags[habit.priority] || c.surfaceContainer)]} />
-          <Spacer modifiers={[width(10)]} />
-          <Text style={{ fontSize: 20 }}>{habit.icon}</Text>
-          <Spacer modifiers={[width(10)]} />
-          <Text
-            color={habit.done ? c.onSurfaceVariant : c.onSurface}
-            maxLines={1}
-            overflow="ellipsis"
-            style={{ fontSize: 17, fontWeight: habit.done ? "400" : "600" }}
-          >
-            {habit.name}
-          </Text>
-        </Row>
-        <Text color={habit.done ? c.primary : c.onSurfaceVariant} style={{ fontSize: 17, fontWeight: "700" }}>
-          {habit.done ? "✓" : habit.progress || "○"}
-        </Text>
-      </Row>
-    </Button>
+    <Column key={habit.id} modifiers={[fillMaxWidth()]}>
+      <Button
+        {...{ target: "open:log/" + habit.id }}
+        onClick={() => undefined}
+        modifiers={[fillMaxWidth(), cornerRadius(18)]}
+        colors={{ containerColor: c.surfaceContainerHigh, contentColor: c.onSurface }}
+      >
+        <Box modifiers={[fillMaxWidth(), padding(10, 8, 12, 8)]}>
+          <Box modifiers={[fillMaxWidth(), height(46)]} contentAlignment="centerStart">
+            <Row verticalAlignment="center">
+              <Box modifiers={[size(46, 46), cornerRadius(14), background(habit.color + "2E")]} contentAlignment="center">
+                <Text style={{ fontSize: 22 }}>{habit.icon}</Text>
+              </Box>
+              <Spacer modifiers={[width(12)]} />
+              <Column>
+                <Text
+                  color={habit.done ? c.onSurfaceVariant : c.onSurface}
+                  maxLines={1}
+                  overflow="ellipsis"
+                  style={{ fontSize: 17, fontWeight: "600", textDecoration: habit.done ? "lineThrough" : "none" }}
+                >
+                  {habit.name}
+                </Text>
+                <Row verticalAlignment="center">
+                  {habit.priority ? <Text color={flags[habit.priority]} style={{ fontSize: 12 }}>{"⚑ "}</Text> : null}
+                  <Text color={c.onSurfaceVariant} maxLines={1} overflow="ellipsis" style={{ fontSize: 12 }}>{habit.subtitle}</Text>
+                </Row>
+              </Column>
+            </Row>
+          </Box>
+          <Box modifiers={[fillMaxWidth(), height(46)]} contentAlignment="centerEnd">
+            <Box modifiers={[size(42, 42)]} contentAlignment="center">
+              <CircularProgressIndicator progress={habit.fraction} color={habit.color} trackColor={c.outlineVariant} strokeWidth={4} modifiers={[size(42, 42)]} />
+              <Text color={habit.done ? habit.color : c.onSurfaceVariant} style={{ fontSize: habit.done ? 18 : 12, fontWeight: "700" }}>
+                {habit.done ? "✓" : habit.progress}
+              </Text>
+            </Box>
+          </Box>
+        </Box>
+      </Button>
+      <Spacer modifiers={[height(6)]} />
+    </Column>
   )
 
   return (
-    <Column modifiers={frame}>
-      {buildShown.map(row)}
-      {avoidShown.length ? (
-        <Text color={c.onSurfaceVariant} style={{ fontSize: 12, fontWeight: "600" }} modifiers={[padding(14, 6, 0, 0)]}>A EVITAR</Text>
-      ) : null}
-      {avoidShown.map(row)}
-      {hidden > 0 ? (
-        <Button {...{ target: "open:" }} onClick={() => undefined} colors={{ containerColor: c.surfaceContainer, contentColor: c.onSurfaceVariant }}>
-          <Text color={c.onSurfaceVariant} style={{ fontSize: 14 }} modifiers={[padding(14, 4, 0, 4)]}>{`+${hidden} más`}</Text>
-        </Button>
-      ) : null}
-    </Column>
+    <Box modifiers={frame}>
+      <LazyColumn modifiers={[fillMaxSize()]}>
+        {props.habits.map(row)}
+        {props.avoid.length ? (
+          <Text color={c.onSurfaceVariant} style={{ fontSize: 12, fontWeight: "600" }} modifiers={[padding(8, 6, 0, 6)]}>A EVITAR</Text>
+        ) : null}
+        {props.avoid.map(row)}
+      </LazyColumn>
+    </Box>
   )
 }
 

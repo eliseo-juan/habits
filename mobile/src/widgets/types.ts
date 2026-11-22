@@ -1,4 +1,4 @@
-export type WidgetHabit = { id: number; name: string; icon: string; color: string; done: boolean; priority: number; progress: string }  // "" when the habit is once a day: nulls do not survive the trip to native widget storage
+export type WidgetHabit = { id: number; name: string; icon: string; color: string; done: boolean; priority: number; progress: string; fraction: number; subtitle: string }  // "" when the habit is once a day: nulls do not survive the trip to native widget storage
 
 export type WidgetProps = {
   signedIn: boolean
