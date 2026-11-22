@@ -59,7 +59,8 @@ const HabitsWidget = (props: WidgetProps) => {
             <Row verticalAlignment="center">
               {habit.priority ? (
                 <Row verticalAlignment="center">
-                  <Image source={{ uri: "widget_circle" }} tint={flags[habit.priority]} modifiers={[size(8, 8)]} />
+                  {/* Text boxes carry font padding above the glyphs: 2dp on top lowers an icon 1dp onto the text's middle. */}
+                  <Image source={{ uri: "widget_circle" }} tint={flags[habit.priority]} modifiers={[padding(0, 2, 0, 0), size(8, 10)]} />
                   <Spacer modifiers={[width(6)]} />
                 </Row>
               ) : null}
@@ -69,7 +70,7 @@ const HabitsWidget = (props: WidgetProps) => {
               {habit.reminder ? (
                 <Row verticalAlignment="center">
                   <Spacer modifiers={[width(8)]} />
-                  <Image source={{ uri: "widget_bell" }} tint={c.primary} modifiers={[size(12, 12)]} />
+                  <Image source={{ uri: "widget_bell" }} tint={c.primary} modifiers={[padding(0, 2, 0, 0), size(12, 14)]} />
                   <Spacer modifiers={[width(3)]} />
                   <Text color={c.primary} style={{ fontSize: 12, fontWeight: "700" }}>{habit.reminder}</Text>
                 </Row>
