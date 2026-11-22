@@ -6,6 +6,8 @@ export type WidgetProps = {
   done: number
   total: number
   habits: WidgetHabit[]
+  // Habits to avoid (kind "limit"), shown under their own label on Android.
+  avoid: WidgetHabit[]
 }
 
-export const EMPTY_WIDGET: WidgetProps = { signedIn: false, date: "", done: 0, total: 0, habits: [] }
+export const EMPTY_WIDGET: WidgetProps = { signedIn: false, date: "", done: 0, total: 0, habits: [], avoid: [] }

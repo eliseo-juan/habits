@@ -3,7 +3,7 @@
 import { HStack, ProgressView, Spacer, Text, VStack } from "@expo/ui/swift-ui"
 import { containerBackground, font, foregroundStyle, lineLimit, padding, widgetURL } from "@expo/ui/swift-ui/modifiers"
 import { createWidget, type WidgetEnvironment } from "expo-widgets"
-import type { WidgetProps } from "./types"
+import { EMPTY_WIDGET, type WidgetProps } from "./types"
 
 const HabitsWidget = (props: WidgetProps, environment: WidgetEnvironment) => {
   "widget"
@@ -78,4 +78,4 @@ const HabitsWidget = (props: WidgetProps, environment: WidgetEnvironment) => {
   )
 }
 
-export default createWidget<WidgetProps>("HabitsToday", HabitsWidget, { signedIn: false, date: "", done: 0, total: 0, habits: [] })
+export default createWidget<WidgetProps>("HabitsToday", HabitsWidget, EMPTY_WIDGET)
