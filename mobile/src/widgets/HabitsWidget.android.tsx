@@ -55,7 +55,7 @@ const HabitsWidget = (props: WidgetProps) => {
                 </Text>
                 <Row verticalAlignment="center">
                   {habit.priority ? <Text color={flags[habit.priority]} style={{ fontSize: 12 }}>{"⚑\u00A0"}</Text> : null}
-                  <Text color={c.onSurfaceVariant} maxLines={1} overflow="ellipsis" style={{ fontSize: 12 }}>{cut(habit.subtitle, habit.reminder ? 22 : 26)}</Text>
+                  <Text color={c.onSurfaceVariant} maxLines={1} overflow="ellipsis" style={{ fontSize: 12 }}>{cut(habit.subtitle, habit.reminder ? 24 : 26)}</Text>
                   {habit.reminder ? <Text color={c.primary} style={{ fontSize: 12, fontWeight: "600" }}>{"\u00A0\u00A0🔔\u00A0" + habit.reminder}</Text> : null}
                 </Row>
               </Column>
@@ -63,13 +63,14 @@ const HabitsWidget = (props: WidgetProps) => {
           </Box>
           <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
             {habit.done ? (
-              <Box modifiers={[size(36, 36), cornerRadius(18), background(habit.color)]} contentAlignment="center">
+              <Box modifiers={[size(40, 40), cornerRadius(20), background(habit.color)]} contentAlignment="center">
                 <Text color="#FFFFFF" style={{ fontSize: 18, fontWeight: "700" }}>✓</Text>
               </Box>
             ) : (
-              <Box modifiers={[size(36, 36)]} contentAlignment="center">
-                <CircularProgressIndicator progress={habit.fraction} color={habit.color} trackColor={c.outlineVariant} strokeWidth={3} modifiers={[size(36, 36)]} />
-                <Text color={c.onSurfaceVariant} style={{ fontSize: 11, fontWeight: "700" }}>{habit.progress}</Text>
+              <Box modifiers={[size(40, 40)]} contentAlignment="center">
+                <CircularProgressIndicator progress={habit.fraction} color={habit.color} trackColor={c.outlineVariant} strokeWidth={4} modifiers={[size(40, 40)]} />
+                {/* Only how many so far ("1" of "1/2"): the arc shows the fraction and the subtitle says how many times a day. */}
+                <Text color={c.onSurface} style={{ fontSize: 15, fontWeight: "700" }}>{habit.progress.split("/")[0]}</Text>
               </Box>
             )}
           </Box>
