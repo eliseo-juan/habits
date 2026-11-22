@@ -1,9 +1,31 @@
-import { colorOf, emojiOf, type DayEntry, type Habit } from "@/lib/rules"
+import { colorOf, emojiOf, parse, scheduleLabel, type DayEntry, type Habit } from "@/lib/rules"
+import type { Reminder } from "@/lib/data"
 import type { WidgetHabit, WidgetProps } from "@/widgets/types"
 
-// Pending habits first, then the done ones: the widget shows what is left to do. Within each group the most
-// important come first; the sort is stable, so equal priorities keep the app's order.
-export function buildWidgetProps(date: string, habits: Habit[], items: DayEntry[]): WidgetProps {
+// Current wall-clock time ("HH:MM") in the user's timezone; the device's own when it cannot be resolved.
+export function localTime(timezone?: string): string {
+  try {
+    return new Date().toLocaleTimeString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false })
+  } catch {
+    return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+  }
+}
+
+// Next reminder of the day that has not gone out yet: enabled, set for today's weekday and later than now. The
+// server remembers what it already sent, but a reminder whose time has passed is as good a proxy as the widget needs.
+function nextReminder(reminders: Reminder[] | undefined, date: string, now: string): string {
+  const weekday = (parse(date).getUTCDay() + 6) % 7 // 0 = Monday, like the API
+  const times = (reminders ?? [])
+    .filter((r) => r.enabled && (!r.weekdays || r.weekdays.includes(weekday)))
+    .map((r) => r.time_local.slice(0, 5))
+    .filter((time) => time > now)
+    .sort()
+  return times[0] ?? ""
+}
+
+// Ordered by priority, highest first, like the app; the sort is stable, so equal priorities keep the app's order.
+// Done habits stay in place (dimmed in the widget) rather than jumping to the end.
+export function buildWidgetProps(date: string, habits: Habit[], items: DayEntry[], reminders: Record<number, Reminder[] | undefined> = {}, now = localTime()): WidgetProps {
   const rowsOf = (kind: Habit["kind"]): WidgetHabit[] =>
     items
       .flatMap((entry) => {
@@ -17,9 +39,25 @@ export function buildWidgetProps(date: string, habits: Habit[], items: DayEntry[
         color: colorOf(habit),
         priority: habit.priority,
         done: entry.status === "done",
+        // Line under the name: the period progress for "N days a week" habits, today's count for several-times-a-day
+        // ones, else the schedule.
+        subtitle:
+          habit.schedule.type === "times_per_period" && entry.period_target !== null
+            ? `${entry.period_done} de ${entry.period_target} ${habit.schedule.period_unit === "week" ? "esta semana" : "este mes"}`
+            : entry.times_per_day > 1
+              ? `${entry.done_count} de ${entry.times_per_day} hoy`
+              : scheduleLabel(habit),
+        reminder: entry.status === "done" ? "" : nextReminder(reminders[habit.id], date, now),
+        // The ring around the icon: the week's (or month's) progress for period habits, today's count otherwise.
+        fraction:
+          entry.status === "done"
+            ? 1
+            : entry.period_target
+              ? Math.min(1, (entry.period_done ?? 0) / entry.period_target)
+              : Math.min(1, entry.done_count / entry.times_per_day),
         progress: entry.times_per_day > 1 ? `${entry.done_count}/${entry.times_per_day}` : "",
       }))
-      .sort((a, b) => Number(a.done) - Number(b.done) || b.priority - a.priority)
+      .sort((a, b) => b.priority - a.priority)
   const list = rowsOf("build")
   return { signedIn: true, date, done: list.filter((h) => h.done).length, total: list.length, habits: list.slice(0, 10), avoid: rowsOf("limit").slice(0, 10) }
 }

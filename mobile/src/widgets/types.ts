@@ -1,5 +1,6 @@
-export type WidgetHabit = { id: number; name: string; icon: string; color: string; done: boolean; priority: number; progress: string }  // "" when the habit is once a day: nulls do not survive the trip to native widget storage
+export type WidgetHabit = { id: number; name: string; icon: string; color: string; done: boolean; priority: number; progress: string; fraction: number; subtitle: string; reminder: string }  // "" when the habit is once a day: nulls do not survive the trip to native widget storage
 
+// reminder: "HH:MM" of the next reminder still to be sent today, "" if none (or the habit is already done).
 export type WidgetProps = {
   signedIn: boolean
   date: string

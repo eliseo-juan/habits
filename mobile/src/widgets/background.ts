@@ -2,8 +2,9 @@ import { Platform } from "react-native"
 import * as BackgroundTask from "expo-background-task"
 import * as TaskManager from "expo-task-manager"
 import { storage } from "@/lib/storage"
+import type { Reminder } from "@/lib/data"
 import type { DayEntry, Habit } from "@/lib/rules"
-import { buildWidgetProps } from "@/widgets/props"
+import { buildWidgetProps, localTime } from "@/widgets/props"
 import { pushWidget } from "@/widgets/sync"
 
 export const WIDGET_TASK = "habits-widget-refresh"
@@ -19,8 +20,11 @@ TaskManager.defineTask(WIDGET_TASK, async () => {
       if (!response.ok) throw new Error(String(response.status))
       return response.json()
     }
-    const [today, habits] = await Promise.all([get<{ date: string; items: DayEntry[] }>("/today"), get<Habit[]>("/habits")])
-    pushWidget(buildWidgetProps(today.date, habits, today.items))
+    const [today, habits, me] = await Promise.all([get<{ date: string; items: DayEntry[] }>("/today"), get<Habit[]>("/habits"), get<{ timezone: string }>("/me")])
+    // Reminders only matter for the habits still on the list; a failed request just hides that habit's bell.
+    const due = today.items.map((item) => item.habit_id)
+    const reminders = Object.fromEntries(await Promise.all(due.map(async (id) => [id, await get<Reminder[]>(`/habits/${id}/reminders`).catch(() => undefined)] as const)))
+    pushWidget(buildWidgetProps(today.date, habits, today.items, reminders, localTime(me.timezone)))
     return BackgroundTask.BackgroundTaskResult.Success
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed
