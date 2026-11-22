@@ -17,7 +17,7 @@ drawable's alpha, or Glance components that ignore their size.
 
 Known differences from a device: `cornerRadius` is a view outline clip that Robolectric does not draw (corners come out
 square; the widget draws its circles as drawables, so only the chip and the frame are affected), the lazy list is laid
-out as a column because Robolectric never fills a remote list adapter, and fonts and emoji are Robolectric's.
+out as a column because Robolectric never fills a remote list adapter, and fonts and emoji are Robolectric's. Ripples are not drawn either: `compose()` is Glance's preview composition, which drops click actions and with them the ripple overlay Glance adds on a device. `-Dpreview.clicks=1` (with `gradle -i`) lists the clickable views.
 
 ## Run
 

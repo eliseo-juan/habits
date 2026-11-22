@@ -48,7 +48,8 @@ const HabitsWidget = (props: WidgetProps) => {
       key={habit.id}
       {...{ target: "open:log/" + habit.id + (isToday ? "" : "/" + day.date) }}
       onClick={() => undefined}
-      modifiers={[fillMaxWidth()]}
+      // Glance lays its default ripple over every clickable; the corner radius rounds it, like a Material list item.
+      modifiers={[fillMaxWidth(), cornerRadius(16)]}
       colors={{ containerColor: c.surfaceContainer, contentColor: c.onSurface }}
     >
       <Box modifiers={[fillMaxWidth(), padding(6, 7, 4, 7)]}>

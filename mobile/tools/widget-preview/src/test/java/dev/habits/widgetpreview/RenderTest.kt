@@ -42,5 +42,14 @@ class RenderTest {
     bitmap.eraseColor(0xff3a3f3a.toInt())
     host.draw(Canvas(bitmap))
     File(System.getProperty("preview.out")!!).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    // -Dpreview.clicks: list the clickable views and the drawables that give them touch feedback.
+    if (System.getProperty("preview.clicks") != null) {
+      fun walk(v: View, depth: Int) {
+        val drawables = listOfNotNull(v.background, v.foreground, (v as? android.widget.ImageView)?.drawable)
+        if (v.isClickable || drawables.any { it is android.graphics.drawable.RippleDrawable }) println("CLICK ${"  ".repeat(depth)}${v.javaClass.simpleName} ${v.width}x${v.height} clickable=${v.isClickable} bg=${v.background?.javaClass?.simpleName} fg=${v.foreground?.javaClass?.simpleName} img=${(v as? android.widget.ImageView)?.drawable?.javaClass?.simpleName}")
+        if (v is android.view.ViewGroup) for (i in 0 until v.childCount) walk(v.getChildAt(i), depth + 1)
+      }
+      walk(host, 0)
+    }
   }
 }

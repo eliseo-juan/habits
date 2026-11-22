@@ -15,6 +15,8 @@ import androidx.glance.Emittable
 import androidx.glance.EmittableImage
 import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
+import androidx.glance.action.clickable
+import androidx.glance.appwidget.action.actionSendBroadcast
 import androidx.glance.TintColorFilterParams
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.EmittableLazyColumn
@@ -156,12 +158,13 @@ private fun JSONObject.toNodes(context: Context): List<Emittable> = when (getStr
       trackColor = ColorProvider(p.optString("trackColor").color() ?: Color(0xffe7e0ec)),
     ))
   }
-  // Buttons with non-text children become a clickable Box with centered content (the click is irrelevant here).
+  // Buttons with non-text children become a clickable Box with centered content.
   "Button" -> listOf(EmittableBox().also {
     val p = props()
     var modifier = p.modifier()
     p.optJSONObject("colors")?.optString("containerColor")?.color()?.let { c -> modifier = modifier.background(ColorProvider(c)) }
-    it.modifier = modifier
+    // Same action type expo-widgets attaches (a broadcast to the widget provider), so the click styling matches.
+    it.modifier = modifier.clickable(actionSendBroadcast(android.content.Intent("dev.habits.widgetpreview.CLICK").setPackage(context.packageName)))
     it.contentAlignment = Alignment.Center
     it.children += kids().flatMap { c -> c.toNodes(context) }
   })
