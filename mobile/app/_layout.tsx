@@ -18,6 +18,9 @@ import { WidgetSync } from "@/widgets/widget-sync"
 import "@/widgets/background"
 import { colors, headerOptions } from "@/theme"
 
+// Deep links (the widget opens habits://log/<id>) land on top of the tabs, so closing the sheet shows Today.
+export const unstable_settings = { initialRouteName: "(tabs)" }
+
 SplashScreen.preventAutoHideAsync()
 
 function Gate() {

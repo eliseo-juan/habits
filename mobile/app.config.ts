@@ -65,6 +65,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         "imageWidth": 120
       }
     ],
+    // Before expo-widgets on purpose (see the plugin): it overrides the provider that plugin generates.
+    ["./plugins/withWidgetOpenApp", { widgets: ["HabitsToday"] }],
     [
       "expo-widgets",
       {
@@ -86,8 +88,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
               "initialLayout": "src/widgets/HabitsWidget.tsx"
             },
             "android": {
-              "targetCellWidth": 3,
-              "targetCellHeight": 2,
+              "targetCellWidth": 4,
+              "targetCellHeight": 3,
               "initialLayout": "src/widgets/HabitsWidget.android.tsx"
             }
           }
