@@ -54,19 +54,24 @@ const HabitsWidget = (props: WidgetProps) => {
                   {cut(habit.name, 20)}
                 </Text>
                 <Row verticalAlignment="center">
-                  {habit.priority ? <Text color={flags[habit.priority]} style={{ fontSize: 12 }}>{"⚑ "}</Text> : null}
-                  <Text color={c.onSurfaceVariant} maxLines={1} overflow="ellipsis" style={{ fontSize: 12 }}>{cut(habit.subtitle, 26)}</Text>
+                  {habit.priority ? <Text color={flags[habit.priority]} style={{ fontSize: 12 }}>{"⚑\u00A0"}</Text> : null}
+                  <Text color={c.onSurfaceVariant} maxLines={1} overflow="ellipsis" style={{ fontSize: 12 }}>{cut(habit.subtitle, habit.reminder ? 22 : 26)}</Text>
+                  {habit.reminder ? <Text color={c.primary} style={{ fontSize: 12, fontWeight: "600" }}>{"\u00A0\u00A0🔔\u00A0" + habit.reminder}</Text> : null}
                 </Row>
               </Column>
             </Row>
           </Box>
           <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
-            <Box modifiers={[size(36, 36)]} contentAlignment="center">
-              <CircularProgressIndicator progress={habit.fraction} color={habit.color} trackColor={c.outlineVariant} strokeWidth={3} modifiers={[size(36, 36)]} />
-              <Text color={habit.done ? habit.color : c.onSurfaceVariant} style={{ fontSize: habit.done ? 16 : 11, fontWeight: "700" }}>
-                {habit.done ? "✓" : habit.progress}
-              </Text>
-            </Box>
+            {habit.done ? (
+              <Box modifiers={[size(36, 36), cornerRadius(18), background(habit.color)]} contentAlignment="center">
+                <Text color="#FFFFFF" style={{ fontSize: 18, fontWeight: "700" }}>✓</Text>
+              </Box>
+            ) : (
+              <Box modifiers={[size(36, 36)]} contentAlignment="center">
+                <CircularProgressIndicator progress={habit.fraction} color={habit.color} trackColor={c.outlineVariant} strokeWidth={3} modifiers={[size(36, 36)]} />
+                <Text color={c.onSurfaceVariant} style={{ fontSize: 11, fontWeight: "700" }}>{habit.progress}</Text>
+              </Box>
+            )}
           </Box>
         </Box>
       </Button>
