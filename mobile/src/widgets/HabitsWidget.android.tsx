@@ -12,7 +12,7 @@ const HabitsWidget = (props: WidgetProps) => {
   // Same colors as the app's priority flags (none, low, medium, high).
   const flags = ["", "#3b82f6", "#eab308", "#ef4444"]
   // No weight in the widget runtime, so text cannot be bounded by what sits next to it: cut long text by length
-  // (sized for a 4-cell wide widget) instead of letting it run under the reminder chip.
+  // (sized for a 4-cell wide widget) instead of letting it run under the mark circle.
   // 12 steps; any progress shows at least one, and only a finished habit shows a closed ring.
   const ringStep = (fraction: number) => (fraction <= 0 ? 0 : fraction >= 1 ? 12 : Math.min(11, Math.max(1, Math.round(fraction * 12))))
   const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max - 1) + "…" : text)
@@ -29,68 +29,69 @@ const HabitsWidget = (props: WidgetProps) => {
     )
   }
 
-  // A plain list on the widget surface (no card per row). Left: the habit's icon in a tinted circle with its progress
-  // ring around it, filled with a check once done. Middle: name and a quiet second line. Right: the next reminder
-  // still to go out today, as a chip. Left and right are stacked boxes, since the runtime has no space-between.
+  // A plain list on the widget surface (no card per row), close to the app's Today rows but shorter. Left: emoji and
+  // name, and below them a dot in the priority's color, the schedule or progress and the next reminder still to go out
+  // today. Right: the mark circle, a progress ring that fills with a check once done. Left and right are stacked
+  // boxes, since the runtime has no weight or space-between.
   const row = (habit: (typeof props.habits)[number]) => (
     <Button
       key={habit.id}
       {...{ target: "open:log/" + habit.id }}
       onClick={() => undefined}
-      modifiers={[fillMaxWidth(), cornerRadius(16)]}
+      modifiers={[fillMaxWidth()]}
       colors={{ containerColor: c.surfaceContainer, contentColor: c.onSurface }}
     >
-      <Box modifiers={[fillMaxWidth(), padding(4, 6, 4, 6)]}>
-        <Box modifiers={[fillMaxWidth(), height(44)]} contentAlignment="centerStart">
-          <Row verticalAlignment="center">
-            {habit.done ? (
-              <Box modifiers={[size(44, 44)]} contentAlignment="center">
-                <Image source={{ uri: "widget_circle" }} tint={habit.color} modifiers={[size(44, 44)]} />
-                <Image source={{ uri: "widget_check" }} tint="#FFFFFF" modifiers={[size(24, 24)]} />
-              </Box>
-            ) : (
-              <Box modifiers={[size(44, 44)]} contentAlignment="center">
-                {/* Track and arc are tinted drawables (ring_track, ring_0 … ring_12): Glance's circular progress ignores its
-                    size, and an image tint keeps the drawable's alpha, so the faint track carries its own. */}
-                <Image source={{ uri: "widget_ring_track" }} tint={habit.color} modifiers={[size(44, 44)]} />
-                <Image source={{ uri: "widget_ring_" + ringStep(habit.fraction) }} tint={habit.color} modifiers={[size(44, 44)]} />
-                <Image source={{ uri: "widget_circle_soft" }} tint={habit.color} modifiers={[size(36, 36)]} />
-                <Text style={{ fontSize: 17 }}>{habit.icon}</Text>
-              </Box>
-            )}
-            <Spacer modifiers={[width(12)]} />
-            <Column>
+      <Box modifiers={[fillMaxWidth(), padding(6, 7, 4, 7)]}>
+        <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerStart">
+          <Column>
+            <Row verticalAlignment="center">
+              <Text style={{ fontSize: 16 }}>{habit.icon}</Text>
+              <Spacer modifiers={[width(8)]} />
               <Text
                 color={habit.done ? c.onSurfaceVariant : c.onSurface}
                 maxLines={1}
                 style={{ fontSize: 15, fontWeight: "700", textDecoration: habit.done ? "lineThrough" : "none" }}
               >
-                {cut(habit.name, habit.reminder ? 18 : 26)}
+                {cut(habit.name, 24)}
               </Text>
-              <Spacer modifiers={[height(2)]} />
-              <Row verticalAlignment="center">
-                {habit.priority ? (
-                  <Row verticalAlignment="center">
-                    <Image source={{ uri: "widget_flag" }} tint={flags[habit.priority]} modifiers={[size(13, 13)]} />
-                    <Spacer modifiers={[width(4)]} />
-                  </Row>
-                ) : null}
-                <Text color={c.onSurfaceVariant} maxLines={1} style={{ fontSize: 12 }}>
-                  {cut(habit.subtitle, habit.reminder ? 22 : 30)}
-                </Text>
-              </Row>
-            </Column>
-          </Row>
-        </Box>
-        {habit.reminder ? (
-          <Box modifiers={[fillMaxWidth(), height(44)]} contentAlignment="centerEnd">
-            <Row modifiers={[background(c.secondaryContainer), cornerRadius(12), padding(8, 4, 10, 4)]} verticalAlignment="center">
-              <Image source={{ uri: "widget_bell" }} tint={c.onSecondaryContainer} modifiers={[size(14, 14)]} />
-              <Spacer modifiers={[width(4)]} />
-              <Text color={c.onSecondaryContainer} style={{ fontSize: 12, fontWeight: "700" }}>{habit.reminder}</Text>
             </Row>
-          </Box>
-        ) : null}
+            <Spacer modifiers={[height(3)]} />
+            <Row verticalAlignment="center">
+              {habit.priority ? (
+                <Row verticalAlignment="center">
+                  <Image source={{ uri: "widget_circle" }} tint={flags[habit.priority]} modifiers={[size(8, 8)]} />
+                  <Spacer modifiers={[width(6)]} />
+                </Row>
+              ) : null}
+              <Text color={c.onSurfaceVariant} maxLines={1} style={{ fontSize: 12 }}>
+                {cut(habit.subtitle, habit.reminder ? 24 : 32)}
+              </Text>
+              {habit.reminder ? (
+                <Row verticalAlignment="center">
+                  <Spacer modifiers={[width(8)]} />
+                  <Image source={{ uri: "widget_bell" }} tint={c.primary} modifiers={[size(12, 12)]} />
+                  <Spacer modifiers={[width(3)]} />
+                  <Text color={c.primary} style={{ fontSize: 12, fontWeight: "700" }}>{habit.reminder}</Text>
+                </Row>
+              ) : null}
+            </Row>
+          </Column>
+        </Box>
+        <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
+          {habit.done ? (
+            <Box modifiers={[size(30, 30)]} contentAlignment="center">
+              <Image source={{ uri: "widget_circle" }} tint={habit.color} modifiers={[size(30, 30)]} />
+              <Image source={{ uri: "widget_check" }} tint="#FFFFFF" modifiers={[size(18, 18)]} />
+            </Box>
+          ) : (
+            <Box modifiers={[size(30, 30)]} contentAlignment="center">
+              {/* Track and arc are tinted drawables (ring_track, ring_0 … ring_12): Glance's circular progress ignores
+                  its size, and an image tint keeps the drawable's alpha, so the faint track carries its own. */}
+              <Image source={{ uri: "widget_ring_track" }} tint={habit.color} modifiers={[size(30, 30)]} />
+              <Image source={{ uri: "widget_ring_" + ringStep(habit.fraction) }} tint={habit.color} modifiers={[size(30, 30)]} />
+            </Box>
+          )}
+        </Box>
       </Box>
     </Button>
   )
