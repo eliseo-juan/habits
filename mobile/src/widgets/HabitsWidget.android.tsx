@@ -50,7 +50,8 @@ const HabitsWidget = (props: WidgetProps) => {
                 {/* At 0 the arc would still draw its round cap as a dot: paint it in the track color. */}
                 <CircularProgressIndicator progress={habit.fraction} color={habit.fraction > 0 ? habit.color : habit.color + "33"} trackColor={habit.color + "33"} strokeWidth={3} modifiers={[size(44, 44)]} />
                 <Box modifiers={[size(34, 34), cornerRadius(17), background(habit.color + "29")]} contentAlignment="center">
-                  <Text style={{ fontSize: 17 }}>{habit.icon}</Text>
+                  {/* Android's font padding sits emoji low in their box: bottom padding lifts the glyph by half of it. */}
+                  <Text style={{ fontSize: 17 }} modifiers={[padding(0, 0, 0, 5)]}>{habit.icon}</Text>
                 </Box>
               </Box>
             )}
