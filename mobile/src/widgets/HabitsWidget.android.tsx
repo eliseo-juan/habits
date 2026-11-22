@@ -45,7 +45,10 @@ const HabitsWidget = (props: WidgetProps) => {
         <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerStart">
           <Column>
             <Row verticalAlignment="center">
-              <Text style={{ fontSize: 16 }}>{habit.icon}</Text>
+              {/* Emoji and priority dot share a 20dp column, so the name and the line below start at the same x. */}
+              <Box modifiers={[width(20)]} contentAlignment="center">
+                <Text style={{ fontSize: 16 }}>{habit.icon}</Text>
+              </Box>
               <Spacer modifiers={[width(8)]} />
               <Text
                 color={habit.done ? c.onSurfaceVariant : c.onSurface}
@@ -57,13 +60,13 @@ const HabitsWidget = (props: WidgetProps) => {
             </Row>
             <Spacer modifiers={[height(3)]} />
             <Row verticalAlignment="center">
-              {habit.priority ? (
-                <Row verticalAlignment="center">
-                  {/* Text boxes carry font padding above the glyphs: 2dp on top lowers an icon 1dp onto the text's middle. */}
+              <Box modifiers={[width(20)]} contentAlignment="center">
+                {/* Text boxes carry font padding above the glyphs: 2dp on top lowers the dot 1dp onto the text's middle. */}
+                {habit.priority ? (
                   <Image source={{ uri: "widget_circle" }} tint={flags[habit.priority]} modifiers={[padding(0, 2, 0, 0), size(8, 10)]} />
-                  <Spacer modifiers={[width(6)]} />
-                </Row>
-              ) : null}
+                ) : null}
+              </Box>
+              <Spacer modifiers={[width(8)]} />
               <Text color={c.onSurfaceVariant} maxLines={1} style={{ fontSize: 12 }}>
                 {cut(habit.subtitle, habit.reminder ? 24 : 32)}
               </Text>
