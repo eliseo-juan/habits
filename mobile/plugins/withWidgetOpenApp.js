@@ -45,14 +45,8 @@ class ${name}Provider : ExpoWidgetsAppWidgetProvider("${name}") {
       }
       const drawables = path.join(cfg.modRequest.platformProjectRoot, "app/src/main/res/drawable")
       fs.mkdirSync(drawables, { recursive: true })
-      for (const [icon, pathData] of Object.entries(icons)) {
-        fs.writeFileSync(
-          path.join(drawables, `widget_${icon}.xml`),
-          `<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-  <path android:fillColor="#FFFFFFFF" android:pathData="${pathData}" />
-</vector>
-`,
-        )
+      for (const [name, icon] of Object.entries(icons)) {
+        fs.writeFileSync(path.join(drawables, `widget_${name}.xml`), icons.toVectorXml(icon))
       }
       return cfg
     },

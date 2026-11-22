@@ -1,6 +1,6 @@
 // Android widget (Jetpack Compose / Glance). Same constraints as the iOS one: pure function, no outer references.
 // Colors come from the device's Material You palette (wallpaper-derived on Android 12+, Material 3 baseline below).
-import { Box, Button, CircularProgressIndicator, Column, Image, LazyColumn, Row, Spacer, Text, getMaterialColors } from "@expo/ui/jetpack-compose"
+import { Box, Button, Column, Image, LazyColumn, Row, Spacer, Text, getMaterialColors } from "@expo/ui/jetpack-compose"
 import { background, cornerRadius, fillMaxSize, fillMaxWidth, height, padding, size, width } from "@expo/ui/jetpack-compose/modifiers"
 import { createWidget } from "expo-widgets"
 import { EMPTY_WIDGET, type WidgetProps } from "./types"
@@ -13,13 +13,15 @@ const HabitsWidget = (props: WidgetProps) => {
   const flags = ["", "#3b82f6", "#eab308", "#ef4444"]
   // No weight in the widget runtime, so text cannot be bounded by what sits next to it: cut long text by length
   // (sized for a 4-cell wide widget) instead of letting it run under the reminder chip.
+  // 12 steps; any progress shows at least one, and only a finished habit shows a closed ring.
+  const ringStep = (fraction: number) => (fraction <= 0 ? 0 : fraction >= 1 ? 12 : Math.min(11, Math.max(1, Math.round(fraction * 12))))
   const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max - 1) + "…" : text)
 
   if (!props.signedIn || (props.habits.length === 0 && props.avoid.length === 0)) {
     return (
       <Button modifiers={[fillMaxSize()]} {...{ target: "open:" }} colors={{ containerColor: c.surfaceContainer }} onClick={() => undefined}>
         <Column modifiers={frame} verticalArrangement="center" horizontalAlignment="center">
-          <Text color={c.onSurface} style={{ fontSize: 17, fontWeight: "600" }}>{props.signedIn ? "Nada que hacer hoy" : "Hábitos"}</Text>
+          <Text color={c.onSurface} style={{ fontSize: 17, fontWeight: "700" }}>{props.signedIn ? "Nada que hacer hoy" : "Hábitos"}</Text>
           <Spacer modifiers={[height(4)]} />
           <Text color={c.onSurfaceVariant} style={{ fontSize: 13 }}>{props.signedIn ? "Toca para abrir la app" : "Abre la app para sincronizar"}</Text>
         </Column>
@@ -47,8 +49,9 @@ const HabitsWidget = (props: WidgetProps) => {
               </Box>
             ) : (
               <Box modifiers={[size(44, 44)]} contentAlignment="center">
-                {/* At 0 the arc would still draw its round cap as a dot: paint it in the track color. */}
-                <CircularProgressIndicator progress={habit.fraction} color={habit.fraction > 0 ? habit.color : habit.color + "33"} trackColor={habit.color + "33"} strokeWidth={3} modifiers={[size(44, 44)]} />
+                {/* Track and arc are tinted drawables (ring_0 … ring_12): Glance's circular progress ignores its size. */}
+                <Image source={{ uri: "widget_ring_12" }} tint={habit.color + "33"} modifiers={[size(44, 44)]} />
+                <Image source={{ uri: "widget_ring_" + ringStep(habit.fraction) }} tint={habit.color} modifiers={[size(44, 44)]} />
                 <Box modifiers={[size(36, 36), cornerRadius(18), background(habit.color + "29")]} contentAlignment="center">
                   <Text style={{ fontSize: 17 }}>{habit.icon}</Text>
                 </Box>
@@ -59,7 +62,7 @@ const HabitsWidget = (props: WidgetProps) => {
               <Text
                 color={habit.done ? c.onSurfaceVariant : c.onSurface}
                 maxLines={1}
-                style={{ fontSize: 15, fontWeight: "600", textDecoration: habit.done ? "lineThrough" : "none" }}
+                style={{ fontSize: 15, fontWeight: "700", textDecoration: habit.done ? "lineThrough" : "none" }}
               >
                 {cut(habit.name, habit.reminder ? 18 : 26)}
               </Text>
@@ -83,7 +86,7 @@ const HabitsWidget = (props: WidgetProps) => {
             <Row modifiers={[background(c.secondaryContainer), cornerRadius(12), padding(8, 4, 10, 4)]} verticalAlignment="center">
               <Image source={{ uri: "widget_bell" }} tint={c.onSecondaryContainer} modifiers={[size(14, 14)]} />
               <Spacer modifiers={[width(4)]} />
-              <Text color={c.onSecondaryContainer} style={{ fontSize: 12, fontWeight: "600" }}>{habit.reminder}</Text>
+              <Text color={c.onSecondaryContainer} style={{ fontSize: 12, fontWeight: "700" }}>{habit.reminder}</Text>
             </Row>
           </Box>
         ) : null}
@@ -96,7 +99,7 @@ const HabitsWidget = (props: WidgetProps) => {
       <LazyColumn modifiers={[fillMaxSize()]}>
         {props.habits.map(row)}
         {props.avoid.length ? (
-          <Text color={c.primary} style={{ fontSize: 13, fontWeight: "600" }} modifiers={[padding(6, 10, 0, 4)]}>A evitar</Text>
+          <Text color={c.primary} style={{ fontSize: 13, fontWeight: "700" }} modifiers={[padding(6, 10, 0, 4)]}>A evitar</Text>
         ) : null}
         {props.avoid.map(row)}
       </LazyColumn>

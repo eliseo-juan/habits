@@ -43,14 +43,20 @@ export function buildWidgetProps(date: string, habits: Habit[], items: DayEntry[
         // ones, else the schedule.
         subtitle:
           habit.schedule.type === "times_per_period" && entry.period_target !== null
-            ? `${entry.period_done} de ${entry.period_target} ${habit.schedule.period_unit === "week" ? "esta semana" : "este mes"}`
+            ? habit.kind === "limit"
+              ? // For a limit the period target is a maximum, not a goal.
+                `${entry.period_done ?? 0} de máx. ${entry.period_target} ${habit.schedule.period_unit === "week" ? "esta semana" : "este mes"}`
+              : `${entry.period_done} de ${entry.period_target} ${habit.schedule.period_unit === "week" ? "esta semana" : "este mes"}`
             : entry.times_per_day > 1
               ? `${entry.done_count} de ${entry.times_per_day} hoy`
               : scheduleLabel(habit),
         reminder: entry.status === "done" ? "" : nextReminder(reminders[habit.id], date, now),
         // The ring around the icon: the week's (or month's) progress for period habits, today's count otherwise.
+        // Limits have no ring: filling up towards a maximum is not progress.
         fraction:
-          entry.status === "done"
+          habit.kind === "limit"
+            ? 0
+            : entry.status === "done"
             ? 1
             : entry.period_target
               ? Math.min(1, (entry.period_done ?? 0) / entry.period_target)
