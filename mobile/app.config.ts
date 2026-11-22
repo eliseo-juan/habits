@@ -86,8 +86,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
               "initialLayout": "src/widgets/HabitsWidget.tsx"
             },
             "android": {
-              "targetCellWidth": 3,
-              "targetCellHeight": 2,
+              "targetCellWidth": 4,
+              "targetCellHeight": 3,
               "initialLayout": "src/widgets/HabitsWidget.android.tsx"
             }
           }
