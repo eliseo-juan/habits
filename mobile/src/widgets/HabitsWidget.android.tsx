@@ -44,17 +44,18 @@ const HabitsWidget = (props: WidgetProps) => {
         <Box modifiers={[fillMaxWidth(), height(44)]} contentAlignment="centerStart">
           <Row verticalAlignment="center">
             {habit.done ? (
-              <Box modifiers={[size(44, 44), cornerRadius(22), background(habit.color)]} contentAlignment="center">
+              <Box modifiers={[size(44, 44)]} contentAlignment="center">
+                <Image source={{ uri: "widget_circle" }} tint={habit.color} modifiers={[size(44, 44)]} />
                 <Image source={{ uri: "widget_check" }} tint="#FFFFFF" modifiers={[size(24, 24)]} />
               </Box>
             ) : (
               <Box modifiers={[size(44, 44)]} contentAlignment="center">
-                {/* Track and arc are tinted drawables (ring_0 … ring_12): Glance's circular progress ignores its size. */}
-                <Image source={{ uri: "widget_ring_12" }} tint={habit.color + "33"} modifiers={[size(44, 44)]} />
+                {/* Track and arc are tinted drawables (ring_track, ring_0 … ring_12): Glance's circular progress ignores its
+                    size, and an image tint keeps the drawable's alpha, so the faint track carries its own. */}
+                <Image source={{ uri: "widget_ring_track" }} tint={habit.color} modifiers={[size(44, 44)]} />
                 <Image source={{ uri: "widget_ring_" + ringStep(habit.fraction) }} tint={habit.color} modifiers={[size(44, 44)]} />
-                <Box modifiers={[size(36, 36), cornerRadius(18), background(habit.color + "29")]} contentAlignment="center">
-                  <Text style={{ fontSize: 17 }}>{habit.icon}</Text>
-                </Box>
+                <Image source={{ uri: "widget_circle_soft" }} tint={habit.color} modifiers={[size(36, 36)]} />
+                <Text style={{ fontSize: 17 }}>{habit.icon}</Text>
               </Box>
             )}
             <Spacer modifiers={[width(12)]} />

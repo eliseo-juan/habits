@@ -18,14 +18,22 @@ for (let step = 0; step <= 12; step++) {
     : `M${point(0)}A${r},${r} 0 ${step > 6 ? 1 : 0},1 ${point(a)}`
   icons[`ring_${step}`] = { stroke: d, size: RING.size, width: RING.stroke }
 }
+// The ring's track: a full circle drawn at low opacity. Glance tints images keeping the drawable's own alpha, not the
+// tint's, so a faint track needs the transparency in the drawable and a solid tint.
+icons.ring_track = { ...icons.ring_12, alpha: 0.22 }
+// Filled circles (the done state, and the soft disc behind a habit's emoji), drawn instead of relying on cornerRadius,
+// which is a view outline clip that only exists on Android 12+.
+const disc = "M24,0A24,24 0 1,1 24,48A24,24 0 1,1 24,0z"
+icons.circle = { fill: disc, size: 48 }
+icons.circle_soft = { fill: disc, size: 48, alpha: 0.18 }
 module.exports = icons
 
 // Android vector drawable XML for one entry.
 module.exports.toVectorXml = (icon) => {
   const size = icon.size ?? 24
   const body = icon.fill !== undefined
-    ? `<path android:fillColor="#FFFFFFFF" android:pathData="${icon.fill}" />`
-    : icon.stroke ? `<path android:strokeColor="#FFFFFFFF" android:strokeWidth="${icon.width}" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="${icon.stroke}" />` : ""
+    ? `<path android:fillColor="#FFFFFFFF"${icon.alpha !== undefined ? ` android:fillAlpha="${icon.alpha}"` : ""} android:pathData="${icon.fill}" />`
+    : icon.stroke ? `<path android:strokeColor="#FFFFFFFF" android:strokeWidth="${icon.width}" android:strokeLineCap="round"${icon.alpha !== undefined ? ` android:strokeAlpha="${icon.alpha}"` : ""} android:fillColor="#00000000" android:pathData="${icon.stroke}" />` : ""
   return `<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="${size}dp" android:height="${size}dp" android:viewportWidth="${size}" android:viewportHeight="${size}">
   ${body || '<path android:fillColor="#00000000" android:pathData="M0,0" />'}
 </vector>

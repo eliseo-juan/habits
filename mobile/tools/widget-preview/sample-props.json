@@ -1,0 +1,6 @@
+{"signedIn":true,"date":"2026-11-22","done":1,"total":4,"habits":[
+{"id":5,"name":"Eutirox","icon":"💊","color":"#22c55e","done":true,"priority":3,"progress":"","fraction":1,"subtitle":"Todos los días","reminder":""},
+{"id":1,"name":"Ayuno intermitente","icon":"🧠","color":"#8b5cf6","done":false,"priority":2,"progress":"","fraction":0.8,"subtitle":"4 de 5 esta semana","reminder":"21:00"},
+{"id":2,"name":"Creatina","icon":"💪","color":"#eab308","done":false,"priority":1,"progress":"","fraction":0,"subtitle":"Todos los días","reminder":""},
+{"id":3,"name":"Magnesio","icon":"🐟","color":"#14b8a6","done":false,"priority":1,"progress":"1/2","fraction":0.5,"subtitle":"1 de 2 hoy","reminder":"20:30"}],
+"avoid":[{"id":6,"name":"Azúcar","icon":"🍩","color":"#ef4444","done":false,"priority":3,"progress":"","fraction":0,"subtitle":"4 de máx. 1 esta semana","reminder":""}]}
