@@ -1,7 +1,7 @@
 {
   "name": "habits-mobile",
   "version": "1.0.0",
-  "main": "expo-router/entry",
+  "main": "index.ts",
   "dependencies": {
     "@expo/metro-runtime": "~58.0.17",
     "@expo/ui": "~58.0.27",
