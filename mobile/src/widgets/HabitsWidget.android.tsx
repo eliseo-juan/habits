@@ -23,6 +23,10 @@ const HabitsWidget = (props: WidgetProps) => {
     )
   }
 
+  // No weight in the widget runtime, so text cannot be bounded by the ring next to it: cut long text by length
+  // (sized for a 4-cell wide widget) instead of letting it run under the ring.
+  const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max - 1) + "…" : text)
+
   // Like the app's Today rows: icon tile, name over its schedule, progress ring on the right. The widget has no
   // weight/space-between, so the two sides are stacked boxes aligned to the start and to the end of the row.
   const row = (habit: (typeof props.habits)[number]) => (
@@ -33,40 +37,40 @@ const HabitsWidget = (props: WidgetProps) => {
         modifiers={[fillMaxWidth(), cornerRadius(18)]}
         colors={{ containerColor: c.surfaceContainerHigh, contentColor: c.onSurface }}
       >
-        <Box modifiers={[fillMaxWidth(), padding(10, 8, 12, 8)]}>
-          <Box modifiers={[fillMaxWidth(), height(46)]} contentAlignment="centerStart">
+        <Box modifiers={[fillMaxWidth(), padding(8, 6, 12, 6)]}>
+          <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerStart">
             <Row verticalAlignment="center">
-              <Box modifiers={[size(46, 46), cornerRadius(14), background(habit.color + "2E")]} contentAlignment="center">
-                <Text style={{ fontSize: 22 }}>{habit.icon}</Text>
+              <Box modifiers={[size(40, 40), cornerRadius(12), background(habit.color + "2E")]} contentAlignment="center">
+                <Text style={{ fontSize: 19 }}>{habit.icon}</Text>
               </Box>
-              <Spacer modifiers={[width(12)]} />
+              <Spacer modifiers={[width(10)]} />
               <Column>
                 <Text
                   color={habit.done ? c.onSurfaceVariant : c.onSurface}
                   maxLines={1}
                   overflow="ellipsis"
-                  style={{ fontSize: 17, fontWeight: "600", textDecoration: habit.done ? "lineThrough" : "none" }}
+                  style={{ fontSize: 16, fontWeight: "600", textDecoration: habit.done ? "lineThrough" : "none" }}
                 >
-                  {habit.name}
+                  {cut(habit.name, 20)}
                 </Text>
                 <Row verticalAlignment="center">
                   {habit.priority ? <Text color={flags[habit.priority]} style={{ fontSize: 12 }}>{"⚑ "}</Text> : null}
-                  <Text color={c.onSurfaceVariant} maxLines={1} overflow="ellipsis" style={{ fontSize: 12 }}>{habit.subtitle}</Text>
+                  <Text color={c.onSurfaceVariant} maxLines={1} overflow="ellipsis" style={{ fontSize: 12 }}>{cut(habit.subtitle, 26)}</Text>
                 </Row>
               </Column>
             </Row>
           </Box>
-          <Box modifiers={[fillMaxWidth(), height(46)]} contentAlignment="centerEnd">
-            <Box modifiers={[size(42, 42)]} contentAlignment="center">
-              <CircularProgressIndicator progress={habit.fraction} color={habit.color} trackColor={c.outlineVariant} strokeWidth={4} modifiers={[size(42, 42)]} />
-              <Text color={habit.done ? habit.color : c.onSurfaceVariant} style={{ fontSize: habit.done ? 18 : 12, fontWeight: "700" }}>
+          <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
+            <Box modifiers={[size(36, 36)]} contentAlignment="center">
+              <CircularProgressIndicator progress={habit.fraction} color={habit.color} trackColor={c.outlineVariant} strokeWidth={3} modifiers={[size(36, 36)]} />
+              <Text color={habit.done ? habit.color : c.onSurfaceVariant} style={{ fontSize: habit.done ? 16 : 11, fontWeight: "700" }}>
                 {habit.done ? "✓" : habit.progress}
               </Text>
             </Box>
           </Box>
         </Box>
       </Button>
-      <Spacer modifiers={[height(6)]} />
+      <Spacer modifiers={[height(4)]} />
     </Column>
   )
 
