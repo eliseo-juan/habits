@@ -17,26 +17,36 @@ const HabitsWidget = (props: WidgetProps) => {
   const ringStep = (fraction: number) => (fraction <= 0 ? 0 : fraction >= 1 ? 12 : Math.min(11, Math.max(1, Math.round(fraction * 12))))
   const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max - 1) + "…" : text)
 
-  if (!props.signedIn || (props.habits.length === 0 && props.avoid.length === 0)) {
+  if (!props.signedIn) {
     return (
       <Button modifiers={[fillMaxSize()]} {...{ target: "open:" }} colors={{ containerColor: c.surfaceContainer }} onClick={() => undefined}>
         <Column modifiers={frame} verticalArrangement="center" horizontalAlignment="center">
-          <Text color={c.onSurface} style={{ fontSize: 17, fontWeight: "700" }}>{props.signedIn ? "Nada que hacer hoy" : "Hábitos"}</Text>
+          <Text color={c.onSurface} style={{ fontSize: 17, fontWeight: "700" }}>Hábitos</Text>
           <Spacer modifiers={[height(4)]} />
-          <Text color={c.onSurfaceVariant} style={{ fontSize: 13 }}>{props.signedIn ? "Toca para abrir la app" : "Abre la app para sincronizar"}</Text>
+          <Text color={c.onSurfaceVariant} style={{ fontSize: 13 }}>Abre la app para sincronizar</Text>
         </Column>
       </Button>
     )
   }
 
+  // The day on screen. Props pushed before the day switcher existed only have today.
+  const days = props.days?.length ? props.days : [{ date: props.date, label: "Hoy", habits: props.habits, avoid: props.avoid }]
+  const last = days.length - 1
+  const selected = Math.min(Math.max(props.selected ?? last, 0), last)
+  const day = days[selected]
+  const isToday = selected === last
+  // A button's onClick runs in the widget runtime and what it returns is merged into the stored props, so the
+  // arrows switch days without the app.
+  const go = (index: number) => ({ selected: index })
+
   // A plain list on the widget surface (no card per row), close to the app's Today rows but shorter. Left: emoji and
   // name, and below them a dot in the priority's color, the schedule or progress and the next reminder still to go out
   // today. Right: the mark circle, a progress ring that fills with a check once done. Left and right are stacked
   // boxes, since the runtime has no weight or space-between.
-  const row = (habit: (typeof props.habits)[number]) => (
+  const row = (habit: (typeof day.habits)[number]) => (
     <Button
       key={habit.id}
-      {...{ target: "open:log/" + habit.id }}
+      {...{ target: "open:log/" + habit.id + (isToday ? "" : "/" + day.date) }}
       onClick={() => undefined}
       modifiers={[fillMaxWidth()]}
       colors={{ containerColor: c.surfaceContainer, contentColor: c.onSurface }}
@@ -100,16 +110,60 @@ const HabitsWidget = (props: WidgetProps) => {
     </Button>
   )
 
-  return (
-    <Box modifiers={frame}>
-      <LazyColumn modifiers={[fillMaxSize()]}>
-        {props.habits.map(row)}
-        {props.avoid.length ? (
-          <Text color={c.primary} style={{ fontSize: 13, fontWeight: "700" }} modifiers={[padding(6, 10, 0, 4)]}>A evitar</Text>
-        ) : null}
-        {props.avoid.map(row)}
-      </LazyColumn>
+  const arrow = (icon: string, to: number, enabled: boolean) =>
+    enabled ? (
+      <Button onClick={() => go(to)} modifiers={[size(32, 32), cornerRadius(16)]} colors={{ containerColor: c.surfaceContainer }}>
+        <Image source={{ uri: icon }} tint={c.onSurfaceVariant} modifiers={[size(20, 20)]} />
+      </Button>
+    ) : (
+      <Box modifiers={[size(32, 32)]} contentAlignment="center">
+        <Image source={{ uri: icon }} tint={c.outlineVariant} modifiers={[size(20, 20)]} />
+      </Box>
+    )
+
+  // Header: the app's name, and the day switcher. Today reads "Hoy" in the primary color with the forward arrow
+  // off; any other day is a tonal chip ("Ayer", "Jue 20") that goes back to today when tapped.
+  const header = (
+    <Box modifiers={[fillMaxWidth(), height(36), padding(6, 0, 0, 0)]}>
+      <Box modifiers={[fillMaxWidth(), height(36)]} contentAlignment="centerStart">
+        <Text color={c.onSurface} style={{ fontSize: 16, fontWeight: "700" }}>Hábitos</Text>
+      </Box>
+      <Box modifiers={[fillMaxWidth(), height(36)]} contentAlignment="centerEnd">
+        <Row verticalAlignment="center">
+          {arrow("widget_chevron_left", selected - 1, selected > 0)}
+          {isToday ? (
+            <Box modifiers={[width(64), height(28)]} contentAlignment="center">
+              <Text color={c.primary} style={{ fontSize: 14, fontWeight: "700" }}>Hoy</Text>
+            </Box>
+          ) : (
+            <Button onClick={() => go(last)} modifiers={[width(64), height(28), cornerRadius(14)]} colors={{ containerColor: c.secondaryContainer }}>
+              <Text color={c.onSecondaryContainer} style={{ fontSize: 13, fontWeight: "700" }}>{day.label}</Text>
+            </Button>
+          )}
+          {arrow("widget_chevron_right", selected + 1, !isToday)}
+        </Row>
+      </Box>
     </Box>
+  )
+
+  return (
+    <Column modifiers={frame}>
+      {header}
+      <Spacer modifiers={[height(4)]} />
+      {day.habits.length === 0 && day.avoid.length === 0 ? (
+        <Box modifiers={[fillMaxSize()]} contentAlignment="center">
+          <Text color={c.onSurfaceVariant} style={{ fontSize: 14 }}>{isToday ? "Nada que hacer hoy" : "Nada que hacer este día"}</Text>
+        </Box>
+      ) : (
+        <LazyColumn modifiers={[fillMaxSize()]}>
+          {day.habits.map(row)}
+          {day.avoid.length ? (
+            <Text color={c.primary} style={{ fontSize: 13, fontWeight: "700" }} modifiers={[padding(6, 10, 0, 4)]}>A evitar</Text>
+          ) : null}
+          {day.avoid.map(row)}
+        </LazyColumn>
+      )}
+    </Column>
   )
 }
 

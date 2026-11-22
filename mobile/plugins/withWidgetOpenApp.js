@@ -1,7 +1,8 @@
 // Android glue for the home-screen widget, on top of what expo-widgets generates:
 // - expo-widgets only reports taps to JavaScript, which is not running when the app is closed. This replaces the
 //   generated widget provider with one that acts on buttons whose target starts with "open:":
-//     "open:log/<habitId>"  opens WidgetSheetActivity, the habit's day sheet alone over the home screen;
+//     "open:log/<habitId>[/<date>]"  opens WidgetSheetActivity, the habit's day sheet (today's, or that date's)
+//                                    alone over the home screen;
 //     "open:<path>"         opens the app on the deep link <scheme>://<path>.
 // - WidgetSheetActivity: a translucent activity, in its own task and out of recents, rendering the JS component
 //   "WidgetSheet" (src/widget-sheet/root.tsx, registered in index.ts) on the app's React Native host.
@@ -29,8 +30,10 @@ class ${name}Provider : ExpoWidgetsAppWidgetProvider("${name}") {
       val path = target.removePrefix("open:")
       val open = if (path.startsWith("log/")) {
         // A fresh sheet for every tap, in its own task, so closing it goes back to the home screen.
+        val (habitId, day) = path.removePrefix("log/").split("/").let { it[0] to it.getOrNull(1) }
         Intent(context, ${SHEET_ACTIVITY}::class.java)
-          .putExtra("habitId", path.removePrefix("log/"))
+          .putExtra("habitId", habitId)
+          .putExtra("day", day)
           .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
       } else {
         Intent(Intent.ACTION_VIEW, Uri.parse("${scheme}://" + path))
@@ -45,7 +48,7 @@ class ${name}Provider : ExpoWidgetsAppWidgetProvider("${name}") {
 }
 `
 
-// Mirrors the MainActivity expo prebuild generates, rendering "WidgetSheet" with the habit id as initial props.
+// Mirrors the MainActivity expo prebuild generates, rendering "WidgetSheet" with the habit id (and day) as initial props.
 const sheetActivityKt = (pkg) => `package ${pkg}
 
 import android.os.Build
@@ -71,6 +74,7 @@ class ${SHEET_ACTIVITY} : ReactActivity() {
       object : DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled) {
         override fun getLaunchOptions(): Bundle = Bundle().apply {
           putString("habitId", activity.intent.getStringExtra("habitId"))
+          activity.intent.getStringExtra("day")?.let { putString("day", it) }
         }
       },
     )

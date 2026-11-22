@@ -4,7 +4,7 @@ import * as TaskManager from "expo-task-manager"
 import { storage } from "@/lib/storage"
 import type { Reminder } from "@/lib/data"
 import type { DayEntry, Habit } from "@/lib/rules"
-import { buildWidgetProps, localTime } from "@/widgets/props"
+import { buildWidgetProps, localTime, widgetDates } from "@/widgets/props"
 import { pushWidget } from "@/widgets/sync"
 
 export const WIDGET_TASK = "habits-widget-refresh"
@@ -24,7 +24,14 @@ TaskManager.defineTask(WIDGET_TASK, async () => {
     // Reminders only matter for the habits still on the list; a failed request just hides that habit's bell.
     const due = today.items.map((item) => item.habit_id)
     const reminders = Object.fromEntries(await Promise.all(due.map(async (id) => [id, await get<Reminder[]>(`/habits/${id}/reminders`).catch(() => undefined)] as const)))
-    pushWidget(buildWidgetProps(today.date, habits, today.items, reminders, localTime(me.timezone)))
+    // The earlier days for the widget's day switcher; one that fails to load is just left out.
+    const earlier = await Promise.all(
+      widgetDates(today.date).slice(0, -1).map(async (date) => {
+        const day = await get<{ items: DayEntry[] }>(`/today?date=${date}`).catch(() => null)
+        return day ? [{ date, items: day.items }] : []
+      }),
+    )
+    pushWidget(buildWidgetProps(today.date, habits, [...earlier.flat(), { date: today.date, items: today.items }], reminders, localTime(me.timezone)))
     return BackgroundTask.BackgroundTaskResult.Success
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed

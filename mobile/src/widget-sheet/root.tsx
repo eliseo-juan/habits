@@ -17,7 +17,8 @@ import { WidgetSync } from "@/widgets/widget-sync"
 // What a widget row opens: the habit's day sheet alone, over the home screen. It runs in its own translucent
 // Android activity (WidgetSheetActivity, written by plugins/withWidgetOpenApp.js) on the app's JS runtime, with the
 // same providers as the app but no navigation. Closing it (saving, tapping outside, back) finishes the activity.
-export function WidgetSheetRoot({ habitId }: { habitId?: string }) {
+// Initial props from the activity: the habit, and the day when the widget was showing an earlier one.
+export function WidgetSheetRoot({ habitId, day }: { habitId?: string; day?: string }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -25,7 +26,7 @@ export function WidgetSheetRoot({ habitId }: { habitId?: string }) {
           <AuthProvider>
             <ToastProvider>
               <StatusBar style="light" />
-              <Sheet habitId={habitId} />
+              <Sheet habitId={habitId} day={day} />
             </ToastProvider>
           </AuthProvider>
         </PersistQueryClientProvider>
@@ -36,7 +37,7 @@ export function WidgetSheetRoot({ habitId }: { habitId?: string }) {
 
 const close = () => BackHandler.exitApp()
 
-function Sheet({ habitId }: { habitId?: string }) {
+function Sheet({ habitId, day }: { habitId?: string; day?: string }) {
   const { ready, signedIn } = useAuth()
   const me = useQuery({ ...meQuery, enabled: signedIn })
   const today = useQuery({ ...todayQuery, enabled: signedIn })
@@ -60,7 +61,7 @@ function Sheet({ habitId }: { habitId?: string }) {
             <SessionContext value={session}>
               {/* Marking a habit here must refresh the widget too, as the app does while it is open. */}
               <WidgetSync />
-              <DaySheet habitId={habitId} onClose={close} />
+              <DaySheet habitId={habitId} day={day} onClose={close} />
             </SessionContext>
           ) : (
             <View style={styles.loading}>
