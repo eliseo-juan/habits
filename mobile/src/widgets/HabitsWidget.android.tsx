@@ -85,14 +85,6 @@ const HabitsWidget = (props: WidgetProps) => {
               <Text color={c.onSurfaceVariant} maxLines={1} style={{ fontSize: 12 }}>
                 {cut(habit.subtitle, 32 - (habit.reminder ? 8 : 0) - (habit.streak > 1 ? 6 : 0))}
               </Text>
-              {habit.reminder ? (
-                <Row verticalAlignment="center">
-                  <Spacer modifiers={[width(8)]} />
-                  <Image source={{ uri: "widget_bell" }} tint={c.primary} modifiers={[padding(0, 2, 0, 0), size(12, 14)]} />
-                  <Spacer modifiers={[width(3)]} />
-                  <Text color={c.primary} style={{ fontSize: 12, fontWeight: "700" }}>{habit.reminder}</Text>
-                </Row>
-              ) : null}
               {/* The current streak, like the flame chip on the app's Today rows (only today's rows carry one). */}
               {habit.streak > 1 ? (
                 <Row verticalAlignment="center">
@@ -100,6 +92,14 @@ const HabitsWidget = (props: WidgetProps) => {
                   <Image source={{ uri: "widget_fire" }} tint="#fb923c" modifiers={[padding(0, 2, 0, 0), size(12, 14)]} />
                   <Spacer modifiers={[width(2)]} />
                   <Text color="#fb923c" style={{ fontSize: 12, fontWeight: "700" }}>{String(habit.streak)}</Text>
+                </Row>
+              ) : null}
+              {habit.reminder ? (
+                <Row verticalAlignment="center">
+                  <Spacer modifiers={[width(8)]} />
+                  <Image source={{ uri: "widget_bell" }} tint={c.primary} modifiers={[padding(0, 2, 0, 0), size(12, 14)]} />
+                  <Spacer modifiers={[width(3)]} />
+                  <Text color={c.primary} style={{ fontSize: 12, fontWeight: "700" }}>{habit.reminder}</Text>
                 </Row>
               ) : null}
             </Row>

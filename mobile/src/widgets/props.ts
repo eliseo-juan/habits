@@ -2,13 +2,20 @@ import { addDays, colorOf, emojiOf, parse, scheduleLabel, WEEKDAYS, type DayEntr
 import type { Reminder } from "@/lib/data"
 import type { WidgetDay, WidgetHabit, WidgetProps } from "@/widgets/types"
 
-// Current wall-clock time ("HH:MM") in the user's timezone; the device's own when it cannot be resolved.
-export function localTime(timezone?: string): string {
+// Current wall-clock time as "HH:MM" (24h, zero-padded) in the user's timezone, compared as text with reminder
+// times. Built from numbers, not from a formatted string: on device toLocaleTimeString can come back as "9:39 PM",
+// which sorts before "21:00" and hid every pending reminder. Falls back to the device's clock.
+export function localTime(timezone?: string, at = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0")
   try {
-    return new Date().toLocaleTimeString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false })
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(at)
+    const hour = Number(parts.find((p) => p.type === "hour")?.value)
+    const minute = Number(parts.find((p) => p.type === "minute")?.value)
+    if (Number.isInteger(hour) && Number.isInteger(minute) && hour >= 0 && minute >= 0 && minute < 60) return `${pad(hour % 24)}:${pad(minute)}`
   } catch {
-    return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+    // no Intl or unknown timezone: the device's clock below
   }
+  return `${pad(at.getHours())}:${pad(at.getMinutes())}`
 }
 
 // Next reminder of the day that has not gone out yet: enabled, set for today's weekday and later than now. The
