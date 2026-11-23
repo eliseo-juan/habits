@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useQueries } from "@tanstack/react-query"
 import { api } from "@/lib/api"
-import { useSession, type Reminder } from "@/lib/data"
+import { useSession, type HabitStats, type Reminder } from "@/lib/data"
 import type { DayEntry } from "@/lib/rules"
 import { registerWidgetRefresh } from "@/widgets/background"
 import { buildWidgetProps, localTime, widgetDates } from "@/widgets/props"
@@ -26,14 +26,20 @@ export function WidgetSync({ selectDate }: { selectDate?: string } = {}) {
     queries: habits.map((habit) => ({ queryKey: ["reminders", habit.id], queryFn: () => api<Reminder[]>(`/habits/${habit.id}/reminders`), staleTime: 5 * 60_000 })),
   })
   const remindersKey = JSON.stringify(reminders.map((q) => q.data ?? null))
+  // Same keys as useHabitStats: the current streak shown on today's rows.
+  const stats = useQueries({
+    queries: habits.map((habit) => ({ queryKey: ["stats", habit.id], queryFn: () => api<HabitStats>(`/habits/${habit.id}/stats`) })),
+  })
+  const statsKey = JSON.stringify(stats.map((q) => q.data?.current_streak ?? null))
 
   useEffect(() => {
     if (!items) return
     const byHabit = Object.fromEntries(habits.map((habit, i) => [habit.id, reminders[i]?.data]))
     const loaded = dates.flatMap((date, i) => (days[i]?.data ? [{ date, items: days[i].data.items }] : []))
-    pushWidget(buildWidgetProps(today, habits, loaded, byHabit, localTime(me.timezone), selectDate ?? today))
+    const streaks = Object.fromEntries(habits.map((habit, i) => [habit.id, stats[i]?.data?.current_streak]))
+    pushWidget(buildWidgetProps(today, habits, loaded, byHabit, localTime(me.timezone), selectDate ?? today, streaks))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- query results change identity every render; the keys track their content
-  }, [today, habits, items, me.timezone, remindersKey, daysKey, selectDate])
+  }, [today, habits, items, me.timezone, remindersKey, daysKey, statsKey, selectDate])
 
   useEffect(() => {
     void registerWidgetRefresh()

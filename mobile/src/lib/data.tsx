@@ -6,7 +6,7 @@ import { EMPTY_LOG, type DayEntry, type DayLog, type Habit, type Status } from "
 
 export type Me = { id: number; email: string; display_name: string; timezone: string; day_cutoff: string }
 type YearOut = { year: number; habits: { habit_id: number; percentage: number | null; months: { month: string; percentage: number | null }[]; days: Record<string, Status> }[] }
-type HabitStats = { done: number; failed: number; skipped: number; percentage: number | null; current_streak: number; best_streak: number }
+export type HabitStats = { done: number; failed: number; skipped: number; percentage: number | null; current_streak: number; best_streak: number }
 export type Reminder = { id: number; time_local: string; weekdays: number[] | null; enabled: boolean }
 
 export const meQuery = queryOptions({ queryKey: ["me"], queryFn: () => api<Me>("/me") })

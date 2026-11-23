@@ -2,7 +2,7 @@ import { Platform } from "react-native"
 import * as BackgroundTask from "expo-background-task"
 import * as TaskManager from "expo-task-manager"
 import { storage } from "@/lib/storage"
-import type { Reminder } from "@/lib/data"
+import type { HabitStats, Reminder } from "@/lib/data"
 import type { DayEntry, Habit } from "@/lib/rules"
 import { buildWidgetProps, localTime, widgetDates } from "@/widgets/props"
 import { pushWidget } from "@/widgets/sync"
@@ -31,7 +31,8 @@ TaskManager.defineTask(WIDGET_TASK, async () => {
         return day ? [{ date, items: day.items }] : []
       }),
     )
-    pushWidget(buildWidgetProps(today.date, habits, [...earlier.flat(), { date: today.date, items: today.items }], reminders, localTime(me.timezone)))
+    const streaks = Object.fromEntries(await Promise.all(due.map(async (id) => [id, await get<HabitStats>(`/habits/${id}/stats`).then((s) => s.current_streak, () => undefined)] as const)))
+    pushWidget(buildWidgetProps(today.date, habits, [...earlier.flat(), { date: today.date, items: today.items }], reminders, localTime(me.timezone), today.date, streaks))
     return BackgroundTask.BackgroundTaskResult.Success
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed

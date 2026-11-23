@@ -25,6 +25,9 @@ function nextReminder(reminders: Reminder[] | undefined, date: string, now: stri
 
 // How many days the Android widget can go back, today included.
 export const WIDGET_DAYS = 7
+// How long the widget stays on an earlier day after the last touch before going back to today. The provider's
+// redraw alarm (plugins/withWidgetOpenApp.js) and the widget layout use the same five minutes.
+export const WIDGET_DAY_HOLD_MS = 5 * 60 * 1000
 export const widgetDates = (today: string) => Array.from({ length: WIDGET_DAYS }, (_, i) => addDays(today, i - WIDGET_DAYS + 1))
 
 // "Hoy", "Ayer", then the weekday and day of the month ("Jue 20").
@@ -39,7 +42,7 @@ export function widgetDayLabel(date: string, today: string): string {
 // Rows of one day, ordered by priority, highest first, like the app; the sort is stable, so equal priorities keep
 // the app's order. Done habits stay in place (dimmed in the widget) rather than jumping to the end. Pending
 // reminders only exist for today.
-function dayRows(date: string, today: string, habits: Habit[], items: DayEntry[], reminders: Record<number, Reminder[] | undefined>, now: string) {
+function dayRows(date: string, today: string, habits: Habit[], items: DayEntry[], reminders: Record<number, Reminder[] | undefined>, now: string, streaks: Record<number, number | undefined>) {
   const rowsOf = (kind: Habit["kind"]): WidgetHabit[] =>
     items
       .flatMap((entry) => {
@@ -65,6 +68,7 @@ function dayRows(date: string, today: string, habits: Habit[], items: DayEntry[]
               ? `${entry.done_count} de ${entry.times_per_day}${date === today ? " hoy" : ""}`
               : scheduleLabel(habit),
         reminder: entry.status === "done" || date !== today ? "" : nextReminder(reminders[habit.id], date, now),
+        streak: date === today ? (streaks[habit.id] ?? 0) : 0,
         // The ring around the icon: the week's (or month's) progress for period habits, today's count otherwise.
         // Limits have no ring: filling up towards a maximum is not progress.
         fraction:
@@ -90,15 +94,12 @@ export function buildWidgetProps(
   now = localTime(),
   // The day the widget should show; today unless the push comes from a sheet opened on an earlier day.
   selectDate = today,
+  streaks: Record<number, number | undefined> = {},
 ): WidgetProps {
   const shown: WidgetDay[] = [...days]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map(({ date, items }) => ({ date, label: widgetDayLabel(date, today), ...dayRows(date, today, habits, items, reminders, now) }))
+    .map(({ date, items }) => ({ date, label: widgetDayLabel(date, today), ...dayRows(date, today, habits, items, reminders, now, streaks) }))
   const current = shown.find((d) => d.date === today) ?? { habits: [], avoid: [] }
-  const indexOf = (date: string) => {
-    const index = shown.findIndex((d) => d.date === date)
-    return index === -1 ? undefined : index
-  }
   return {
     signedIn: true,
     date: today,
@@ -107,6 +108,8 @@ export function buildWidgetProps(
     habits: current.habits,
     avoid: current.avoid,
     days: shown,
-    selected: indexOf(selectDate) ?? indexOf(today) ?? 0,
+    // Same hold as the widget's own arrows: back to today five minutes after the sheet was opened.
+    selectedDate: selectDate !== today && shown.some((d) => d.date === selectDate) ? selectDate : "",
+    selectedUntil: selectDate !== today ? String(Date.now() + WIDGET_DAY_HOLD_MS) : "0",
   }
 }

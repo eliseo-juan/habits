@@ -32,12 +32,15 @@ const HabitsWidget = (props: WidgetProps) => {
   // The day on screen. Props pushed before the day switcher existed only have today.
   const days = props.days?.length ? props.days : [{ date: props.date, label: "Hoy", habits: props.habits, avoid: props.avoid }]
   const last = days.length - 1
-  const selected = Math.min(Math.max(props.selected ?? last, 0), last)
+  // An earlier day stays on screen until `selectedUntil`, then the widget is back on today (the provider redraws it
+  // when that time comes). Five minutes, as WIDGET_DAY_HOLD_MS in props.ts: a widget function cannot import it.
+  const held = props.selectedDate && Number(props.selectedUntil) > Date.now() ? days.findIndex((d) => d.date === props.selectedDate) : -1
+  const selected = held >= 0 ? held : last
   const day = days[selected]
   const isToday = selected === last
   // A button's onClick runs in the widget runtime and what it returns is merged into the stored props, so the
-  // arrows switch days without the app.
-  const go = (index: number) => ({ selected: index })
+  // arrows switch days without the app. Every touch restarts the five minutes.
+  const go = (index: number) => ({ selectedDate: index === last ? "" : days[index].date, selectedUntil: String(Date.now() + 5 * 60 * 1000) })
 
   // A plain list on the widget surface (no card per row), close to the app's Today rows but shorter. Left: emoji and
   // name, and below them a dot in the priority's color, the schedule or progress and the next reminder still to go out
@@ -80,7 +83,7 @@ const HabitsWidget = (props: WidgetProps) => {
               </Box>
               <Spacer modifiers={[width(6)]} />
               <Text color={c.onSurfaceVariant} maxLines={1} style={{ fontSize: 12 }}>
-                {cut(habit.subtitle, habit.reminder ? 24 : 32)}
+                {cut(habit.subtitle, 32 - (habit.reminder ? 8 : 0) - (habit.streak > 1 ? 6 : 0))}
               </Text>
               {habit.reminder ? (
                 <Row verticalAlignment="center">
@@ -88,6 +91,15 @@ const HabitsWidget = (props: WidgetProps) => {
                   <Image source={{ uri: "widget_bell" }} tint={c.primary} modifiers={[padding(0, 2, 0, 0), size(12, 14)]} />
                   <Spacer modifiers={[width(3)]} />
                   <Text color={c.primary} style={{ fontSize: 12, fontWeight: "700" }}>{habit.reminder}</Text>
+                </Row>
+              ) : null}
+              {/* The current streak, like the flame chip on the app's Today rows (only today's rows carry one). */}
+              {habit.streak > 1 ? (
+                <Row verticalAlignment="center">
+                  <Spacer modifiers={[width(8)]} />
+                  <Image source={{ uri: "widget_fire" }} tint="#fb923c" modifiers={[padding(0, 2, 0, 0), size(12, 14)]} />
+                  <Spacer modifiers={[width(2)]} />
+                  <Text color="#fb923c" style={{ fontSize: 12, fontWeight: "700" }}>{String(habit.streak)}</Text>
                 </Row>
               ) : null}
             </Row>

@@ -4,6 +4,7 @@
 //     "open:log/<habitId>[/<date>]"  opens WidgetSheetActivity, the habit's day sheet (today's, or that date's)
 //                                    alone over the home screen;
 //     "open:<path>"         opens the app on the deep link <scheme>://<path>.
+//   Every touch also schedules a redraw five minutes later, when the widget goes back to today.
 // - WidgetSheetActivity: a translucent activity, in its own task and out of recents, rendering the JS component
 //   "WidgetSheet" (src/widget-sheet/root.tsx, registered in index.ts) on the app's React Native host.
 // - The widget's icons (widget-icons.js) as vector drawables, the only images the widget can show.
@@ -18,15 +19,24 @@ const SHEET_THEME = "Theme.App.WidgetSheet"
 
 const providerKt = (pkg, scheme, name) => `package ${pkg}
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import expo.modules.widgets.ExpoWidgetsAppWidgetProvider
 
 class ${name}Provider : ExpoWidgetsAppWidgetProvider("${name}") {
   override fun onReceive(context: Context, intent: Intent) {
     val target = intent.getStringExtra("expo.modules.widgets.extra.TARGET")
-    if (intent.action == "expo.modules.widgets.ACTION_WIDGET_INTERACTION" && target != null && target.startsWith("open:")) {
+    val interaction = intent.action == "expo.modules.widgets.ACTION_WIDGET_INTERACTION"
+    // A widget only redraws when told to. The layout shows an earlier day for five minutes after the last touch
+    // (WIDGET_DAY_HOLD_MS in src/widgets/props.ts), so every touch moves a redraw to just after that.
+    if (interaction) scheduleRedraw(context)
+    if (interaction && target != null && target.startsWith("open:")) {
       val path = target.removePrefix("open:")
       val open = if (path.startsWith("log/")) {
         // A fresh sheet for every tap, in its own task, so closing it goes back to the home screen.
@@ -44,6 +54,17 @@ class ${name}Provider : ExpoWidgetsAppWidgetProvider("${name}") {
       return
     }
     super.onReceive(context, intent)
+  }
+
+  private fun scheduleRedraw(context: Context) {
+    val ids = AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, ${name}Provider::class.java))
+    val redraw = Intent(context, ${name}Provider::class.java)
+      .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+      .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+    // Same request code every time: a new touch replaces the pending redraw instead of adding one.
+    val pending = PendingIntent.getBroadcast(context, 1, redraw, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    context.getSystemService(AlarmManager::class.java)
+      .set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 5 * 60_000L + 5_000L, pending)
   }
 }
 `
