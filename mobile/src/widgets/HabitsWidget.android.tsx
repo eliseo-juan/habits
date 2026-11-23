@@ -32,12 +32,15 @@ const HabitsWidget = (props: WidgetProps) => {
   // The day on screen. Props pushed before the day switcher existed only have today.
   const days = props.days?.length ? props.days : [{ date: props.date, label: "Hoy", habits: props.habits, avoid: props.avoid }]
   const last = days.length - 1
-  const selected = Math.min(Math.max(props.selected ?? last, 0), last)
+  // An earlier day stays on screen until `selectedUntil`, then the widget is back on today (the provider redraws it
+  // when that time comes). Five minutes, as WIDGET_DAY_HOLD_MS in props.ts: a widget function cannot import it.
+  const held = props.selectedDate && Number(props.selectedUntil) > Date.now() ? days.findIndex((d) => d.date === props.selectedDate) : -1
+  const selected = held >= 0 ? held : last
   const day = days[selected]
   const isToday = selected === last
   // A button's onClick runs in the widget runtime and what it returns is merged into the stored props, so the
-  // arrows switch days without the app.
-  const go = (index: number) => ({ selected: index })
+  // arrows switch days without the app. Every touch restarts the five minutes.
+  const go = (index: number) => ({ selectedDate: index === last ? "" : days[index].date, selectedUntil: String(Date.now() + 5 * 60 * 1000) })
 
   // A plain list on the widget surface (no card per row), close to the app's Today rows but shorter. Left: emoji and
   // name, and below them a dot in the priority's color, the schedule or progress and the next reminder still to go out
@@ -52,15 +55,16 @@ const HabitsWidget = (props: WidgetProps) => {
       modifiers={[fillMaxWidth(), cornerRadius(16)]}
       colors={{ containerColor: c.surfaceContainer, contentColor: c.onSurface }}
     >
-      <Box modifiers={[fillMaxWidth(), padding(6, 7, 4, 7)]}>
-        <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerStart">
+      <Box modifiers={[fillMaxWidth(), padding(4, 2, 4, 2)]}>
+        <Box modifiers={[fillMaxWidth(), height(52)]} contentAlignment="centerStart">
           <Column>
             <Row verticalAlignment="center">
-              {/* Emoji and priority dot share a 20dp column, so the name and the line below start at the same x. */}
-              <Box modifiers={[width(20)]} contentAlignment="center">
+              {/* Emoji and priority dot share a column, so the name and the line below start at the same x. It and the row
+                  height leave room for a raised system font size (checked at 1.3x with tools/widget-preview). */}
+              <Box modifiers={[width(26)]} contentAlignment="center">
                 <Text style={{ fontSize: 16 }}>{habit.icon}</Text>
               </Box>
-              <Spacer modifiers={[width(8)]} />
+              <Spacer modifiers={[width(6)]} />
               <Text
                 color={habit.done ? c.onSurfaceVariant : c.onSurface}
                 maxLines={1}
@@ -71,16 +75,25 @@ const HabitsWidget = (props: WidgetProps) => {
             </Row>
             <Spacer modifiers={[height(3)]} />
             <Row verticalAlignment="center">
-              <Box modifiers={[width(20)]} contentAlignment="center">
+              <Box modifiers={[width(26)]} contentAlignment="center">
                 {/* Text boxes carry font padding above the glyphs: 2dp on top lowers the dot 1dp onto the text's middle. */}
                 {habit.priority ? (
                   <Image source={{ uri: "widget_circle" }} tint={flags[habit.priority]} modifiers={[padding(0, 2, 0, 0), size(8, 10)]} />
                 ) : null}
               </Box>
-              <Spacer modifiers={[width(8)]} />
+              <Spacer modifiers={[width(6)]} />
               <Text color={c.onSurfaceVariant} maxLines={1} style={{ fontSize: 12 }}>
-                {cut(habit.subtitle, habit.reminder ? 24 : 32)}
+                {cut(habit.subtitle, 32 - (habit.reminder ? 8 : 0) - (habit.streak > 1 ? 6 : 0))}
               </Text>
+              {/* The current streak, like the flame chip on the app's Today rows (only today's rows carry one). */}
+              {habit.streak > 1 ? (
+                <Row verticalAlignment="center">
+                  <Spacer modifiers={[width(8)]} />
+                  <Image source={{ uri: "widget_fire" }} tint="#fb923c" modifiers={[padding(0, 2, 0, 0), size(12, 14)]} />
+                  <Spacer modifiers={[width(2)]} />
+                  <Text color="#fb923c" style={{ fontSize: 12, fontWeight: "700" }}>{String(habit.streak)}</Text>
+                </Row>
+              ) : null}
               {habit.reminder ? (
                 <Row verticalAlignment="center">
                   <Spacer modifiers={[width(8)]} />
@@ -92,7 +105,7 @@ const HabitsWidget = (props: WidgetProps) => {
             </Row>
           </Column>
         </Box>
-        <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
+        <Box modifiers={[fillMaxWidth(), height(52)]} contentAlignment="centerEnd">
           {habit.done ? (
             <Box modifiers={[size(30, 30)]} contentAlignment="center">
               <Image source={{ uri: "widget_circle" }} tint={habit.color} modifiers={[size(30, 30)]} />
@@ -125,20 +138,21 @@ const HabitsWidget = (props: WidgetProps) => {
   // Header: the app's name, and the day switcher. Today reads "Hoy" in the primary color with the forward arrow
   // off; any other day is a tonal chip ("Ayer", "Jue 20") that goes back to today when tapped.
   const header = (
-    <Box modifiers={[fillMaxWidth(), height(36), padding(6, 0, 0, 0)]}>
-      <Box modifiers={[fillMaxWidth(), height(36)]} contentAlignment="centerStart">
+    <Box modifiers={[fillMaxWidth(), height(40), padding(6, 0, 0, 0)]}>
+      <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerStart">
         <Text color={c.onSurface} style={{ fontSize: 16, fontWeight: "700" }}>Hábitos</Text>
       </Box>
-      <Box modifiers={[fillMaxWidth(), height(36)]} contentAlignment="centerEnd">
+      <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
         <Row verticalAlignment="center">
           {arrow("widget_chevron_left", selected - 1, selected > 0)}
+          {/* No fixed height: the device's font size decides it, and a fixed one clipped the label. */}
           {isToday ? (
-            <Box modifiers={[width(64), height(28)]} contentAlignment="center">
+            <Box modifiers={[width(64)]} contentAlignment="center">
               <Text color={c.primary} style={{ fontSize: 14, fontWeight: "700" }}>Hoy</Text>
             </Box>
           ) : (
-            <Button onClick={() => go(last)} modifiers={[width(64), height(28), cornerRadius(14)]} colors={{ containerColor: c.secondaryContainer }}>
-              <Text color={c.onSecondaryContainer} style={{ fontSize: 13, fontWeight: "700" }}>{day.label}</Text>
+            <Button onClick={() => go(last)} modifiers={[width(64), cornerRadius(16)]} colors={{ containerColor: c.secondaryContainer }}>
+              <Text color={c.onSecondaryContainer} style={{ fontSize: 13, fontWeight: "700" }} modifiers={[padding(0, 5, 0, 5)]}>{day.label}</Text>
             </Button>
           )}
           {arrow("widget_chevron_right", selected + 1, !isToday)}

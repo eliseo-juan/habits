@@ -34,7 +34,7 @@ export default function VersionScreen() {
   }
 
   const [widget, setWidget] = useState(widgetStatus())
-  const widgetLabel = !widget ? "Sin envíos todavía" : widget.ok ? `Enviado ${widget.done}/${widget.total}` : `Error: ${widget.error}`
+  const widgetLabel = !widget ? "Sin envíos todavía" : widget.ok ? `Enviado ${widget.done}/${widget.total} · ${widget.reminders ?? 0} avisos pendientes` : `Error: ${widget.error}`
 
   return (
     <Screen>

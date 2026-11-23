@@ -25,6 +25,8 @@ import java.io.File
 class RenderTest {
   @Test
   fun render() = runTest {
+    // -Dpreview.fontScale=1.3 renders with the device's font size setting raised, where text grows past its box.
+    System.getProperty("preview.fontScale")?.let { org.robolectric.RuntimeEnvironment.setFontScale(it.toFloat()) }
     val context = ApplicationProvider.getApplicationContext<android.content.Context>()
     val tree = JSONObject(File(System.getProperty("preview.tree")!!).readText())
     val width = System.getProperty("preview.width", "374").toFloat()

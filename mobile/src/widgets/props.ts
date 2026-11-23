@@ -2,13 +2,20 @@ import { addDays, colorOf, emojiOf, parse, scheduleLabel, WEEKDAYS, type DayEntr
 import type { Reminder } from "@/lib/data"
 import type { WidgetDay, WidgetHabit, WidgetProps } from "@/widgets/types"
 
-// Current wall-clock time ("HH:MM") in the user's timezone; the device's own when it cannot be resolved.
-export function localTime(timezone?: string): string {
+// Current wall-clock time as "HH:MM" (24h, zero-padded) in the user's timezone, compared as text with reminder
+// times. Built from numbers, not from a formatted string: on device toLocaleTimeString can come back as "9:39 PM",
+// which sorts before "21:00" and hid every pending reminder. Falls back to the device's clock.
+export function localTime(timezone?: string, at = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0")
   try {
-    return new Date().toLocaleTimeString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false })
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(at)
+    const hour = Number(parts.find((p) => p.type === "hour")?.value)
+    const minute = Number(parts.find((p) => p.type === "minute")?.value)
+    if (Number.isInteger(hour) && Number.isInteger(minute) && hour >= 0 && minute >= 0 && minute < 60) return `${pad(hour % 24)}:${pad(minute)}`
   } catch {
-    return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+    // no Intl or unknown timezone: the device's clock below
   }
+  return `${pad(at.getHours())}:${pad(at.getMinutes())}`
 }
 
 // Next reminder of the day that has not gone out yet: enabled, set for today's weekday and later than now. The
@@ -25,6 +32,9 @@ function nextReminder(reminders: Reminder[] | undefined, date: string, now: stri
 
 // How many days the Android widget can go back, today included.
 export const WIDGET_DAYS = 7
+// How long the widget stays on an earlier day after the last touch before going back to today. The provider's
+// redraw alarm (plugins/withWidgetOpenApp.js) and the widget layout use the same five minutes.
+export const WIDGET_DAY_HOLD_MS = 5 * 60 * 1000
 export const widgetDates = (today: string) => Array.from({ length: WIDGET_DAYS }, (_, i) => addDays(today, i - WIDGET_DAYS + 1))
 
 // "Hoy", "Ayer", then the weekday and day of the month ("Jue 20").
@@ -39,7 +49,7 @@ export function widgetDayLabel(date: string, today: string): string {
 // Rows of one day, ordered by priority, highest first, like the app; the sort is stable, so equal priorities keep
 // the app's order. Done habits stay in place (dimmed in the widget) rather than jumping to the end. Pending
 // reminders only exist for today.
-function dayRows(date: string, today: string, habits: Habit[], items: DayEntry[], reminders: Record<number, Reminder[] | undefined>, now: string) {
+function dayRows(date: string, today: string, habits: Habit[], items: DayEntry[], reminders: Record<number, Reminder[] | undefined>, now: string, streaks: Record<number, number | undefined>) {
   const rowsOf = (kind: Habit["kind"]): WidgetHabit[] =>
     items
       .flatMap((entry) => {
@@ -65,6 +75,7 @@ function dayRows(date: string, today: string, habits: Habit[], items: DayEntry[]
               ? `${entry.done_count} de ${entry.times_per_day}${date === today ? " hoy" : ""}`
               : scheduleLabel(habit),
         reminder: entry.status === "done" || date !== today ? "" : nextReminder(reminders[habit.id], date, now),
+        streak: date === today ? (streaks[habit.id] ?? 0) : 0,
         // The ring around the icon: the week's (or month's) progress for period habits, today's count otherwise.
         // Limits have no ring: filling up towards a maximum is not progress.
         fraction:
@@ -88,10 +99,13 @@ export function buildWidgetProps(
   days: { date: string; items: DayEntry[] }[],
   reminders: Record<number, Reminder[] | undefined> = {},
   now = localTime(),
+  // The day the widget should show; today unless the push comes from a sheet opened on an earlier day.
+  selectDate = today,
+  streaks: Record<number, number | undefined> = {},
 ): WidgetProps {
   const shown: WidgetDay[] = [...days]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map(({ date, items }) => ({ date, label: widgetDayLabel(date, today), ...dayRows(date, today, habits, items, reminders, now) }))
+    .map(({ date, items }) => ({ date, label: widgetDayLabel(date, today), ...dayRows(date, today, habits, items, reminders, now, streaks) }))
   const current = shown.find((d) => d.date === today) ?? { habits: [], avoid: [] }
   return {
     signedIn: true,
@@ -101,6 +115,8 @@ export function buildWidgetProps(
     habits: current.habits,
     avoid: current.avoid,
     days: shown,
-    selected: Math.max(0, shown.findIndex((d) => d.date === today)),
+    // Same hold as the widget's own arrows: back to today five minutes after the sheet was opened.
+    selectedDate: selectDate !== today && shown.some((d) => d.date === selectDate) ? selectDate : "",
+    selectedUntil: selectDate !== today ? String(Date.now() + WIDGET_DAY_HOLD_MS) : "0",
   }
 }
