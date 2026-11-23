@@ -59,8 +59,9 @@ function Sheet({ habitId, day }: { habitId?: string; day?: string }) {
         <Animated.View entering={SlideInDown.duration(220)} style={styles.sheet}>
           {session && habitId ? (
             <SessionContext value={session}>
-              {/* Marking a habit here must refresh the widget too, as the app does while it is open. */}
-              <WidgetSync />
+              {/* Marking a habit here must refresh the widget too, as the app does while it is open, and keep the day the
+                  widget was showing. */}
+              <WidgetSync selectDate={day} />
               <DaySheet habitId={habitId} day={day} onClose={close} />
             </SessionContext>
           ) : (

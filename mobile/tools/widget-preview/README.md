@@ -28,6 +28,7 @@ Robolectric runs on (about 200 MB, cached in `~/.cache/robolectric`).
 ```sh
 ./render.sh                                   # sample-props.json -> out/widget.png, 374x416 dp, dark
 ./render.sh my-props.json out/narrow.png 300 260 light
+./render.sh sample-props.json out/big-font.png 374 416 dark 1.3   # system font size raised
 ```
 
 Props have the shape of `WidgetProps` (`src/widgets/types.ts`); `sample-props.json` covers every row state.

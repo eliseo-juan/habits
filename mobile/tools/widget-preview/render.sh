@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Renders the Android home-screen widget to a PNG through Glance's real RemoteViews pipeline. See README.md.
-# Usage: ./render.sh [props.json] [out.png] [width dp] [height dp] [dark|light]
+# Usage: ./render.sh [props.json] [out.png] [width dp] [height dp] [dark|light] [font scale]
 set -euo pipefail
 cd "$(dirname "$0")"
 props=$(realpath "${1:-sample-props.json}")
@@ -8,6 +8,7 @@ out=$(realpath -m "${2:-out/widget.png}")
 width=${3:-374}
 height=${4:-416}
 scheme=${5:-dark}
+font_scale=${6:-1}
 mkdir -p "$(dirname "$out")" build/generated/widget-res/drawable
 
 # 1. The real layout, run in Node, as a JSON tree.
@@ -35,5 +36,5 @@ fi
 # 4. Glance -> RemoteViews -> Android views -> PNG.
 [ -f local.properties ] || echo "sdk.dir=${ANDROID_HOME:?set ANDROID_HOME to an Android SDK with platform 36}" > local.properties
 gradle -q --max-workers=2 testDebugUnitTest --rerun \
-  -Dpreview.tree="$PWD/build/tree.json" -Dpreview.out="$out" -Dpreview.width="$width" -Dpreview.height="$height"
+  -Dpreview.tree="$PWD/build/tree.json" -Dpreview.out="$out" -Dpreview.width="$width" -Dpreview.height="$height" -Dpreview.fontScale="$font_scale"
 echo "$out"

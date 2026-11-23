@@ -52,15 +52,16 @@ const HabitsWidget = (props: WidgetProps) => {
       modifiers={[fillMaxWidth(), cornerRadius(16)]}
       colors={{ containerColor: c.surfaceContainer, contentColor: c.onSurface }}
     >
-      <Box modifiers={[fillMaxWidth(), padding(6, 7, 4, 7)]}>
-        <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerStart">
+      <Box modifiers={[fillMaxWidth(), padding(4, 2, 4, 2)]}>
+        <Box modifiers={[fillMaxWidth(), height(52)]} contentAlignment="centerStart">
           <Column>
             <Row verticalAlignment="center">
-              {/* Emoji and priority dot share a 20dp column, so the name and the line below start at the same x. */}
-              <Box modifiers={[width(20)]} contentAlignment="center">
+              {/* Emoji and priority dot share a column, so the name and the line below start at the same x. It and the row
+                  height leave room for a raised system font size (checked at 1.3x with tools/widget-preview). */}
+              <Box modifiers={[width(26)]} contentAlignment="center">
                 <Text style={{ fontSize: 16 }}>{habit.icon}</Text>
               </Box>
-              <Spacer modifiers={[width(8)]} />
+              <Spacer modifiers={[width(6)]} />
               <Text
                 color={habit.done ? c.onSurfaceVariant : c.onSurface}
                 maxLines={1}
@@ -71,13 +72,13 @@ const HabitsWidget = (props: WidgetProps) => {
             </Row>
             <Spacer modifiers={[height(3)]} />
             <Row verticalAlignment="center">
-              <Box modifiers={[width(20)]} contentAlignment="center">
+              <Box modifiers={[width(26)]} contentAlignment="center">
                 {/* Text boxes carry font padding above the glyphs: 2dp on top lowers the dot 1dp onto the text's middle. */}
                 {habit.priority ? (
                   <Image source={{ uri: "widget_circle" }} tint={flags[habit.priority]} modifiers={[padding(0, 2, 0, 0), size(8, 10)]} />
                 ) : null}
               </Box>
-              <Spacer modifiers={[width(8)]} />
+              <Spacer modifiers={[width(6)]} />
               <Text color={c.onSurfaceVariant} maxLines={1} style={{ fontSize: 12 }}>
                 {cut(habit.subtitle, habit.reminder ? 24 : 32)}
               </Text>
@@ -92,7 +93,7 @@ const HabitsWidget = (props: WidgetProps) => {
             </Row>
           </Column>
         </Box>
-        <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
+        <Box modifiers={[fillMaxWidth(), height(52)]} contentAlignment="centerEnd">
           {habit.done ? (
             <Box modifiers={[size(30, 30)]} contentAlignment="center">
               <Image source={{ uri: "widget_circle" }} tint={habit.color} modifiers={[size(30, 30)]} />
@@ -125,20 +126,21 @@ const HabitsWidget = (props: WidgetProps) => {
   // Header: the app's name, and the day switcher. Today reads "Hoy" in the primary color with the forward arrow
   // off; any other day is a tonal chip ("Ayer", "Jue 20") that goes back to today when tapped.
   const header = (
-    <Box modifiers={[fillMaxWidth(), height(36), padding(6, 0, 0, 0)]}>
-      <Box modifiers={[fillMaxWidth(), height(36)]} contentAlignment="centerStart">
+    <Box modifiers={[fillMaxWidth(), height(40), padding(6, 0, 0, 0)]}>
+      <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerStart">
         <Text color={c.onSurface} style={{ fontSize: 16, fontWeight: "700" }}>Hábitos</Text>
       </Box>
-      <Box modifiers={[fillMaxWidth(), height(36)]} contentAlignment="centerEnd">
+      <Box modifiers={[fillMaxWidth(), height(40)]} contentAlignment="centerEnd">
         <Row verticalAlignment="center">
           {arrow("widget_chevron_left", selected - 1, selected > 0)}
+          {/* No fixed height: the device's font size decides it, and a fixed one clipped the label. */}
           {isToday ? (
-            <Box modifiers={[width(64), height(28)]} contentAlignment="center">
+            <Box modifiers={[width(64)]} contentAlignment="center">
               <Text color={c.primary} style={{ fontSize: 14, fontWeight: "700" }}>Hoy</Text>
             </Box>
           ) : (
-            <Button onClick={() => go(last)} modifiers={[width(64), height(28), cornerRadius(14)]} colors={{ containerColor: c.secondaryContainer }}>
-              <Text color={c.onSecondaryContainer} style={{ fontSize: 13, fontWeight: "700" }}>{day.label}</Text>
+            <Button onClick={() => go(last)} modifiers={[width(64), cornerRadius(16)]} colors={{ containerColor: c.secondaryContainer }}>
+              <Text color={c.onSecondaryContainer} style={{ fontSize: 13, fontWeight: "700" }} modifiers={[padding(0, 5, 0, 5)]}>{day.label}</Text>
             </Button>
           )}
           {arrow("widget_chevron_right", selected + 1, !isToday)}

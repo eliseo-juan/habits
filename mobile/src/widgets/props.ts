@@ -88,11 +88,17 @@ export function buildWidgetProps(
   days: { date: string; items: DayEntry[] }[],
   reminders: Record<number, Reminder[] | undefined> = {},
   now = localTime(),
+  // The day the widget should show; today unless the push comes from a sheet opened on an earlier day.
+  selectDate = today,
 ): WidgetProps {
   const shown: WidgetDay[] = [...days]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map(({ date, items }) => ({ date, label: widgetDayLabel(date, today), ...dayRows(date, today, habits, items, reminders, now) }))
   const current = shown.find((d) => d.date === today) ?? { habits: [], avoid: [] }
+  const indexOf = (date: string) => {
+    const index = shown.findIndex((d) => d.date === date)
+    return index === -1 ? undefined : index
+  }
   return {
     signedIn: true,
     date: today,
@@ -101,6 +107,6 @@ export function buildWidgetProps(
     habits: current.habits,
     avoid: current.avoid,
     days: shown,
-    selected: Math.max(0, shown.findIndex((d) => d.date === today)),
+    selected: indexOf(selectDate) ?? indexOf(today) ?? 0,
   }
 }
